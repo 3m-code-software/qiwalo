@@ -9,7 +9,8 @@
 - ✅ تسجيل دخول مؤقت بـ JWT cookie موقّع (`jose`) — يُستبدل لاحقاً بـ Supabase Auth.
 - ✅ بحث، صفحة وحدة، حجز تجريبي فوري، لوحة مالك، لوحة إدارة.
 - ✅ Paymob webhook فقط (تحقق HMAC + تحديث حالة الحجز). **لا يوجد checkout حي بعد.**
-- ⏳ Cloudinary / Vercel Blob / Resend / WhatsApp — الخطوات الخارجية مطلوبة منك، الكود لاحقاً.
+- ✅ Cloudinary signed upload لصور الوحدات (السيرفر يوقّع، المالك يرفع من النموذج).
+- ⏳ Vercel Blob / Resend / WhatsApp — لاحقاً.
 
 ## التشغيل محلياً
 
@@ -34,7 +35,9 @@ npm run dev
 | `DATABASE_URL` | اختياري | Supabase Postgres. فاضي = بيانات تجريبية |
 | `PAYMOB_SECRET_KEY` | مطلوب للـ webhook | مفتاح HMAC في لوحة Paymob |
 | `CRON_SECRET` | لاحقاً | حماية مهام cron |
-| `CLOUDINARY_*` | لاحقاً | رفع صور الملاك |
+| `CLOUDINARY_CLOUD_NAME` | مطلوب للرفع | `dbmxnruhi` |
+| `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` | مطلوب للرفع | حطّهم في Vercel/.env.local، مش في الشات |
+| `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET` | مطلوب للرفع | `qiwalo_units` |
 | `BLOB_READ_WRITE_TOKEN` | لاحقاً | تخزين الفيديو/المرفقات |
 | `RESEND_API_KEY` / `WHATSAPP_*` | لاحقاً | الإشعارات |
 
@@ -61,30 +64,32 @@ npm run db:generate
 npm run db:push    # بعد ما تحط DATABASE_URL
 ```
 
-## اللي لازم تعمله أنت خارجياً (Cloudinary)
+## Cloudinary (مُدمج ✅)
 
-الخطوات دي محتاجة منك في حسابك، وأنا هكتب الكود بعد ما ترسللي القيم (ما تبعتهاش في الشات لو حساسة — حطّها في Vercel مباشرة):
+القيم اللي اتبعتت:
 
-1. اعمل حساب على <https://cloudinary.com> (الخطة المجانية كافية للمبدأ).
-2. من الـ Dashboard انسخ **Cloud Name**.
-3. افتح `Settings → API Keys` واعمل **Generate New API Secret** (أو استخدم الحالي). انسخ `API Key` و`API Secret`.
-4. اعمل **Upload Preset** من `Settings → Upload` (أو Media Library → Upload Presets):
-   - الاسم: `qiwalo_units`.
-   - التوقيع: **Signed** (أفضل للأمان — التوقيع هيتم على السيرفر).
-   - Folder: `qiwalo`.
-   - الصلاحيات: رفع فقط، منع الحذف العام.
-5. فعّل **Auto format / quality** في transformation الافتراضية لو متاح، وحدد `f_auto,q_auto` للعرض.
-6. جرّب ترفع صورة تجريبية من Media Library وتأكد إن الرابط بيفتح.
-7. في VercelLater (أو `.env.local` محلياً) أضف:
-   ```
-   CLOUDINARY_CLOUD_NAME=...
-   CLOUDINARY_API_KEY=...
-   CLOUDINARY_API_SECRET=...
-   NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=qiwalo_units
-   ```
-8. ابعتلي **الـ Cloud Name واسم الـ preset فقط** عشان أظبط الـ URLs. الـ API Secret خليه في Vercel بس.
+- Cloud Name: `dbmxnruhi`
+- Upload Preset: `qiwalo_units` (Signed)
 
-> ملاحظة: `images.remotePatterns` في `next.config.ts` بيسمح بالفعل بـ `res.cloudinary.com`، فالصور هتظهر مباشرة.
+الرفع بيتم هكذا:
+
+1. المالك بعد تسجيل الدخول يختار صورة من نموذج إضافة الوحدة.
+2. المتصفح يبعتهلـ `POST /api/upload` (multipart).
+3. الـ Route Handler بيتحقق من الجلسة ونوع الملف والحجم (لحد 5MB)، وبعدين يوقّع الرفع بالـ API Secret ويبعته لـ Cloudinary.
+4. Cloudinary يرجّع `secure_url`، والصورة تظهر في معاينة النموذج وتتحفظ مع الوحدة.
+
+اللي لازم تضيفه **أنت** في `.env.local` أو Vercel (ما تبعتهوش في الشات):
+
+```
+CLOUDINARY_CLOUD_NAME=dbmxnruhi
+CLOUDINARY_API_KEY=<من Settings → API Keys>
+CLOUDINARY_API_SECRET=<من Settings → API Keys>
+NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=qiwalo_units
+```
+
+من غير `API_KEY` و`API_SECRET` الرفع هيقع برسالة واضحة في الواجهة. الـ Cloud Name والـ preset مش أسرار، موجودين في `.env.example`.
+
+> `images.remotePatterns` في `next.config.ts` بيسمح بـ `res.cloudinary.com`، فالصور هتظهر مباشرة في البطاقات وصفحة الوحدة.
 
 ## Paymob webhook
 
@@ -95,17 +100,18 @@ npm run db:push    # بعد ما تحط DATABASE_URL
 
 في لوحة Paymob: أضف Webhook URL = `https://<domain>/api/paymob/webhook` && انسخ الـ HMAC Secret إلى `PAYMOB_SECRET_KEY`.
 
-## رفع المشروع على GitHub (أنت تعملها)
+## GitHub
 
-من مجلد `qiwalo-fresh`:
+المشروع مرفوع بالفعل على:
+
+**https://github.com/3m-code-software/qiwalo** (Public، branch `main`)
+
+لأي تحديث لاحق من مجلد `qiwalo-fresh`:
 
 ```bash
-git init
 git add .
-git commit -m "Qiwalo web MVP: booking marketplace for Luxor & Aswan"
-git branch -M main
-git remote add origin https://github.com/<USERNAME>/qiwalo.git
-git push -u origin main
+git commit -m "وصف التغيير"
+git push
 ```
 
 تأكد إن `.env.local` مش موجود في الـ commit (مستبعد في `.gitignore`).
@@ -114,14 +120,15 @@ git push -u origin main
 
 1. Vercel → **Add New → Project** واختار repo `qiwalo`.
 2. Framework: Next.js (بيكتشفه تلقائياً). Build command: `npm run build`.
-3. في **Environment Variables** أضف: `NEXT_PUBLIC_SITE_URL`, `SESSION_SECRET`, `PAYMOB_SECRET_KEY`، و`DATABASE_URL` لو حابب تربط Supabase.
+3. في **Environment Variables** أضف: `NEXT_PUBLIC_SITE_URL`, `SESSION_SECRET`, `PAYMOB_SECRET_KEY`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET`، و`DATABASE_URL` لو حابب تربط Supabase.
 4. انشر. لو بيانات تجريبية بس، الموقع هيشتغل من غير قاعدة بيانات.
 
 ## خريطة الطريق
 
 1. ✅ الأساس + مسار الضيف + المالك/الإدارة + webhook.
-2. ربط Supabase Postgres فعلي + استبدال الجلسة المؤقتة.
-3. Paymob checkout حي.
-4. Cloudinary + Blob للصور/الفيديو.
-5. Resend / WhatsApp + cron للتذكير.
-6. Flutter لاحقاً بنفس الـ API/الـ repo layer.
+2. ✅ Cloudinary signed upload لصور الوحدات.
+3. ربط Supabase Postgres فعلي + استبدال الجلسة المؤقتة.
+4. Paymob checkout حي.
+5. Vercel Blob للفيديو/المرفقات.
+6. Resend / WhatsApp + cron للتذكير.
+7. Flutter لاحقاً بنفس الـ API/الـ repo layer.

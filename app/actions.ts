@@ -64,7 +64,12 @@ export async function createPropertyAction(_prev: FormState, form: FormData): Pr
   if (!Number.isFinite(maxGuests) || maxGuests < 1) return { error: "عدد الضيوف غير صحيح." };
   if (!Number.isFinite(bedrooms) || bedrooms < 1) return { error: "عدد غرف النوم غير صحيح." };
 
-  const images = String(form.get("images") ?? "").split(/[\n,]+/).map((s) => s.trim()).filter(Boolean).slice(0, 8);
+  const images = [...new Set(
+    form.getAll("images")
+      .flatMap((value) => String(value).split(/[\n,]+/))
+      .map((s) => s.trim())
+      .filter((s) => s.startsWith("https://")),
+  )].slice(0, 8);
   if (images.length === 0) images.push("https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=80");
 
   const repo = await getRepo();
