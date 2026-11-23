@@ -1,4 +1,5 @@
 import { addDays, differenceInCalendarDays, format, parseISO, startOfDay } from "date-fns";
+import { makePropertySlug, slugCandidates } from "@/lib/slug";
 import type { Repo } from "./index";
 import type {
   Availability,
@@ -15,11 +16,13 @@ const img = (id: string) => `https://images.unsplash.com/${id}?auto=format&fit=c
 
 type StoredUser = { email: string; name: string; role: "GUEST" | "OWNER" | "ADMIN"; phone?: string };
 
-const users: StoredUser[] = [
-  { email: "guest@qiwalo.test", name: "أحمد المسافر", role: "GUEST" },
-  { email: "owner@qiwalo.test", name: "محمد مالك", role: "OWNER" },
-  { email: "admin@qiwalo.test", name: "إدارة قيوالو", role: "ADMIN" },
-];
+interface MockState {
+  users: StoredUser[];
+  props: Property[];
+  availability: Map<string, Availability[]>;
+  priceRules: Map<string, PriceRule[]>;
+  bookings: Booking[];
+}
 
 function makeRules(base: number): PriceRule[] {
   const year = new Date().getFullYear();
@@ -127,31 +130,47 @@ const seedProperties: Property[] = [
   },
 ];
 
-const props = seedProperties.map((p) => ({ ...p }));
-const availability = new Map<string, Availability[]>();
-const priceRules = new Map<string, PriceRule[]>();
-for (const p of props) {
-  availability.set(p.id, makeAvailability(Number(p.id.slice(1))));
-  priceRules.set(p.id, makeRules(p.basePrice));
+function createMockState(): MockState {
+  const users: StoredUser[] = [
+    { email: "guest@qiwalo.test", name: "أحمد المسافر", role: "GUEST" },
+    { email: "owner@qiwalo.test", name: "محمد مالك", role: "OWNER" },
+    { email: "admin@qiwalo.test", name: "إدارة قيوالو", role: "ADMIN" },
+  ];
+
+  const props = seedProperties.map((p) => ({ ...p }));
+  const availability = new Map<string, Availability[]>();
+  const priceRules = new Map<string, PriceRule[]>();
+  for (const p of props) {
+    availability.set(p.id, makeAvailability(Number(p.id.slice(1))));
+    priceRules.set(p.id, makeRules(p.basePrice));
+  }
+
+  const bookings: Booking[] = [];
+  const seedBooking = (index: number, days: number, nights: number, status: Booking["status"], payment: Booking["paymentStatus"], guest: string) => {
+    const p = props[index];
+    const checkIn = format(addDays(startOfDay(new Date()), days), "yyyy-MM-dd");
+    const checkOut = format(addDays(startOfDay(new Date()), days + nights), "yyyy-MM-dd");
+    const subtotal = p.basePrice * nights;
+    bookings.push({
+      id: `b${bookings.length + 1}`, reference: `QW-SEED-${bookings.length + 1}`,
+      propertyId: p.id, propertyName: p.name, propertySlug: p.slug, city: p.city,
+      guestId: "guest@qiwalo.test", guestName: guest, checkIn, checkOut, nights, guests: 2,
+      subtotal, serviceFee: 0, commission: Math.round(subtotal * 0.12), total: subtotal,
+      status, paymentStatus: payment, provider: "PAYMOB", createdAt: new Date().toISOString(),
+    });
+  };
+  seedBooking(0, 12, 3, "CONFIRMED", "PAID", "سارة مسافر");
+  seedBooking(1, 26, 4, "CONFIRMED", "PAID", "منى عبد العزيز");
+  seedBooking(2, -8, 2, "COMPLETED", "PAID", "خالد حجز");
+
+  return { users, props, availability, priceRules, bookings };
 }
 
-const bookings: Booking[] = [];
-function seedBooking(index: number, days: number, nights: number, status: Booking["status"], payment: Booking["paymentStatus"], guest: string) {
-  const p = props[index];
-  const checkIn = format(addDays(startOfDay(new Date()), days), "yyyy-MM-dd");
-  const checkOut = format(addDays(startOfDay(new Date()), days + nights), "yyyy-MM-dd");
-  const subtotal = p.basePrice * nights;
-  bookings.push({
-    id: `b${bookings.length + 1}`, reference: `QW-SEED-${bookings.length + 1}`,
-    propertyId: p.id, propertyName: p.name, propertySlug: p.slug, city: p.city,
-    guestId: "guest@qiwalo.test", guestName: guest, checkIn, checkOut, nights, guests: 2,
-    subtotal, serviceFee: 0, commission: Math.round(subtotal * 0.12), total: subtotal,
-    status, paymentStatus: payment, provider: "PAYMOB", createdAt: new Date().toISOString(),
-  });
-}
-seedBooking(0, 12, 3, "CONFIRMED", "PAID", "سارة مسافر");
-seedBooking(1, 26, 4, "CONFIRMED", "PAID", "منى عبد العزيز");
-seedBooking(2, -8, 2, "COMPLETED", "PAID", "خالد حجز");
+// Next.js قد يحمّل ملفات الـ route في module graphs مختلفة داخل نفس العملية.
+// تخزين البيانات على globalThis يضمن إن كل الصفحات تشوف نفس وحدات المالك الجديدة.
+const globalStore = globalThis as unknown as { __qiwaloMockState?: MockState };
+const state = (globalStore.__qiwaloMockState ??= createMockState());
+const { users, props, availability, priceRules, bookings } = state;
 
 const clone = <T,>(v: T): T => structuredClone(v);
 
@@ -179,10 +198,14 @@ export const mockRepo: Repo = {
     return clone(out);
   },
   async listAllProperties() { return clone(props); },
-  async getPropertyBySlug(slug) { const p = props.find((x) => x.slug === slug); return p ? clone(p) : null; },
+  async getPropertyBySlug(slug) {
+    const candidates = slugCandidates(slug);
+    const p = props.find((x) => candidates.includes(x.slug));
+    return p ? clone(p) : null;
+  },
   async getPropertyById(id) { const p = props.find((x) => x.id === id); return p ? clone(p) : null; },
   async createProperty(input: NewPropertyInput) {
-    const slug = `${input.name.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "") || "unit"}-${Math.random().toString(36).slice(2, 6)}`;
+    const slug = makePropertySlug(input.name);
     const p: Property = {
       id: `p${props.length + 1}`, slug, ownerId: input.ownerId,
       ownerName: users.find((u) => u.email === input.ownerId)?.name ?? "مالك جديد",

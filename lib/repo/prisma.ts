@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { makePropertySlug, slugCandidates } from "@/lib/slug";
 import type { Repo } from "./index";
 import type {
   Availability, Booking, NewBookingInput, NewPropertyInput, PlatformStats,
@@ -68,7 +69,8 @@ export const prismaRepo: Repo = {
     return rows.map(mapProperty);
   },
   async getPropertyBySlug(slug) {
-    const row = await prisma.property.findUnique({ where: { slug }, include: { owner: true } });
+    const candidates = slugCandidates(slug);
+    const row = await prisma.property.findFirst({ where: { slug: { in: candidates } }, include: { owner: true } });
     return row ? mapProperty(row) : null;
   },
   async getPropertyById(id) {
@@ -76,7 +78,7 @@ export const prismaRepo: Repo = {
     return row ? mapProperty(row) : null;
   },
   async createProperty(input: NewPropertyInput) {
-    const slug = `${input.name.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "") || "unit"}-${Math.random().toString(36).slice(2, 6)}`;
+    const slug = makePropertySlug(input.name);
     const row = await prisma.property.create({
       data: {
         ownerId: input.ownerId, name: input.name, slug, type: input.type as any, city: input.city as any,
