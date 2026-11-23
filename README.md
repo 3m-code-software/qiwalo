@@ -62,6 +62,7 @@ npm run typecheck  # فحص TypeScript
 npm run lint       # ESLint
 npm run db:generate
 npm run db:push    # بعد ما تحط DATABASE_URL
+npm run db:seed    # بيانات تجريبية: 3 مستخدمين + 8 وحدات + 3 حجوزات
 ```
 
 ## Cloudinary (مُدمج ✅)
