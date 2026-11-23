@@ -2,38 +2,44 @@ import Link from "next/link";
 
 export default function SiteFooter() {
   return (
-    <footer className="mt-20 border-t border-line bg-white">
-      <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:grid-cols-2 lg:grid-cols-4">
+    <footer className="mt-20 border-t border-white/10 bg-navy-deep text-white">
+      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:grid-cols-2 lg:grid-cols-4">
         <div>
-          <div className="mb-3 flex items-center gap-2">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-nile font-black text-white">ق</span>
-            <span className="font-extrabold">قيوالو</span>
+          <div className="mb-4 flex items-center gap-3">
+            <span className="grid h-10 w-10 place-items-center rounded-xl border border-gold/60 text-lg font-black text-gold-bright">ق</span>
+            <span className="flex flex-col leading-none">
+              <span className="text-lg font-extrabold">قيوالو</span>
+              <span className="mt-1 text-[0.6rem] font-bold tracking-[0.3em] text-gold-bright/80">QIWALO</span>
+            </span>
           </div>
-          <p className="text-sm leading-7 muted">سوق إقامة عربي يربط المسافرين بأصحاب الوحدات في الأقصر وأسوان.</p>
+          <div className="gold-rule mb-4" />
+          <p className="text-sm leading-7 text-white/60">
+            سوق إقامة عربي يربط المسافرين بأصحاب الوحدات في الأقصر وأسوان، بأسعار واضحة وتجربة راقية.
+          </p>
         </div>
         <div>
-          <h3 className="mb-3 text-sm font-extrabold">وجهات</h3>
-          <ul className="space-y-2 text-sm muted">
-            <li><Link href="/search?city=LUXOR" className="hover:text-nile">الأقصر</Link></li>
-            <li><Link href="/search?city=ASWAN" className="hover:text-nile">أسوان</Link></li>
-            <li><Link href="/search?type=NILE_CRUISE" className="hover:text-nile">رحلات نيلية</Link></li>
+          <h3 className="mb-4 text-sm font-extrabold text-gold-bright">وجهات</h3>
+          <ul className="space-y-2.5 text-sm text-white/65">
+            <li><Link href="/search?city=LUXOR" className="transition hover:text-gold-bright">الأقصر</Link></li>
+            <li><Link href="/search?city=ASWAN" className="transition hover:text-gold-bright">أسوان</Link></li>
+            <li><Link href="/search?type=NILE_CRUISE" className="transition hover:text-gold-bright">رحلات نيلية</Link></li>
           </ul>
         </div>
         <div>
-          <h3 className="mb-3 text-sm font-extrabold">للمزودين</h3>
-          <ul className="space-y-2 text-sm muted">
-            <li><Link href="/owner/units/new" className="hover:text-nile">أضف وحدتك</Link></li>
-            <li><Link href="/owner" className="hover:text-nile">لوحة المالك</Link></li>
+          <h3 className="mb-4 text-sm font-extrabold text-gold-bright">للمزودين</h3>
+          <ul className="space-y-2.5 text-sm text-white/65">
+            <li><Link href="/owner/units/new" className="transition hover:text-gold-bright">أضف وحدتك</Link></li>
+            <li><Link href="/owner" className="transition hover:text-gold-bright">لوحة المالك</Link></li>
           </ul>
         </div>
         <div>
-          <h3 className="mb-3 text-sm font-extrabold">الدعم</h3>
-          <ul className="space-y-2 text-sm muted">
+          <h3 className="mb-4 text-sm font-extrabold text-gold-bright">الدعم</h3>
+          <ul className="space-y-2.5 text-sm text-white/65">
             <li>دعم عربي</li><li>تأكيد فوري</li><li>سياسة إلغاء واضحة</li>
           </ul>
         </div>
       </div>
-      <div className="border-t border-line py-5 text-center text-xs muted">
+      <div className="border-t border-white/10 py-5 text-center text-xs text-white/45">
         © 2026 قيوالو. صُنع للمسافر العربي.
       </div>
     </footer>

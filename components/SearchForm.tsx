@@ -3,7 +3,11 @@ import type { CityKey, SearchFilter } from "@/lib/types";
 
 export default function SearchForm({ initial = {} }: { initial?: SearchFilter }) {
   return (
-    <form action="/search" method="get" className="grid gap-3 rounded-2xl bg-white p-4 shadow-xl shadow-black/5 md:grid-cols-2 lg:grid-cols-6">
+    <form
+      action="/search"
+      method="get"
+      className="grid gap-4 rounded-2xl border border-line bg-white p-5 shadow-2xl shadow-navy/15 ring-1 ring-gold/10 md:grid-cols-2 lg:grid-cols-6"
+    >
       <div className="lg:col-span-2">
         <label className="label" htmlFor="q">الوجهة أو اسم الوحدة</label>
         <input id="q" name="q" className="input" placeholder="الأقصر، أسوان، النيل..." defaultValue={initial.q ?? ""} />
@@ -28,7 +32,7 @@ export default function SearchForm({ initial = {} }: { initial?: SearchFilter })
         <input id="guests" name="guests" type="number" min={1} max={12} className="input" defaultValue={initial.guests ?? 1} />
       </div>
       <div className="flex items-end lg:col-span-6">
-        <button type="submit" className="btn-primary w-full">ابحث عن إقامتك</button>
+        <button type="submit" className="btn-gold w-full !py-3">ابحث عن إقامتك</button>
       </div>
     </form>
   );
