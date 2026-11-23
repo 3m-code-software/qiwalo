@@ -34,7 +34,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <TermsBanner />
         </Suspense>
         <Script id="tawk-api-init" strategy="beforeInteractive">
-          {`var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();`}
+          {`var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
+            Tawk_API.onLoad = function () {
+              try {
+                if (typeof Tawk_API.showWidget === "function") Tawk_API.showWidget();
+              } catch (error) {
+                /* Tawk may not be ready yet; keep the support links as fallback. */
+              }
+            };`}
         </Script>
         <Script
           src="https://embed.tawk.to/6a65d4fd9b421a1d428467c3/1juesg01j"
