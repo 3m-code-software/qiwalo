@@ -101,6 +101,11 @@ function isoDate(date) {
   return date.toISOString().slice(0, 10);
 }
 
+// Prisma DateTime columns require a full ISO-8601 timestamp, not a bare date.
+function dbDate(date) {
+  return new Date(`${isoDate(date)}T00:00:00.000Z`);
+}
+
 function addDays(date, days) {
   const d = new Date(date.getTime());
   d.setUTCDate(d.getUTCDate() + days);
@@ -117,7 +122,7 @@ function buildAvailability() {
     for (let day = 0; day < 180; day += 1) {
       rows.push({
         propertyId: property.id,
-        date: isoDate(addDays(today, day)),
+        date: dbDate(addDays(today, day)),
         isBlocked: (day + seed) % 19 === 0 || day % 31 === 0,
         priceOverride: day % 41 === 0 ? 1000 + seed * 50 : null,
       });
@@ -143,8 +148,8 @@ function buildPriceRules() {
           id: `${property.id}-${y}-${rule.key}`,
           propertyId: property.id,
           name: rule.name,
-          startDate: rule.startDate,
-          endDate: rule.endDate,
+          startDate: new Date(`${rule.startDate}T00:00:00.000Z`),
+          endDate: new Date(`${rule.endDate}T00:00:00.000Z`),
           price: rule.price,
           minNights: rule.minNights,
         });
@@ -172,8 +177,8 @@ function buildBookings() {
       propertyId: seed.propertyId,
       guestId,
       guestName: seed.guestName,
-      checkIn: isoDate(addDays(today, seed.startDays)),
-      checkOut: isoDate(addDays(today, seed.startDays + seed.nights)),
+      checkIn: dbDate(addDays(today, seed.startDays)),
+      checkOut: dbDate(addDays(today, seed.startDays + seed.nights)),
       nights: seed.nights,
       guests: 2,
       subtotal,

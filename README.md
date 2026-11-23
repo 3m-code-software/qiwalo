@@ -33,6 +33,23 @@ npm run dev
 | `NEXT_PUBLIC_SITE_URL` | مطلوب | رابط الموقع (localhost للتطوير) |
 | `SESSION_SECRET` | مطلوب | توقيع كوكي الجلسة — سلسلة عشوائية طويلة |
 | `DATABASE_URL` | اختياري | Supabase Postgres. فاضي = بيانات تجريبية |
+
+### الربط بـ Supabase
+
+استخدم **Session pooler** مش Direct connection — Direct في الخطة المجانية بيحل لـ IPv6 فقط ومش بيشتغل من شبكات IPv4 (زي Vercel وبعض الانترنت المحلي).
+
+```env
+DATABASE_URL="postgresql://postgres.<PROJECT_REF>:<PASSWORD>@<SESSION_POOLER_HOST>:5432/postgres?sslmode=require"
+```
+
+تجيب الرابط من Supabase → المشروع → **Connect → Connection pooling → Session pooler → URI**. بعدين:
+
+```powershell
+npm run db:push
+npm run db:seed
+```
+
+نفس القيمة اتحطّت في Vercel → Settings → Environment Variables (Production / Preview / Development) عشان الإنتاج يقرأ من قاعدة البيانات مش من بيانات الذاكرة.
 | `PAYMOB_SECRET_KEY` | مطلوب للـ webhook | مفتاح HMAC في لوحة Paymob |
 | `CRON_SECRET` | لاحقاً | حماية مهام cron |
 | `CLOUDINARY_CLOUD_NAME` | مطلوب للرفع | `dbmxnruhi` |
