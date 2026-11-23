@@ -49,6 +49,8 @@ export default function SiteFooter() {
             <li><Link href="/terms/guest" className="transition hover:text-gold-bright">شروط الضيوف</Link></li>
             <li><Link href="/terms/owner" className="transition hover:text-gold-bright">شروط المالكين</Link></li>
             <li><Link href="/terms/platform" className="transition hover:text-gold-bright">شروط المنصة</Link></li>
+            <li><Link href="/terms/units" className="transition hover:text-gold-bright">شروط الوحدات</Link></li>
+            <li><Link href="/privacy" className="transition hover:text-gold-bright">سياسة الخصوصية</Link></li>
           </ul>
         </div>
       </div>

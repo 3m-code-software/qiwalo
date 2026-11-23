@@ -128,6 +128,8 @@ export default function GuestTermsPage() {
           <Link href="/terms" className="btn-ghost !px-4 !py-2 !text-xs">كل الشروط</Link>
           <Link href="/terms/owner" className="btn-ghost !px-4 !py-2 !text-xs">شروط المالكين</Link>
           <Link href="/terms/platform" className="btn-ghost !px-4 !py-2 !text-xs">شروط المنصة</Link>
+          <Link href="/terms/units" className="btn-ghost !px-4 !py-2 !text-xs">شروط الوحدات</Link>
+          <Link href="/privacy" className="btn-ghost !px-4 !py-2 !text-xs">سياسة الخصوصية</Link>
         </div>
       </div>
     </div>

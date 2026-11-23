@@ -29,6 +29,16 @@ const documents = [
     title: "شروط المنصة",
     description: "دور قيوالو كوسيط، حدود المسؤولية، الدعم، والقانون الحاكم.",
   },
+  {
+    href: "/terms/units",
+    title: "شروط وأحكام الوحدات",
+    description: "قواعد عرض الوحدة: الوصف والصور والأسعار والتوفر والإلغاء والسلامة.",
+  },
+  {
+    href: "/privacy",
+    title: "سياسة الخصوصية",
+    description: "ما نجمعه من بيانات ولماذا، ومن يصل إليها، وكيف تطلب مراجعتها أو حذفها.",
+  },
 ];
 
 export default function TermsIndexPage() {
