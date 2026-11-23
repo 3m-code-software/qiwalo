@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>قيوالو — One-Pager للمستثمرين</title>
+  <style>
+    :root {
+      --navy: #0a2440;
+      --navy2: #123a5f;
+      --gold: #c6a15b;
+      --gold2: #e3c484;
+      --ivory: #f7f3ea;
+      --ink: #17324d;
+      --muted: #5c6b79;
+      --line: #d9d2c4;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #e9e4da;
+      color: var(--ink);
+      font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+    }
+    .print-btn {
+      position: fixed;
+      top: 14px;
+      left: 14px;
+      z-index: 10;
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 16px;
+      background: var(--navy);
+      color: #fff;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 8px 24px rgba(10, 36, 64, .25);
+    }
+    .sheet {
+      max-width: 210mm;
+      margin: 22px auto;
+      padding: 12mm;
+      background: #fff;
+      box-shadow: 0 20px 60px rgba(10, 36, 64, .15);
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 14px;
+      border-bottom: 3px solid var(--gold);
+      padding-bottom: 10px;
+      margin-bottom: 12px;
+    }
+    .brand { font-size: 24px; font-weight: 900; color: var(--navy); line-height: 1; }
+    .brand small { display: block; font-size: 10px; font-weight: 600; color: var(--gold); margin-top: 4px; letter-spacing: 1px; }
+    .head-right { text-align: left; font-size: 9px; color: var(--muted); line-height: 1.6; }
+    h1 { font-size: 20px; margin: 2px 0 4px; color: var(--navy); }
+    h2 {
+      font-size: 12.5px;
+      margin: 0 0 6px;
+      color: var(--navy);
+      border-right: 3px solid var(--gold);
+      padding-right: 7px;
+    }
+    p, li { font-size: 10.5px; line-height: 1.55; margin: 3px 0; }
+    ul { padding-right: 16px; margin: 4px 0; }
+    .lead {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--navy2);
+      background: var(--ivory);
+      border: 1px solid var(--line);
+      border-right: 4px solid var(--gold);
+      border-radius: 8px;
+      padding: 8px 10px;
+      margin-bottom: 12px;
+    }
+    .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .box {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 9px 10px;
+      margin-bottom: 10px;
+      background: #fffdf9;
+      break-inside: avoid;
+    }
+    .wide { grid-column: 1 / -1; }
+    .stat { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+    .stat span {
+      background: var(--ivory);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 4px 9px;
+      font-size: 9.5px;
+      font-weight: 800;
+      color: var(--navy);
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 9.5px; }
+    th, td { border: 1px solid var(--line); padding: 5px 6px; text-align: right; vertical-align: top; }
+    th { background: var(--navy); color: #fff; font-weight: 700; }
+    td:first-child { font-weight: 700; color: var(--navy); }
+    .num { direction: ltr; display: inline-block; }
+    footer {
+      border-top: 1px solid var(--line);
+      margin-top: 10px;
+      padding-top: 8px;
+      font-size: 8.5px;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    @media print {
+      body { background: #fff; }
+      .print-btn { display: none; }
+      .sheet { box-shadow: none; margin: 0; padding: 0; max-width: none; }
+      @page { size: A4 portrait; margin: 10mm; }
+      h1 { font-size: 18px; }
+      h2 { font-size: 11.5px; }
+      p, li { font-size: 9px; line-height: 1.4; }
+      .box { padding: 7px 8px; margin-bottom: 8px; }
+      table { font-size: 8.5px; }
+      .brand { font-size: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <button class="print-btn" onclick="window.print()">🖨️ اطبع / احفظ PDF</button>
+
+  <main class="sheet">
+    <header>
+      <div>
+        <div class="brand">قيوالو <small>QIWALO · LUXOR &amp; ASWAN</small></div>
+        <h1>ورقة المستثمر — One-Pager</h1>
+      </div>
+      <div class="head-right">
+        نوفمبر 2026 · مرحلة MVP منشور<br />
+        https://qiwalo-ygzh.vercel.app/
+      </div>
+    </header>
+
+    <div class="lead">
+      سوق إقامة عربي (RTL) للأقصر وأسوان يربط المسافرين العرب بملاك الوحدات والفنادق الصغيرة، بعمولة <span class="num">12%</span> على الحجز المؤكد فقط.
+    </div>
+
+    <div class="cols">
+      <section class="box">
+        <h2>١. المشكلة</h2>
+        <ul>
+          <li>العروض متشتتة بين منصات أجنبية وواتساب ومكالمات مباشرة.</li>
+          <li>المسافر العربي مفيش تجربة عربية واضحة وسعر نهائي بدون مفاجآت.</li>
+          <li>المالك الصغير بيدفع عمولات عالية أو يفتقر لقناة بيع موثوقة.</li>
+          <li>غياب التوثيق والمراجعات الحقيقية يضعف الثقة قبل الدفع.</li>
+        </ul>
+      </section>
+
+      <section class="box">
+        <h2>٢. الحل</h2>
+        <ul>
+          <li>بحث بفلاتر وترتيب + صفحة وحدة بالصور والمواصفات والقواعد.</li>
+          <li>خريطتان (الوحدة + الاستلام) وزر اتجاهات Google Maps.</li>
+          <li>حجز فوري برقم مرجعي + تأكيد، وتقييمات بعد إتمام الإقامة.</li>
+          <li>توثيق المالك بالبطاقة والسيلفي ومراجعة إدارية قبل النشر.</li>
+          <li>دعم: Tawk.to + واتساب/تليجرام <span class="num" dir="ltr">01066094050</span>.</li>
+        </ul>
+      </section>
+
+      <section class="box wide">
+        <h2>٣. نموذج الإيرادات</h2>
+        <table>
+          <thead><tr><th>البند</th><th>التفاصيل</th></tr></thead>
+          <tbody>
+            <tr><td>العمولة</td><td><span class="num">12%</span> تُقتطع من المالك بعد تأكيد الحجز فقط.</td></tr>
+            <tr><td>المرونة</td><td>نسبة قابلة للتعديل لكل مالك/شريك للتسويق الخارجي.</td></tr>
+            <tr><td>الاشتراكات</td><td>لا اشتراك ولا رسوم نشر حالياً.</td></tr>
+            <tr><td>الدفع الآن</td><td>تحويل بنكي أو كاش عند الوصول — بدون دفع إلكتروني.</td></tr>
+            <tr><td>الجاهزية</td><td>Paymob webhook مطبّق ومختبر؛ الـ checkout الحي على خارطة الطريق.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="box wide">
+        <h2>٤. أين نحن الآن (Traction)</h2>
+        <div class="stat">
+          <span>منشور على Vercel</span><span>Supabase Postgres + Auth</span><span>Prisma</span>
+          <span>Cloudinary للصور</span><span>Tawk شات حي</span>
+        </div>
+        <ul>
+          <li>مسار كامل مختبر: مالك يضيف وحدة → إدارة تنشرها → ضيف يحجز → إشعار موثّق في الـ logs.</li>
+          <li>بيانات عرض منظمة: <span class="num">40</span> وحدة، <span class="num">10</span> ملاك، <span class="num">94</span> تقييم.</li>
+        </ul>
+      </section>
+
+      <section class="box">
+        <h2>٥. السوق والفرصة</h2>
+        <ul>
+          <li>الأقصر وأسوان وجهتان دائمتان بطلب عربي متزايد وتجربة عربية ناقصة.</li>
+          <li>نموذج خفيف الأصول: لا عقارات ولا مخزون وتكلفة تشغيل منخفضة.</li>
+          <li>نفس الـ API يسمح بتطبيق Flutter لاحقاً بدون إعادة بناء الـ backend.</li>
+        </ul>
+      </section>
+
+      <section class="box">
+        <h2>٦. خطة ٦ أشهر</h2>
+        <ul>
+          <li>اعتماد الصياغة النهائية للشروط + دومين مخصص.</li>
+          <li>تفعيل Paymob checkout الحي.</li>
+          <li>الوصول إلى <span class="num">100</span> وحدة حقيقية بتصوير احترافي.</li>
+          <li>حملة ضيوف عرب + برنامج إحالة للملاك.</li>
+          <li>تفعيل إشعارات Resend/WhatsApp فعلياً.</li>
+        </ul>
+      </section>
+
+      <section class="box wide">
+        <h2>٧. التمويل واستخدامه (مقترح)</h2>
+        <p><strong>المطلوب: <span class="num">75–150</span> ألف جنيه</strong> لمرحلة الـ go-to-market.</p>
+        <table>
+          <thead><tr><th>البند</th><th>النسبة</th><th>البند</th><th>النسبة</th></tr></thead>
+          <tbody>
+            <tr><td>هندسة ومنتج</td><td><span class="num">40%</span></td><td>اكتساب الملاك والتصوير</td><td><span class="num">25%</span></td></tr>
+            <tr><td>تسويق موجّه</td><td><span class="num">20%</span></td><td>تشغيل ودعم ومحتوى</td><td><span class="num">10%</span></td></tr>
+            <tr><td>قانوني ومحاسبة</td><td><span class="num">5%</span></td><td>—</td><td>—</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="box">
+        <h2>٨. مؤشرات النجاح</h2>
+        <ul>
+          <li>عدد الوحدات المنشورة فعلياً.</li>
+          <li>نسبة التحويل من بحث إلى حجز مؤكد.</li>
+          <li>متوسط قيمة الحجز والعمولة المحصّلة.</li>
+          <li>زمن نشر الوحدة من التقديم للموافقة.</li>
+        </ul>
+      </section>
+
+      <section class="box">
+        <h2>٩. المخاطر والتخفيف</h2>
+        <ul>
+          <li><strong>الموسمية:</strong> تنويع المحتوى وبناء ولاء الملاك.</li>
+          <li><strong>المنافسة:</strong> التركيز على التجربة العربية والثقة والدعم.</li>
+          <li><strong>جودة الصور:</strong> تصوير ضمن خطة اكتساب الملاك.</li>
+          <li><strong>الدفع اليدوي:</strong> webhook جاهز وcheckout في الخطة.</li>
+        </ul>
+      </section>
+    </div>
+
+    <footer>
+      <span>دعم قيوالو — واتساب/تليجرام <span class="num" dir="ltr">01066094050</span></span>
+      <span dir="ltr">GitHub: 3m-code-software/qiwalo</span>
+    </footer>
+  </main>
+</body>
+</html>
