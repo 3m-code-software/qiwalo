@@ -1,0 +1,25 @@
+import Link from "next/link";
+import LoginForm from "@/components/LoginForm";
+
+export const instant = false;
+
+export default async function LoginPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const sp = await searchParams;
+  const next = Array.isArray(sp.next) ? sp.next[0] : sp.next;
+  const role = Array.isArray(sp.role) ? sp.role[0] : sp.role;
+  return (
+    <div className="mx-auto max-w-md px-4 py-14">
+      <div className="soft-card">
+        <div className="mb-6 text-center">
+          <span className="chip">دخول قيوالو</span>
+          <h1 className="mt-3 text-2xl font-black">أهلاً بك</h1>
+          <p className="muted mt-1 text-sm">سجّل الدخول أو أنشئ حساباً جديداً ببريدك.</p>
+        </div>
+        <LoginForm next={next} role={role} />
+      </div>
+      <p className="muted mt-5 text-center text-xs">
+        بالدخول أنت بتوافق على <Link href="/" className="text-nile">شروط الاستخدام</Link> وسياسة الخصوصية.
+      </p>
+    </div>
+  );
+}

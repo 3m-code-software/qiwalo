@@ -1,0 +1,163 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  GUEST
+  OWNER
+  ADMIN
+}
+
+enum City {
+  LUXOR
+  ASWAN
+}
+
+enum PropertyType {
+  APARTMENT
+  CHALET
+  VILLA
+  HOTEL
+  GUEST_HOUSE
+  NILE_CRUISE
+}
+
+enum ModerationStatus {
+  DRAFT
+  PENDING
+  PUBLISHED
+  REJECTED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum PaymentProvider {
+  PAYMOB
+  MANUAL
+}
+
+enum PayoutStatus {
+  PENDING
+  PAID
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  phone     String?
+  role      Role     @default(GUEST)
+  createdAt DateTime @default(now())
+
+  properties Property[]
+  bookings   Booking[]
+  payouts    Payout[]
+}
+
+model Property {
+  id           String           @id @default(cuid())
+  ownerId      String
+  owner        User             @relation(fields: [ownerId], references: [id])
+  name         String
+  slug         String           @unique
+  type         PropertyType
+  city         City
+  address      String
+  description  String
+  lat          Float
+  lng          Float
+  images       Json             @default("[]")
+  videoUrl     String?
+  amenities    String[]         @default([])
+  maxGuests    Int              @default(2)
+  bedrooms     Int              @default(1)
+  basePrice    Int
+  cancelPolicy String           @default("FREE_48H")
+  status       ModerationStatus @default(PENDING)
+  rating       Float            @default(0)
+  reviewCount  Int              @default(0)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  availability Availability[]
+  priceRules   PriceRule[]
+  bookings     Booking[]
+
+  @@index([city, status])
+  @@index([lat, lng])
+}
+
+model Availability {
+  id            String   @id @default(cuid())
+  propertyId    String
+  property      Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  date          DateTime @db.Date
+  isBlocked     Boolean  @default(false)
+  priceOverride Int?
+
+  @@unique([propertyId, date])
+}
+
+model PriceRule {
+  id         String   @id @default(cuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  name       String
+  startDate  DateTime @db.Date
+  endDate    DateTime @db.Date
+  price      Int
+  minNights  Int      @default(1)
+
+  @@index([propertyId, startDate, endDate])
+}
+
+model Booking {
+  id            String          @id @default(cuid())
+  reference     String          @unique
+  propertyId    String
+  property      Property        @relation(fields: [propertyId], references: [id])
+  guestId       String
+  guest         User            @relation(fields: [guestId], references: [id])
+  checkIn       DateTime        @db.Date
+  checkOut      DateTime        @db.Date
+  nights        Int
+  guests        Int
+  subtotal      Int
+  serviceFee    Int             @default(0)
+  commission    Int             @default(0)
+  total         Int
+  status        BookingStatus   @default(PENDING)
+  paymentStatus PaymentStatus   @default(PENDING)
+  provider      PaymentProvider @default(MANUAL)
+  createdAt     DateTime        @default(now())
+
+  @@index([guestId, createdAt])
+  @@index([propertyId, checkIn])
+}
+
+model Payout {
+  id        String      @id @default(cuid())
+  ownerId   String
+  owner     User        @relation(fields: [ownerId], references: [id])
+  bookingId String      @unique
+  amount    Int
+  status    PayoutStatus @default(PENDING)
+  createdAt DateTime    @default(now())
+}
