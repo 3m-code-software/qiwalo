@@ -11,7 +11,7 @@ import {
 
 export const metadata: Metadata = {
   title: "شروط المنصة",
-  description: "دور قيوالو كوسيط، حدود المسؤولية، والقانون الحاكم — مسودة للمراجعة النهائية.",
+  description: "دور قيوالو كوسيط، حدود المسؤولية، والقانون الحاكم — نسخة معتمدة.",
 };
 
 function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
@@ -29,17 +29,16 @@ export default function PlatformTermsPage() {
       <div className="soft-card">
         <div className="flex flex-wrap items-center gap-3">
           <span className="chip">شروط المنصة</span>
-          <span className="chip chip-gold">مسودة للمراجعة النهائية</span>
+          <span className="chip chip-gold">نسخة معتمدة</span>
         </div>
         <h1 className="mt-5 text-3xl font-black text-navy">شروط استخدام منصة {SITE_NAME_AR}</h1>
         <div className="gold-rule my-5" />
         <p className="muted text-sm leading-8">
-          {SITE_NAME_AR} سوق عربي يربط المسافرين بأصحاب الوحدات في الأقصر وأسوان. هذه نسخة مسودة
-          للمراجعة النهائية قبل النشر، وتوضّح دور المنصة وحدود مسؤوليتها تجاه الضيوف والمالكين.
+          {SITE_NAME_AR} سوق عربي يربط المسافرين بأصحاب الوحدات في الأقصر وأسوان. هذه نسخة معتمدة
+          للاستخدام، وتوضّح دور المنصة وحدود مسؤوليتها تجاه الضيوف والمالكين.
         </p>
         <div className="mt-6 rounded-xl border border-gold/30 bg-gold-soft px-4 py-3 text-xs font-bold leading-7 text-[#8a6a24]">
-          مسودة للمراجعة النهائية — قد تُصاغ النصوص بشكل أفضل قبل الإصدار، مع الإبقاء على المعاني
-          الأساسية المعلنة هنا.
+          نسخة معتمدة — المعاني الأساسية المعلنة هنا قابلة للتنفيذ، وأي تحديث لاحق يُعلَن في الموقع.
         </div>
 
         <Section id="role" title="١. دورنا كوسيط">

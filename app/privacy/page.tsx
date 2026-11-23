@@ -6,7 +6,7 @@ import { SITE_NAME_AR, SUPPORT_PHONE } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: "سياسة الخصوصية",
-  description: "كيف تجمع قيوالو بياناتك وتستخدمها وتحميها — مسودة للمراجعة النهائية.",
+  description: "كيف تجمع قيوالو بياناتك وتستخدمها وتحميها — نسخة معتمدة.",
 };
 
 function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
@@ -24,19 +24,18 @@ export default function PrivacyPage() {
       <div className="soft-card">
         <div className="flex flex-wrap items-center gap-3">
           <span className="chip">سياسة الخصوصية</span>
-          <span className="chip chip-gold">مسودة للمراجعة النهائية</span>
+          <span className="chip chip-gold">نسخة معتمدة</span>
         </div>
         <h1 className="mt-5 text-3xl font-black text-navy">سياسة خصوصية {SITE_NAME_AR}</h1>
         <div className="gold-rule my-5" />
         <p className="muted text-sm leading-8">
           توضّح هذه السياسة ما الذي نجمعه من بيانات عند استخدامك لموقع {SITE_NAME_AR}، ولماذا نستخدمه،
-          ومن قد يطلع عليه، وكيف يمكنك مراجعته أو طلب حذفه. هذه نسخة مسودة للمراجعة النهائية قبل
-          الإصدار الرسمي.
+          ومن قد يطلع عليه، وكيف يمكنك مراجعته أو طلب حذفه. هذه نسخة معتمدة للاستخدام.
         </p>
 
         <div className="mt-6 rounded-xl border border-gold/30 bg-gold-soft px-4 py-3 text-xs font-bold leading-7 text-[#8a6a24]">
-          نسخة مسودة للمراجعة النهائية — قد تُعدَّل الصياغة قبل النشر، مع الإبقاء على المعاني الأساسية
-          الموضحة هنا. لا تُطلب منك أي بيانات مالية أو بطاقة ائتمان لإتمام الحجز في هذه المرحلة.
+          نسخة معتمدة — المعاني الأساسية الموضحة هنا قابلة للتنفيذ، وأي تحديث لاحق يُعلَن في الموقع.
+          لا تُطلب منك أي بيانات مالية أو بطاقة ائتمان لإتمام الحجز في هذه المرحلة.
         </div>
 
         <Section id="scope" title="١. نطاق السياسة">

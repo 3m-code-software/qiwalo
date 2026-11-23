@@ -77,6 +77,30 @@ async function sendWhatsApp(to: string, text: string): Promise<boolean> {
   }
 }
 
+async function sendTelegram(text: string): Promise<boolean> {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+  if (!token || !chatId) return false;
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text,
+        disable_web_page_preview: true,
+      }),
+      signal: AbortSignal.timeout(8000),
+      cache: "no-store",
+    });
+    if (!response.ok) console.warn("[notify] Telegram failed", await response.text());
+    return response.ok;
+  } catch (error) {
+    console.warn("[notify] Telegram unavailable", error);
+    return false;
+  }
+}
+
 export interface BookingNotice {
   booking: Booking;
   property: Property;
@@ -134,11 +158,13 @@ export async function sendBookingNotifications(notice: BookingNotice) {
     guestPhone ? sendWhatsApp(guestPhone, guestText) : Promise.resolve(false),
     sendWhatsApp(ADMIN_WHATSAPP, adminText),
     notice.ownerEmail ? sendEmail(notice.ownerEmail, `حجز جديد ${booking.reference}`, ownerText) : Promise.resolve(false),
+    sendTelegram(adminText),
   ]);
 
   return {
     emailed: results.slice(0, 2).some((r) => r.status === "fulfilled" && r.value === true),
     whatsapp: results.slice(2, 4).some((r) => r.status === "fulfilled" && r.value === true),
+    telegram: results.slice(5).some((r) => r.status === "fulfilled" && r.value === true),
   };
 }
 
@@ -148,5 +174,6 @@ export async function sendReviewNotice(propertyName: string, rating: number, com
   await Promise.allSettled([
     sendEmail(process.env.ADMIN_EMAIL || "3mcodesoftwaresolutions@gmail.com", "تقييم جديد في قيوالو", text),
     sendWhatsApp(ADMIN_WHATSAPP, text),
+    sendTelegram(text),
   ]);
 }

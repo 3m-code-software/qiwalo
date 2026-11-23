@@ -6,7 +6,7 @@ import { CANCEL_POLICIES, SITE_NAME_AR, SUPPORT_PHONE } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: "شروط الضيوف",
-  description: "شروط حجز وإقامة الضيوف على قيوالو — مسودة للمراجعة النهائية.",
+  description: "شروط حجز وإقامة الضيوف على قيوالو — نسخة معتمدة.",
 };
 
 function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
@@ -24,18 +24,17 @@ export default function GuestTermsPage() {
       <div className="soft-card">
         <div className="flex flex-wrap items-center gap-3">
           <span className="chip">شروط الضيوف</span>
-          <span className="chip chip-gold">مسودة للمراجعة النهائية</span>
+          <span className="chip chip-gold">نسخة معتمدة</span>
         </div>
         <h1 className="mt-5 text-3xl font-black text-navy">شروط استخدام {SITE_NAME_AR} للضيوف</h1>
         <div className="gold-rule my-5" />
         <p className="muted text-sm leading-8">
-          تنظّم هذه الشروط استخدامك للموقع عند البحث عن إقامة أو حجزها في الأقصر وأسوان. هذه مسودة
-          للمراجعة النهائية قبل النشر؛ نوضّح ما يخصّ الضيوف بوضوح، ولا نحتفظ بحقوق غامضة.
+          تنظّم هذه الشروط استخدامك للموقع عند البحث عن إقامة أو حجزها في الأقصر وأسوان. هذه نسخة
+          معتمدة للاستخدام؛ نوضّح ما يخصّ الضيوف بوضوح، ولا نحتفظ بحقوق غامضة.
         </p>
 
         <div className="mt-6 rounded-xl border border-gold/30 bg-gold-soft px-4 py-3 text-xs font-bold leading-7 text-[#8a6a24]">
-          نسخة مسودة للمراجعة النهائية — قد تُعدَّل الصياغة قبل الإصدار الرسمي دون تغيير الجوهر
-          الموضح هنا.
+          نسخة معتمدة — الجوهر الموضح هنا قابل للتنفيذ، وأي تحديث لاحق يُعلَن في الموقع.
         </div>
 
         <Section id="booking" title="١. الحجز والتأكيد">

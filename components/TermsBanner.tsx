@@ -42,7 +42,7 @@ export default function TermsBanner() {
         <div className="min-w-0 flex-1">
           <p className="text-sm font-extrabold text-white">قبل أن تكمل، راجع شروط الاستخدام</p>
           <p className="muted mt-1 text-[0.72rem] leading-6 text-white/60">
-            نسخة مسودة للمراجعة النهائية — البنود الجوهرية واضحة الآن وقد تُحسّن قبل النشر.
+            نسخة معتمدة — البنود الجوهرية واضحة وقابلة للتنفيذ.
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <form action={acceptTermsAction}>

@@ -10,7 +10,7 @@ import {
 
 export const metadata: Metadata = {
   title: "الشروط والسياسات",
-  description: "شروط استخدام قيوالو للضيوف والمالكين والمنصة — نسخة مسودة للمراجعة النهائية.",
+  description: "شروط استخدام قيوالو للضيوف والمالكين والمنصة — نسخة معتمدة.",
 };
 
 const documents = [
@@ -48,12 +48,12 @@ export default function TermsIndexPage() {
         <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-l from-gold via-gold-bright to-transparent" />
         <div className="flex flex-wrap items-center gap-3">
           <span className="chip">شروط {SITE_NAME_AR}</span>
-          <span className="chip chip-gold">مسودة للمراجعة النهائية</span>
+          <span className="chip chip-gold">نسخة معتمدة</span>
         </div>
         <h1 className="mt-5 text-3xl font-black text-navy">الشروط والسياسات</h1>
         <div className="gold-rule my-5" />
         <p className="muted max-w-2xl text-sm leading-8">
-          هذه نسخة مسودة أعدّها فريق {SITE_NAME_AR} لمراجعتها قبل النشر النهائي. الهدف أن تكون القواعد
+          هذه نسخة معتمدة أعدّها فريق {SITE_NAME_AR} للاستخدام. الهدف أن تكون القواعد
           واضحة ومكتوبة بالعربية: كيف يتم الحجز والتأكيد، كيف يُدفع، متى يُسمح بالإلغاء، وما الذي
           تلتزم به المنصة والمالكون والضيوف. يرجى قراءة المستند الخاص بدورك قبل استخدام الموقع.
         </p>

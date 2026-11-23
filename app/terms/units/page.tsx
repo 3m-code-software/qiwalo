@@ -11,7 +11,7 @@ import {
 
 export const metadata: Metadata = {
   title: "شروط وأحكام الوحدات",
-  description: "قواعد عرض الوحدات على قيوالو: الوصف والصور والأسعار والتوفر والإلغاء — مسودة للمراجعة النهائية.",
+  description: "قواعد عرض الوحدات على قيوالو: الوصف والصور والأسعار والتوفر والإلغاء — نسخة معتمدة.",
 };
 
 function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
@@ -29,20 +29,19 @@ export default function UnitTermsPage() {
       <div className="soft-card">
         <div className="flex flex-wrap items-center gap-3">
           <span className="chip">شروط الوحدات</span>
-          <span className="chip chip-gold">مسودة للمراجعة النهائية</span>
+          <span className="chip chip-gold">نسخة معتمدة</span>
         </div>
         <h1 className="mt-5 text-3xl font-black text-navy">شروط وأحكام عرض الوحدات على {SITE_NAME_AR}</h1>
         <div className="gold-rule my-5" />
         <p className="muted text-sm leading-8">
           تنظّم هذه الشروط طريقة عرض الوحدات في {SITE_NAME_AR} وإدارتها، وما يلتزم به المالك تجاه
-          الضيف والمنصة. هذه نسخة مسودة للمراجعة النهائية قبل النشر، وتُكمّل{" "}
+          الضيف والمنصة. هذه نسخة معتمدة للاستخدام، وتُكمّل{" "}
           <Link href="/terms/owner" className="font-bold text-navy underline decoration-gold underline-offset-2">شروط المالكين</Link>{" "}
           ولا تُغني عنها.
         </p>
 
         <div className="mt-6 rounded-xl border border-gold/30 bg-gold-soft px-4 py-3 text-xs font-bold leading-7 text-[#8a6a24]">
-          نسخة مسودة للمراجعة النهائية — قد تُعدَّل الصياغة قبل الإصدار الرسمي دون تغيير المعاني
-          الأساسية الموضحة هنا.
+          نسخة معتمدة — المعاني الأساسية الموضحة هنا قابلة للتنفيذ، وأي تحديث لاحق يُعلَن في الموقع.
         </div>
 
         <Section id="scope" title="١. ما المقصود بالوحدة">

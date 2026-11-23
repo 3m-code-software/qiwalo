@@ -38,7 +38,7 @@ export default async function PaymentPage({
     <div className="mx-auto max-w-3xl px-4 py-12">
       <div className="flex flex-wrap items-center gap-3">
         <span className="chip">دفع آمن ويدوي</span>
-        <span className="chip chip-gold">مسودة للمراجعة النهائية</span>
+        <span className="chip chip-gold">نسخة معتمدة</span>
       </div>
       <h1 className="mt-5 text-3xl font-black text-navy">تفاصيل الدفع</h1>
       <p className="muted mt-2 text-sm leading-7">

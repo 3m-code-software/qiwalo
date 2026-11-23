@@ -11,7 +11,7 @@ import {
 
 export const metadata: Metadata = {
   title: "شروط المالكين",
-  description: "شروط توثيق المالكين وعرض الوحدات والعمولة على قيوالو — مسودة للمراجعة النهائية.",
+  description: "شروط توثيق المالكين وعرض الوحدات والعمولة على قيوالو — نسخة معتمدة.",
 };
 
 function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
@@ -29,17 +29,16 @@ export default function OwnerTermsPage() {
       <div className="soft-card">
         <div className="flex flex-wrap items-center gap-3">
           <span className="chip">شروط المالكين</span>
-          <span className="chip chip-gold">مسودة للمراجعة النهائية</span>
+          <span className="chip chip-gold">نسخة معتمدة</span>
         </div>
         <h1 className="mt-5 text-3xl font-black text-navy">شروط استخدام {SITE_NAME_AR} لأصحاب الوحدات</h1>
         <div className="gold-rule my-5" />
         <p className="muted text-sm leading-8">
-          تنظّم هذه الشروط عرض وحدتك وإدارة حجوزاتك على {SITE_NAME_AR}. هذه نسخة مسودة للمراجعة
-          النهائية قبل النشر. نهدف إلى علاقة واضحة: بيانات صحيحة، حجوزات مؤكدة، وعمولة معلومة.
+          تنظّم هذه الشروط عرض وحدتك وإدارة حجوزاتك على {SITE_NAME_AR}. هذه نسخة معتمدة للاستخدام،
+          ونهدف إلى علاقة واضحة: بيانات صحيحة، حجوزات مؤكدة، وعمولة معلومة.
         </p>
         <div className="mt-6 rounded-xl border border-gold/30 bg-gold-soft px-4 py-3 text-xs font-bold leading-7 text-[#8a6a24]">
-          مسودة للمراجعة النهائية — الصياغة قابلة للتحسين، لكن الالتزامات الجوهرية أدناه هي المعتمدة
-          للتنفيذ.
+          نسخة معتمدة — الالتزامات الجوهرية أدناه قابلة للتنفيذ، وأي تحديث لاحق يُعلَن في الموقع.
         </div>
 
         <Section id="verification" title="١. توثيق المالك">

@@ -11,8 +11,8 @@
 - ✅ ٤٠ وحدة عرض بتفاصيل كاملة + مالكين مختلفين + تقييمات عرض (موسومة داخلياً بـ `isDemo`).
 - ✅ تحقق المالك (بطاقة وجه/ظهر + سيلفي بعد الموافقة + تاريخ ميلاد وعمر محسوب + شروط بتوقيت) وطابور مراجعة إداري.
 - ✅ معاينة الإعلان قبل النشر + تقويم توفر وأسعار + عمولة قابلة للتعديل لكل مالك/شريك.
-- ✅ شروط ضيف/مالك/منصة (مسودة للمراجعة) + بانر قبول غير محجوز + دعم واتساب/تليجرام 01066094050.
-- ✅ إشعارات Resend/WhatsApp جاهزة؛ لو غير مضبوطة بيتم تسجيل بيانات الحجز في Vercel logs.
+- ✅ شروط ضيف/مالك/منصة وسياسة الخصوصية «نسخة معتمدة» + بانر قبول غير محجوز + دعم واتساب/تليجرام 01066094050.
+- ✅ إشعارات تليجرام مجانية + Resend/WhatsApp جاهزة؛ لو غير مضبوطة بيتم تسجيل بيانات الحجز في Vercel logs.
 - ✅ Paymob webhook فقط (تحقق HMAC + تحديث حالة الحجز). **لا يوجد checkout حي بعد.**
 - ✅ Cloudinary signed upload لصور الوحدات (السيرفر يوقّع، المالك يرفع من النموذج).
 - ✅ خريطة Leaflet/OpenStreetMap مجانية بنقطتين (الوحدة + الاستلام) وزر اتجاهات Google Maps.
@@ -86,6 +86,7 @@ npm run db:seed:admin
 | `BLOB_READ_WRITE_TOKEN` | لاحقاً | تخزين الفيديو/المرفقات |
 | `RESEND_API_KEY` / `RESEND_FROM_EMAIL` / `ADMIN_EMAIL` | اختياري | إشعارات الإيميل |
 | `WHATSAPP_TOKEN` / `WHATSAPP_PHONE_ID` / `ADMIN_WHATSAPP` | اختياري | إشعارات واتساب Cloud |
+| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_ADMIN_CHAT_ID` | موصى به | إشعارات تليجرام مجانية — تُحط في Vercel Secrets، مش في الشات |
 | `BANK_NAME` / `BANK_ACCOUNT` / `BANK_IBAN` | اختياري | تفاصيل التحويل البنكي المعروضة للضيف |
 
 ## الحسابات
@@ -169,7 +170,7 @@ git push
 
 1. Vercel → **Add New → Project** واختار repo `qiwalo`.
 2. Framework: Next.js (بيكتشفه تلقائياً). Build command: `npm run build`.
-3. في **Environment Variables** (All Environments) أضف: `NEXT_PUBLIC_SITE_URL`, `SESSION_SECRET`, `PAYMOB_SECRET_KEY`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET`, `DATABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`. وللإشعارات/الدفع اليدوي (اختياري): `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `ADMIN_EMAIL`, `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_ID`, `ADMIN_WHATSAPP`, `BANK_NAME`, `BANK_ACCOUNT`, `BANK_IBAN`.
+3. في **Environment Variables** (All Environments) أضف: `NEXT_PUBLIC_SITE_URL`, `SESSION_SECRET`, `PAYMOB_SECRET_KEY`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET`, `DATABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`. وللإشعارات/الدفع اليدوي (اختياري): `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `ADMIN_EMAIL`, `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_ID`, `ADMIN_WHATSAPP`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ADMIN_CHAT_ID`, `BANK_NAME`, `BANK_ACCOUNT`, `BANK_IBAN`.
 4. انشر. لو بيانات تجريبية بس، الموقع هيشتغل من غير قاعدة بيانات.
 
 ## خريطة الطريق
@@ -178,7 +179,7 @@ git push
 2. ✅ Cloudinary signed upload لصور الوحدات.
 3. ✅ ربط Supabase Postgres فعلي + Supabase Auth بدل الجلسة المؤقتة.
 4. ✅ Sprint 1: ثقة/محتوى/خريطة/فلاتر/إشعارات/تحقق المالك/مراجعات.
-5. مراجعة نصوص الشروط النهائية قبل إطلاق حقيقي.
+5. ✅ اعتماد نصوص الشروط والخصوصية (`نسخة معتمدة`).
 6. Paymob checkout حي + دومين مخصص.
 7. Vercel Blob للفيديو/المرفقات + cron للتذكير.
 8. Flutter لاحقاً بنفس الـ API/الـ repo layer.

@@ -165,8 +165,8 @@ function policiesPayload(topic: PoliciesTopic) {
       platformTerms: "/terms/platform",
       unitTerms: "/terms/units",
     },
-    draftNotice:
-      "الصفحات القانونية موسومة «مسودة للمراجعة النهائية»؛ لا تؤكد صياغة نهائية لم تعتمدها الإدارة.",
+    policyNotice:
+      "الصفحات القانونية موسومة «نسخة معتمدة»؛ تعامل معها كصياغة معتمدة للتنفيذ، وأي تحديث لاحق يُعلَن في الموقع.",
   };
 
   if (topic === "payment") {
