@@ -69,7 +69,8 @@ export function quoteStay(
   if (nights < minNights) return { ok: false, reason: "min_nights", minNights };
 
   const serviceFee = Math.round(subtotal * GUEST_SERVICE_FEE_RATE);
-  const commission = Math.round(subtotal * COMMISSION_RATE);
+  const rate = (property as Property & { commissionRate?: number }).commissionRate ?? COMMISSION_RATE;
+  const commission = Math.round(subtotal * (rate / 100));
   const total = subtotal + serviceFee;
 
   return {

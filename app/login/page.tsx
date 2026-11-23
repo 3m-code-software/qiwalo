@@ -19,7 +19,10 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         <LoginForm next={next} role={role} showDemo={!isSupabaseConfigured()} />
       </div>
       <p className="muted mt-5 text-center text-xs">
-        بالدخول أنت بتوافق على <Link href="/" className="text-nile">شروط الاستخدام</Link> وسياسة الخصوصية.
+        بإنشاء حساب أنت توافق على{" "}
+        <Link href="/terms/guest" className="font-bold text-navy underline decoration-gold underline-offset-2">شروط الضيوف</Link>
+        {" "}أو{" "}
+        <Link href="/terms/owner" className="font-bold text-navy underline decoration-gold underline-offset-2">شروط المالكين</Link>.
       </p>
     </div>
   );

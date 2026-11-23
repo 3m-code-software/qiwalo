@@ -1,4 +1,6 @@
 import Link from "next/link";
+import SupportLinks from "@/components/SupportLinks";
+import { SUPPORT_PHONE } from "@/lib/constants";
 
 export default function SiteFooter() {
   return (
@@ -30,12 +32,23 @@ export default function SiteFooter() {
           <ul className="space-y-2.5 text-sm text-white/65">
             <li><Link href="/owner/units/new" className="transition hover:text-gold-bright">أضف وحدتك</Link></li>
             <li><Link href="/owner" className="transition hover:text-gold-bright">لوحة المالك</Link></li>
+            <li><Link href="/terms/owner" className="transition hover:text-gold-bright">شروط المالكين</Link></li>
           </ul>
         </div>
         <div>
           <h3 className="mb-4 text-sm font-extrabold text-gold-bright">الدعم</h3>
+          <SupportLinks />
+          <p className="mt-3 text-sm text-white/65">
+            اتصل بنا:{" "}
+            <a href={`tel:${SUPPORT_PHONE}`} dir="ltr" className="font-bold transition hover:text-gold-bright">
+              {SUPPORT_PHONE}
+            </a>
+          </p>
+          <h4 className="mb-2 mt-6 text-sm font-extrabold text-gold-bright">الشروط</h4>
           <ul className="space-y-2.5 text-sm text-white/65">
-            <li>دعم عربي</li><li>تأكيد فوري</li><li>سياسة إلغاء واضحة</li>
+            <li><Link href="/terms/guest" className="transition hover:text-gold-bright">شروط الضيوف</Link></li>
+            <li><Link href="/terms/owner" className="transition hover:text-gold-bright">شروط المالكين</Link></li>
+            <li><Link href="/terms/platform" className="transition hover:text-gold-bright">شروط المنصة</Link></li>
           </ul>
         </div>
       </div>

@@ -37,6 +37,9 @@ export default function PropertyForm() {
 
   return (
     <form action={action} className="space-y-5">
+      <p className="rounded-xl border border-gold/40 bg-gold-soft p-3 text-sm leading-7 text-navy">
+        سيتم حفظ الوحدة أولاً كـ <strong>معاينة (مسودة)</strong> لتتمكن من مراجعة كل التفاصيل، وبعدها تقدر تتابع المعاينة وترسلها للمراجعة.
+      </p>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <label className="label" htmlFor="name">اسم الوحدة</label>
@@ -62,6 +65,10 @@ export default function PropertyForm() {
           <label className="label" htmlFor="description">الوصف</label>
           <textarea id="description" name="description" rows={4} className="input" required />
         </div>
+        <div className="sm:col-span-2">
+          <label className="label" htmlFor="houseRules">قواعد الوحدة (اختياري)</label>
+          <textarea id="houseRules" name="houseRules" rows={3} className="input" placeholder="مثال: لا تدخين · تسليم المفاتيح من 14:00 · هدوء بعد 23:00" />
+        </div>
         <div>
           <label className="label" htmlFor="basePrice">سعر الليلة (ج.م)</label>
           <input id="basePrice" name="basePrice" type="number" min={100} className="input" defaultValue={1000} required />
@@ -73,6 +80,14 @@ export default function PropertyForm() {
         <div>
           <label className="label" htmlFor="bedrooms">غرف النوم</label>
           <input id="bedrooms" name="bedrooms" type="number" min={1} className="input" defaultValue={2} required />
+        </div>
+        <div>
+          <label className="label" htmlFor="bathrooms">الحمامات</label>
+          <input id="bathrooms" name="bathrooms" type="number" min={1} className="input" defaultValue={1} required />
+        </div>
+        <div>
+          <label className="label" htmlFor="areaSqm">المساحة (م² — اختياري)</label>
+          <input id="areaSqm" name="areaSqm" type="number" min={0} className="input" placeholder="مثال: 110" />
         </div>
         <div>
           <label className="label" htmlFor="cancelPolicy">سياسة الإلغاء</label>
@@ -143,6 +158,14 @@ export default function PropertyForm() {
           <label className="label" htmlFor="lng">خط الطول</label>
           <input id="lng" name="lng" type="number" step="any" className="input" />
         </div>
+        <div>
+          <label className="label" htmlFor="pickupLat">خط عرض نقطة الاستلام (اختياري)</label>
+          <input id="pickupLat" name="pickupLat" type="number" step="any" className="input" />
+        </div>
+        <div>
+          <label className="label" htmlFor="pickupLng">خط طول نقطة الاستلام (اختياري)</label>
+          <input id="pickupLng" name="pickupLng" type="number" step="any" className="input" />
+        </div>
       </div>
 
       <fieldset>
@@ -158,9 +181,9 @@ export default function PropertyForm() {
 
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}
       <button type="submit" disabled={pending || uploading} className="btn-primary w-full">
-        {pending ? "جارٍ الإرسال..." : "إرسال الوحدة للمراجعة"}
+        {pending ? "جارٍ الحفظ..." : "حفظ المعاينة"}
       </button>
-      <p className="muted text-center text-xs">تظهر الوحدة بعد موافقة الإدارة.</p>
+      <p className="muted text-center text-xs">تُحفظ الوحدة كمسودة أولاً، ثم تراجعها وترسلها للمراجعة من صفحة المعاينة.</p>
     </form>
   );
 }

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { logoutAction } from "@/app/actions";
+import SupportLinks from "@/components/SupportLinks";
 import { getSession } from "@/lib/auth";
 
 export default async function SiteHeader() {
@@ -22,9 +23,13 @@ export default async function SiteHeader() {
           <Link href="/search?city=ASWAN" className="transition hover:text-gold-bright">أسوان</Link>
           <Link href="/search" className="transition hover:text-gold-bright">كل الوحدات</Link>
           <Link href="/owner" className="transition hover:text-gold-bright">للمالكين</Link>
+          <Link href="/terms" className="transition hover:text-gold-bright">الشروط</Link>
         </nav>
 
         <div className="flex items-center gap-2">
+          <div className="hidden md:block">
+            <SupportLinks compact />
+          </div>
           {session ? (
             <>
               <span className="hidden text-xs font-bold text-white/60 sm:inline">مرحباً، {session.name}</span>
@@ -50,6 +55,15 @@ export default async function SiteHeader() {
               <Link href="/login?role=OWNER" className="btn-gold !px-3 !py-2 !text-xs">أضف وحدتك</Link>
             </>
           )}
+        </div>
+      </div>
+
+      <div className="border-t border-white/10 md:hidden">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2">
+          <SupportLinks compact />
+          <Link href="/terms" className="shrink-0 text-xs font-bold text-white/70 transition hover:text-gold-bright">
+            الشروط
+          </Link>
         </div>
       </div>
     </header>

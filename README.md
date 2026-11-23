@@ -7,10 +7,17 @@
 - ✅ Next.js 16 + React 19 + TypeScript + Tailwind 4.
 - ✅ Prisma schema + طبقة بيانات (Prisma أو بيانات تجريبية تلقائياً لو `DATABASE_URL` فاضي).
 - ✅ Supabase Auth (إيميل + باسورد) مع أدوار GUEST / OWNER / ADMIN؛ الجلسة في كوكيز Supabase الآمنة.
-- ✅ بحث، صفحة وحدة، حجز تجريبي فوري، لوحة مالك، لوحة إدارة.
+- ✅ بحث بالفلاتر والترتيب، صفحة وحدة كاملة بالخريطة والمراجعات، حجز فوري، لوحة مالك، لوحة إدارة.
+- ✅ ٤٠ وحدة عرض بتفاصيل كاملة + مالكين مختلفين + تقييمات عرض (موسومة داخلياً بـ `isDemo`).
+- ✅ تحقق المالك (بطاقة وجه/ظهر + سيلفي بعد الموافقة + تاريخ ميلاد وعمر محسوب + شروط بتوقيت) وطابور مراجعة إداري.
+- ✅ معاينة الإعلان قبل النشر + تقويم توفر وأسعار + عمولة قابلة للتعديل لكل مالك/شريك.
+- ✅ شروط ضيف/مالك/منصة (مسودة للمراجعة) + بانر قبول غير محجوز + دعم واتساب/تليجرام 01066094050.
+- ✅ إشعارات Resend/WhatsApp جاهزة؛ لو غير مضبوطة بيتم تسجيل بيانات الحجز في Vercel logs.
 - ✅ Paymob webhook فقط (تحقق HMAC + تحديث حالة الحجز). **لا يوجد checkout حي بعد.**
 - ✅ Cloudinary signed upload لصور الوحدات (السيرفر يوقّع، المالك يرفع من النموذج).
-- ⏳ Vercel Blob / Resend / WhatsApp — لاحقاً.
+- ✅ خريطة Leaflet/OpenStreetMap مجانية بنقطتين (الوحدة + الاستلام) وزر اتجاهات Google Maps.
+- ✅ شات Tawk.to في كل الصفحات (يُحمّل في وقت الخمول عبر `next/script`).
+- ⏳ Vercel Blob / Paymob checkout حي / Flutter — لاحقاً.
 
 ## التشغيل محلياً
 
@@ -22,7 +29,7 @@ npm run dev
 
 افتح <http://localhost:3000>.
 
-> لو `DATABASE_URL` فاضي، التطبيق يشتغل بـ 8 وحدات تجريبية في الأقصر وأسوان + حجوزات تجريبية. البيانات في الذاكرة (بتضيع عند إعادة تشغيل السيرفر).
+> لو `DATABASE_URL` فاضي، التطبيق يشتغل بـ 8 وحدات تجريبية في الأقصر وأسوان + حجوزات تجريبية. البيانات في الذاكرة (بتضيع عند إعادة تشغيل السيرفر). مع Supabase، الـ ٤٠ وحدة الإضافية بتتضاف بـ `npm run db:seed:demo`.
 
 ## المتغيرات البيئية
 
@@ -75,7 +82,9 @@ npm run db:seed:admin
 | `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` | مطلوب للرفع | حطّهم في Vercel/.env.local، مش في الشات |
 | `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET` | مطلوب للرفع | `qiwalo_units` |
 | `BLOB_READ_WRITE_TOKEN` | لاحقاً | تخزين الفيديو/المرفقات |
-| `RESEND_API_KEY` / `WHATSAPP_*` | لاحقاً | الإشعارات |
+| `RESEND_API_KEY` / `RESEND_FROM_EMAIL` / `ADMIN_EMAIL` | اختياري | إشعارات الإيميل |
+| `WHATSAPP_TOKEN` / `WHATSAPP_PHONE_ID` / `ADMIN_WHATSAPP` | اختياري | إشعارات واتساب Cloud |
+| `BANK_NAME` / `BANK_ACCOUNT` / `BANK_IBAN` | اختياري | تفاصيل التحويل البنكي المعروضة للضيف |
 
 ## الحسابات
 
@@ -83,7 +92,10 @@ npm run db:seed:admin
 
 - الحسابات التجريبية (`@qiwalo.test`) بتظهر **فقط** محلياً لما Supabase Auth مش معرّف — في الإنتاج مش موجودة.
 - الأدمن بيتعمل بسكربت `npm run db:seed:admin` (موضح فوق) ومش قابل للاختيار من نموذج التسجيل.
-- الضيوف يقدروا يحجزوا **بدون حساب** — الحجز بيطلب الاسم والبريد والتليفون بس.
+- الضيوف يقدروا يحجزوا **بدون حساب** — الحجز بيطلب الاسم والبريد والتليفون والجنسية وطريقة الدفع وقبول شروط الضيوف.
+- بعد الحجز يقدر الضيف ينشئ حساب اختيارياً عشان يشوف تاريخ حجوزاته.
+- الدفع الحالي: **تحويل بنكي أو كاش عند الوصول** — مفيش دفع إلكتروني حقيقي لسه.
+- التقييم بيتسجل بعد ما الإدارة تحدّث الحجز لـ مكتمل، وبيروح للإدارة للمراجعة قبل النشر.
 
 ## الأوامر المفيدة
 
@@ -95,6 +107,7 @@ npm run lint       # ESLint
 npm run db:generate
 npm run db:push    # بعد ما تحط DATABASE_URL
 npm run db:seed         # بيانات تجريبية: 3 مستخدمين + 8 وحدات + 3 حجوزات
+npm run db:seed:demo    # ٤٠ وحدة عرض + ١٠ مالكين + ٩٤ تقييم عرض
 npm run db:seed:admin   # حساب الأدمن الحقيقي (ADMIN_EMAIL/PASSWORD/NAME من البيئة)
 ```
 
@@ -154,7 +167,7 @@ git push
 
 1. Vercel → **Add New → Project** واختار repo `qiwalo`.
 2. Framework: Next.js (بيكتشفه تلقائياً). Build command: `npm run build`.
-3. في **Environment Variables** (All Environments) أضف: `NEXT_PUBLIC_SITE_URL`, `SESSION_SECRET`, `PAYMOB_SECRET_KEY`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET`, `DATABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+3. في **Environment Variables** (All Environments) أضف: `NEXT_PUBLIC_SITE_URL`, `SESSION_SECRET`, `PAYMOB_SECRET_KEY`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET`, `DATABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`. وللإشعارات/الدفع اليدوي (اختياري): `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `ADMIN_EMAIL`, `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_ID`, `ADMIN_WHATSAPP`, `BANK_NAME`, `BANK_ACCOUNT`, `BANK_IBAN`.
 4. انشر. لو بيانات تجريبية بس، الموقع هيشتغل من غير قاعدة بيانات.
 
 ## خريطة الطريق
@@ -162,7 +175,8 @@ git push
 1. ✅ الأساس + مسار الضيف + المالك/الإدارة + webhook.
 2. ✅ Cloudinary signed upload لصور الوحدات.
 3. ✅ ربط Supabase Postgres فعلي + Supabase Auth بدل الجلسة المؤقتة.
-4. Paymob checkout حي.
-5. Vercel Blob للفيديو/المرفقات.
-6. Resend / WhatsApp + cron للتذكير.
-7. Flutter لاحقاً بنفس الـ API/الـ repo layer.
+4. ✅ Sprint 1: ثقة/محتوى/خريطة/فلاتر/إشعارات/تحقق المالك/مراجعات.
+5. مراجعة نصوص الشروط النهائية قبل إطلاق حقيقي.
+6. Paymob checkout حي + دومين مخصص.
+7. Vercel Blob للفيديو/المرفقات + cron للتذكير.
+8. Flutter لاحقاً بنفس الـ API/الـ repo layer.

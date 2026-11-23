@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { CITIES, PROPERTY_TYPES } from "@/lib/constants";
-import { money } from "@/lib/format";
+import { money, toArabicDigits } from "@/lib/format";
 import type { Property, SearchFilter } from "@/lib/types";
 
 export default function PropertyCard({ property, filter = {}, price }: {
@@ -44,7 +44,12 @@ export default function PropertyCard({ property, filter = {}, price }: {
           )}
         </div>
         <h3 className="mb-1 line-clamp-1 text-lg font-extrabold text-navy">{property.name}</h3>
-        <p className="mb-4 line-clamp-1 text-xs text-muted">{property.address}</p>
+        <p className="mb-2 line-clamp-1 text-xs text-muted">{property.address}</p>
+        <p className="mb-4 flex flex-wrap items-center gap-2 text-xs font-bold text-muted">
+          <span>🛁 {toArabicDigits(property.bathrooms)} حمام</span>
+          <span className="h-1 w-1 rounded-full bg-gold" />
+          <span>{property.areaSqm ? `${toArabicDigits(property.areaSqm)} م²` : "مساحة غير محددة"}</span>
+        </p>
         <div className="flex items-end justify-between border-t border-line pt-3">
           <span className="text-xs font-bold text-muted">الليلة</span>
           <span className="text-lg font-extrabold text-navy">{money(price ?? property.basePrice)}</span>

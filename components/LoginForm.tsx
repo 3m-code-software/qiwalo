@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useActionState } from "react";
+import Link from "next/link";
 import { signInAction, signUpAction, type FormState } from "@/app/actions";
 
 type Mode = "signin" | "signup";
@@ -25,6 +26,8 @@ export default function LoginForm({
   const [signInState, signIn, signInPending] = useActionState<FormState, FormData>(signInAction, {});
   const [signUpState, signUp, signUpPending] = useActionState<FormState, FormData>(signUpAction, {});
   const defaultRole = role === "OWNER" ? "OWNER" : "GUEST";
+  const [selectedRole, setSelectedRole] = useState(defaultRole);
+  const termsHref = selectedRole === "OWNER" ? "/terms/owner" : "/terms/guest";
 
   return (
     <div>
@@ -82,10 +85,33 @@ export default function LoginForm({
           </div>
           <div>
             <label className="label" htmlFor="signup-role">نوع الحساب</label>
-            <select id="signup-role" name="role" className="input" defaultValue={defaultRole}>
+            <select
+              id="signup-role"
+              name="role"
+              className="input"
+              value={selectedRole}
+              onChange={(event) => setSelectedRole(event.target.value)}
+            >
               <option value="GUEST">ضيف — أحجز إقامات</option>
               <option value="OWNER">صاحب وحدة — أضف وحداتك</option>
             </select>
+          </div>
+          <div className="flex items-start gap-2">
+            <input
+              id="signup-terms"
+              name="terms"
+              type="checkbox"
+              value="on"
+              required
+              className="mt-1 h-4 w-4 shrink-0 accent-[#c6a15b]"
+            />
+            <label htmlFor="signup-terms" className="text-xs leading-6 text-muted">
+              أقر بأنني اطلعت على{" "}
+              <Link href={termsHref} target="_blank" rel="noopener noreferrer" className="font-bold text-navy underline decoration-gold underline-offset-2">
+                {selectedRole === "OWNER" ? "شروط المالكين" : "شروط الضيوف"}
+              </Link>{" "}
+              وأوافق عليها.
+            </label>
           </div>
           {signUpState.error && <p className="text-sm text-red-600">{signUpState.error}</p>}
           <button type="submit" disabled={signUpPending} className="btn-primary w-full">

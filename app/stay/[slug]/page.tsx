@@ -3,8 +3,11 @@ import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CANCEL_POLICIES, CITIES, COMMISSION_RATE, PROPERTY_TYPES } from "@/lib/constants";
-import { dateAr, money } from "@/lib/format";
+import MapView from "@/components/MapView";
+import ReviewsTab from "@/components/ReviewsTab";
+import { CITIES, COMMISSION_RATE, PROPERTY_TYPES, SUPPORT_PHONE, SUPPORT_TELEGRAM, SUPPORT_WHATSAPP } from "@/lib/constants";
+import { dateAr, money, toArabicDigits } from "@/lib/format";
+import { cancelPolicyText } from "@/lib/notifications";
 import { quoteStay } from "@/lib/pricing";
 import { getRepo } from "@/lib/repo";
 
@@ -35,7 +38,11 @@ export default async function StayPage({ params, searchParams }: Props) {
   const property = await repo.getPropertyBySlug(slug);
   if (!property || property.status !== "PUBLISHED") notFound();
 
-  const [rules, availability] = await Promise.all([repo.getPriceRules(property.id), repo.getAvailability(property.id)]);
+  const [rules, availability, reviews] = await Promise.all([
+    repo.getPriceRules(property.id),
+    repo.getAvailability(property.id),
+    repo.listReviewsForProperty(property.id),
+  ]);
   const checkIn = /^\d{4}-\d{2}-\d{2}$/.test(one(sp.checkIn)) ? one(sp.checkIn) : "";
   const checkOut = /^\d{4}-\d{2}-\d{2}$/.test(one(sp.checkOut)) ? one(sp.checkOut) : "";
   const guests = Math.max(1, Number(one(sp.guests)) || 1);
@@ -54,14 +61,14 @@ export default async function StayPage({ params, searchParams }: Props) {
 
       {/* ===== Gallery ===== */}
       <div className="mb-8 grid gap-3 sm:grid-cols-4">
-        <div className="relative aspect-[4/3] overflow-hidden rounded-2xl sm:col-span-2 sm:row-span-2">
+        <div className="relative h-[300px] overflow-hidden rounded-2xl bg-navy-soft sm:col-span-2 sm:row-span-2 sm:h-full sm:min-h-[460px]">
           {property.images[0] && (
             <Image src={property.images[0]} alt={property.name} fill sizes="(max-width: 640px) 100vw, 50vw" className="object-cover" preload />
           )}
           <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-navy-deep/45 to-transparent" />
         </div>
         {property.images.slice(1, 5).map((src, i) => (
-          <div key={src + i} className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-navy-soft">
+          <div key={src + i} className="relative h-[140px] overflow-hidden rounded-2xl bg-navy-soft sm:h-full sm:min-h-[220px]">
             <Image src={src} alt={`${property.name} ${i + 2}`} fill sizes="(max-width: 640px) 50vw, 25vw" className="object-cover" />
           </div>
         ))}
@@ -84,9 +91,12 @@ export default async function StayPage({ params, searchParams }: Props) {
           <div className="gold-rule my-6" />
           <p className="leading-9 text-foreground/85">{property.description}</p>
 
-          <div className="mt-7 grid grid-cols-3 gap-3">
-            <div className="stat"><p className="text-xl font-extrabold text-navy">{property.maxGuests}</p><p className="mt-1 text-xs font-bold text-muted">ضيوف</p></div>
-            <div className="stat"><p className="text-xl font-extrabold text-navy">{property.bedrooms}</p><p className="mt-1 text-xs font-bold text-muted">غرف نوم</p></div>
+          {/* Unit facts */}
+          <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            <div className="stat"><p className="text-xl font-extrabold text-navy">{toArabicDigits(property.maxGuests)}</p><p className="mt-1 text-xs font-bold text-muted">ضيوف</p></div>
+            <div className="stat"><p className="text-xl font-extrabold text-navy">{toArabicDigits(property.bedrooms)}</p><p className="mt-1 text-xs font-bold text-muted">غرف نوم</p></div>
+            <div className="stat"><p className="text-xl font-extrabold text-navy">{toArabicDigits(property.bathrooms)}</p><p className="mt-1 text-xs font-bold text-muted">حمامات</p></div>
+            <div className="stat"><p className="text-xl font-extrabold text-navy">{property.areaSqm ? `${toArabicDigits(property.areaSqm)} م²` : "—"}</p><p className="mt-1 text-xs font-bold text-muted">المساحة</p></div>
             <div className="stat"><p className="text-xl font-extrabold text-navy">{money(property.basePrice)}</p><p className="mt-1 text-xs font-bold text-muted">من الليلة</p></div>
           </div>
 
@@ -101,10 +111,30 @@ export default async function StayPage({ params, searchParams }: Props) {
           </div>
 
           <div className="mt-10">
-            <SectionHeading>سياسة الإلغاء</SectionHeading>
+            <SectionHeading>قواعد الوحدة</SectionHeading>
             <p className="soft-card border-gold/30 text-sm leading-7">
-              {CANCEL_POLICIES[property.cancelPolicy as keyof typeof CANCEL_POLICIES] ?? property.cancelPolicy}
+              {property.houseRules ?? "لا توجد قواعد خاصة مضافة لهذه الوحدة. يُرجى احترام الهدوء والممتلكات أثناء الإقامة."}
             </p>
+          </div>
+
+          <div className="mt-10">
+            <SectionHeading>سياسة الإلغاء</SectionHeading>
+            <p className="soft-card border-gold/30 text-sm leading-7">{cancelPolicyText(property.cancelPolicy)}</p>
+            <p className="muted mt-2 text-xs leading-6">راجع السياسة قبل تأكيد الحجز، وتواصل مع الدعم إذا احتجت مساعدة.</p>
+          </div>
+
+          <div className="mt-10">
+            <SectionHeading>الموقع ونقطة الاستلام</SectionHeading>
+            <div className="overflow-hidden rounded-2xl border border-line">
+              <MapView
+                lat={property.lat}
+                lng={property.lng}
+                pickupLat={property.pickupLat}
+                pickupLng={property.pickupLng}
+                label={`${property.name} — ${property.address}`}
+                pickupLabel="نقطة الاستلام"
+              />
+            </div>
           </div>
 
           {property.videoUrl && (
@@ -113,6 +143,8 @@ export default async function StayPage({ params, searchParams }: Props) {
               <a href={property.videoUrl} target="_blank" rel="noreferrer" className="btn-ghost text-sm">شاهد الفيديو ↗</a>
             </div>
           )}
+
+          <ReviewsTab reviews={reviews} />
         </div>
 
         {/* ===== Booking card ===== */}
@@ -174,9 +206,15 @@ export default async function StayPage({ params, searchParams }: Props) {
               </div>
             )}
 
-            <p className="mt-5 text-xs leading-6 text-muted">
-              لا يتم تحويل أي مبلغ في هذه النسخة التجريبية — التأكيد فوري بعد إرسال بيانات التواصل.
-            </p>
+            <div className="mt-5 border-t border-line pt-4 text-xs leading-7 text-muted">
+              <p className="font-extrabold text-navy">تحويل بنكي أو كاش عند الوصول</p>
+              <p>
+                بالحجز توافق على <Link href="/terms/guest" className="font-bold text-navy underline decoration-gold underline-offset-2">شروط الضيوف</Link>. للمساعدة: {" "}
+                <a href={SUPPORT_WHATSAPP} target="_blank" rel="noreferrer" className="font-bold text-navy hover:text-gold">واتساب</a> · {" "}
+                <a href={SUPPORT_TELEGRAM} target="_blank" rel="noreferrer" className="font-bold text-navy hover:text-gold">تليجرام</a> · {" "}
+                <a href={`tel:${SUPPORT_PHONE}`} dir="ltr" className="font-bold text-navy hover:text-gold">{SUPPORT_PHONE}</a>
+              </p>
+            </div>
             <p className="mt-1 text-xs leading-6 text-muted">
               عمولة المنصة {Math.round(COMMISSION_RATE * 100)}% تُقتطع من المالك بعد التأكيد.
             </p>

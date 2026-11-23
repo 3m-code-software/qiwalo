@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/auth";
-import { CITIES, PROPERTY_TYPES } from "@/lib/constants";
+import { CITIES, DEFAULT_COMMISSION_RATE, PROPERTY_TYPES } from "@/lib/constants";
 import { dateAr, money } from "@/lib/format";
 import { getRepo } from "@/lib/repo";
 
@@ -13,16 +13,27 @@ const statusLabel: Record<string, { ar: string; cls: string }> = {
   REJECTED: { ar: "مرفوضة", cls: "bg-red-50 text-red-700" },
 };
 
+const verificationLabel: Record<string, string> = {
+  PENDING: "بانتظار مراجعة المستندات",
+  SELFIE_REQUIRED: "مطلوب صورة شخصية (سيلفي)",
+  SELFIE_PENDING: "الصورة الشخصية قيد المراجعة",
+  APPROVED: "موثّق ✓",
+  REJECTED: "مرفوض — راجع الملاحظات",
+};
+
 export default async function OwnerPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const session = await requireRole("OWNER");
   const sp = await searchParams;
   const created = Array.isArray(sp.created) ? sp.created[0] : sp.created;
   const repo = await getRepo();
-  const [properties, bookings] = await Promise.all([
+  const [properties, bookings, verification, user] = await Promise.all([
     repo.listPropertiesForOwner(session.email),
     repo.listBookingsForOwner(session.email),
+    repo.getVerification(session.email),
+    repo.getUserByEmail(session.email),
   ]);
   const confirmed = bookings.filter((b) => b.status === "CONFIRMED" || b.status === "COMPLETED");
+  const commissionRate = verification?.commissionRate ?? user?.commissionRate ?? DEFAULT_COMMISSION_RATE;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10">
@@ -32,7 +43,33 @@ export default async function OwnerPage({ searchParams }: { searchParams: Promis
           <h1 className="mt-3 text-3xl font-black">مرحباً، {session.name}</h1>
           <p className="muted mt-1 text-sm">إدارة وحداتك وحجوزاتك في مكان واحد.</p>
         </div>
-        <Link href="/owner/units/new" className="btn-primary text-sm">+ إضافة وحدة</Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/owner/profile" className="btn-ghost text-sm">الملف والتحقق</Link>
+          <Link href="/owner/calendar" className="btn-ghost text-sm">تقويم التواريخ والأسعار</Link>
+          <Link href="/owner/units/new" className="btn-primary text-sm">+ إضافة وحدة</Link>
+        </div>
+      </div>
+
+      <div className="soft-card mb-6 flex flex-wrap items-center justify-between gap-4 border-gold/40">
+        <div>
+          <p className="muted text-xs">حالة التحقق</p>
+          <p className="mt-1 font-extrabold">
+            {verification
+              ? (verificationLabel[verification.status] ?? verification.status)
+              : "لم تقدم بيانات التحقق بعد"}
+          </p>
+          <p className="muted mt-1 text-xs">
+            نسبة العمولة الحالية: <span className="font-bold text-nile">{commissionRate}%</span>
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/owner/profile" className="btn-ghost !py-2 text-sm">عرض الملف الشخصي</Link>
+          {(!verification || verification.status !== "APPROVED") && (
+            <Link href="/owner/profile?verify=1" className="btn-primary !py-2 text-sm">
+              {verification ? "متابعة التحقق" : "ابدأ التحقق"}
+            </Link>
+          )}
+        </div>
       </div>
 
       {created === "1" && (
@@ -69,6 +106,11 @@ export default async function OwnerPage({ searchParams }: { searchParams: Promis
                   <p className="muted mt-1 text-xs">{CITIES[p.city].ar} · {p.address}</p>
                   <div className="mt-3 flex items-center justify-between border-t border-line pt-3 text-sm">
                     <span className="font-bold text-nile">{money(p.basePrice)} / ليلة</span>
+                    {p.status === "DRAFT" && (
+                      <Link href={`/owner/units/${p.id}/preview`} className="text-xs font-bold text-gold hover:text-nile">
+                        متابعة المعاينة ↗
+                      </Link>
+                    )}
                     {p.status === "PUBLISHED" && <Link href={`/stay/${p.slug}`} className="text-xs font-bold hover:text-nile">معاينة ↗</Link>}
                   </div>
                 </div>

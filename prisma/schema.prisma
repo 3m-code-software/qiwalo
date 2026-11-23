@@ -58,47 +58,73 @@ enum PayoutStatus {
   PAID
 }
 
-model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  phone     String?
-  role      Role     @default(GUEST)
-  createdAt DateTime @default(now())
+enum ReviewStatus {
+  PENDING
+  PUBLISHED
+  HIDDEN
+}
 
-  properties Property[]
-  bookings   Booking[]
-  payouts    Payout[]
+enum VerificationStatus {
+  PENDING
+  SELFIE_REQUIRED
+  SELFIE_PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id              String    @id @default(cuid())
+  name            String
+  email           String    @unique
+  phone           String?
+  nationality     String?
+  role            Role      @default(GUEST)
+  commissionRate  Int       @default(12)
+  termsAcceptedAt DateTime?
+  createdAt       DateTime  @default(now())
+
+  properties   Property[]
+  bookings     Booking[]
+  payouts      Payout[]
+  reviews      Review[]
+  verification OwnerVerification?
 }
 
 model Property {
-  id           String           @id @default(cuid())
-  ownerId      String
-  owner        User             @relation(fields: [ownerId], references: [id])
-  name         String
-  slug         String           @unique
-  type         PropertyType
-  city         City
-  address      String
-  description  String
-  lat          Float
-  lng          Float
-  images       Json             @default("[]")
-  videoUrl     String?
-  amenities    String[]         @default([])
-  maxGuests    Int              @default(2)
-  bedrooms     Int              @default(1)
-  basePrice    Int
-  cancelPolicy String           @default("FREE_48H")
-  status       ModerationStatus @default(PENDING)
-  rating       Float            @default(0)
-  reviewCount  Int              @default(0)
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
+  id             String           @id @default(cuid())
+  ownerId        String
+  owner          User             @relation(fields: [ownerId], references: [id])
+  name           String
+  slug           String           @unique
+  type           PropertyType
+  city           City
+  address        String
+  description    String
+  lat            Float
+  lng            Float
+  images         Json             @default("[]")
+  videoUrl       String?
+  amenities      String[]         @default([])
+  maxGuests      Int              @default(2)
+  bedrooms       Int              @default(1)
+  bathrooms      Int              @default(1)
+  areaSqm        Int?
+  houseRules     String?
+  pickupLat      Float?
+  pickupLng      Float?
+  basePrice      Int
+  commissionRate Int              @default(12)
+  cancelPolicy   String           @default("FREE_48H")
+  status         ModerationStatus @default(PENDING)
+  rating         Float            @default(0)
+  reviewCount    Int              @default(0)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
 
   availability Availability[]
   priceRules   PriceRule[]
   bookings     Booking[]
+  reviews      Review[]
 
   @@index([city, status])
   @@index([lat, lng])
@@ -129,35 +155,74 @@ model PriceRule {
 }
 
 model Booking {
-  id            String          @id @default(cuid())
-  reference     String          @unique
-  propertyId    String
-  property      Property        @relation(fields: [propertyId], references: [id])
-  guestId       String
-  guest         User            @relation(fields: [guestId], references: [id])
-  checkIn       DateTime        @db.Date
-  checkOut      DateTime        @db.Date
-  nights        Int
-  guests        Int
-  subtotal      Int
-  serviceFee    Int             @default(0)
-  commission    Int             @default(0)
-  total         Int
-  status        BookingStatus   @default(PENDING)
-  paymentStatus PaymentStatus   @default(PENDING)
-  provider      PaymentProvider @default(MANUAL)
-  createdAt     DateTime        @default(now())
+  id              String          @id @default(cuid())
+  reference       String          @unique
+  propertyId      String
+  property        Property        @relation(fields: [propertyId], references: [id])
+  guestId         String
+  guest           User            @relation(fields: [guestId], references: [id])
+  checkIn         DateTime        @db.Date
+  checkOut        DateTime        @db.Date
+  nights          Int
+  guests          Int
+  subtotal        Int
+  serviceFee      Int             @default(0)
+  commission      Int             @default(0)
+  total           Int
+  nationality     String?
+  paymentMethod   String          @default("CASH")
+  paymentNote     String?
+  termsAcceptedAt DateTime?
+  adminNotifiedAt DateTime?
+  status          BookingStatus   @default(PENDING)
+  paymentStatus   PaymentStatus   @default(PENDING)
+  provider        PaymentProvider @default(MANUAL)
+  createdAt       DateTime        @default(now())
 
   @@index([guestId, createdAt])
   @@index([propertyId, checkIn])
 }
 
+model Review {
+  id         String       @id @default(cuid())
+  propertyId String
+  property   Property     @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  guestId    String
+  guest      User         @relation(fields: [guestId], references: [id])
+  bookingId  String?      @unique
+  rating     Int
+  comment    String
+  isDemo     Boolean      @default(false)
+  status     ReviewStatus @default(PENDING)
+  createdAt  DateTime     @default(now())
+
+  @@index([propertyId, status])
+}
+
+model OwnerVerification {
+  id              String             @id @default(cuid())
+  userId          String             @unique
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phoneAlt        String?
+  birthDate       DateTime?          @db.Date
+  nationality     String?
+  idFront         String
+  idBack          String
+  selfie          String?
+  status          VerificationStatus @default(PENDING)
+  note            String?
+  commissionRate  Int                @default(12)
+  termsAcceptedAt DateTime?
+  submittedAt     DateTime           @default(now())
+  reviewedAt      DateTime?
+}
+
 model Payout {
-  id        String      @id @default(cuid())
+  id        String       @id @default(cuid())
   ownerId   String
-  owner     User        @relation(fields: [ownerId], references: [id])
-  bookingId String      @unique
+  owner     User         @relation(fields: [ownerId], references: [id])
+  bookingId String       @unique
   amount    Int
   status    PayoutStatus @default(PENDING)
-  createdAt DateTime    @default(now())
+  createdAt DateTime     @default(now())
 }

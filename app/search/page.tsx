@@ -1,7 +1,7 @@
 import Link from "next/link";
 import PropertyCard from "@/components/PropertyCard";
 import SearchForm from "@/components/SearchForm";
-import { CITIES, PROPERTY_TYPES } from "@/lib/constants";
+import { AMENITIES, CITIES, PROPERTY_TYPES } from "@/lib/constants";
 import { toArabicDigits } from "@/lib/format";
 import { quoteStay } from "@/lib/pricing";
 import { getRepo } from "@/lib/repo";
@@ -10,12 +10,29 @@ import type { CityKey, PropertyType, SearchFilter } from "@/lib/types";
 export const instant = false;
 
 type SP = Record<string, string | string[] | undefined>;
+type Changes = Record<string, string | string[] | undefined>;
+
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
+
+function values(v: string | string[] | undefined): string[] {
+  return (Array.isArray(v) ? v : v === undefined ? [] : [v])
+    .map((s) => String(s).trim())
+    .filter(Boolean);
+}
+
+/** Amenities may arrive repeated (?amenities=a&amenities=b) or comma-separated (?amenities=a,b). */
+function amenitiesFrom(v: string | string[] | undefined): string[] {
+  return [...new Set(values(v).flatMap((s) => s.split(",")).map((s) => s.trim()).filter(Boolean))];
+}
 
 function parseFilter(sp: SP): SearchFilter {
   const city = one(sp.city);
   const type = one(sp.type);
-  const num = (k: string) => { const v = Number(one(sp[k])); return Number.isFinite(v) && v > 0 ? v : undefined; };
+  const num = (k: string) => {
+    const v = Number(one(sp[k]));
+    return Number.isFinite(v) && v > 0 ? v : undefined;
+  };
+  const rating = Number(one(sp.minRating));
   const sort = one(sp.sort);
   return {
     city: city in CITIES ? (city as CityKey) : undefined,
@@ -23,15 +40,33 @@ function parseFilter(sp: SP): SearchFilter {
     q: one(sp.q) || undefined,
     minPrice: num("minPrice"),
     maxPrice: num("maxPrice"),
+    minRating: Number.isFinite(rating) && rating >= 1 && rating <= 5 ? rating : undefined,
     guests: num("guests"),
     checkIn: /^\d{4}-\d{2}-\d{2}$/.test(one(sp.checkIn)) ? one(sp.checkIn) : undefined,
     checkOut: /^\d{4}-\d{2}-\d{2}$/.test(one(sp.checkOut)) ? one(sp.checkOut) : undefined,
+    amenities: amenitiesFrom(sp.amenities).filter((a) => (AMENITIES as readonly string[]).includes(a)),
     sort: ["recommended", "price_asc", "price_desc", "rating"].includes(sort) ? sort as SearchFilter["sort"] : "recommended",
   };
 }
 
+/** Build a search URL from the live query, replacing (or removing) only the given keys. */
+function chipHref(sp: SP, changes: Changes = {}): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(sp)) {
+    if (key in changes) continue;
+    for (const v of key === "amenities" ? amenitiesFrom(value) : values(value)) params.append(key, v);
+  }
+  for (const [key, value] of Object.entries(changes)) {
+    if (value === undefined) continue;
+    for (const v of values(value)) params.append(key, v);
+  }
+  const query = params.toString();
+  return query ? `/search?${query}` : "/search";
+}
+
 export default async function SearchPage({ searchParams }: { searchParams: Promise<SP> }) {
-  const filter = parseFilter(await searchParams);
+  const sp = await searchParams;
+  const filter = parseFilter(sp);
   const repo = await getRepo();
   const properties = await repo.listProperties(filter);
   const pricing = new Map<string, number>();
@@ -42,6 +77,18 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       if (q.ok) pricing.set(p.id, Math.round(q.quote.subtotal / q.quote.nights));
     }));
   }
+
+  const activeAmenities = filter.amenities ?? [];
+  const toggleAmenity = (amenity: string): string[] =>
+    activeAmenities.includes(amenity)
+      ? activeAmenities.filter((a) => a !== amenity)
+      : [...activeAmenities, amenity];
+
+  const hasFilters = Boolean(
+    filter.city || filter.type || filter.q || filter.minPrice || filter.maxPrice ||
+    filter.minRating || filter.guests || filter.checkIn || filter.checkOut ||
+    activeAmenities.length || filter.sort !== "recommended",
+  );
 
   return (
     <>
@@ -62,20 +109,56 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 
       <div className="mx-auto max-w-7xl px-4 py-10">
         {/* ===== Filters ===== */}
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="ml-1 text-sm font-extrabold text-navy">تصفية:</span>
-          {(Object.keys(CITIES) as CityKey[]).map((k) => (
-            <Link key={k} href={`/search?city=${k}`} className={`chip transition hover:border-gold ${filter.city === k ? "!bg-navy !text-white ring-1 ring-gold" : ""}`}>
-              {CITIES[k].ar}
-            </Link>
-          ))}
-          <Link href="/search" className={`chip transition hover:border-gold ${!filter.city ? "!bg-navy !text-white" : ""}`}>كل المدن</Link>
-          <span className="mx-1 h-5 w-px bg-line" />
-          {(Object.keys(PROPERTY_TYPES) as PropertyType[]).map((k) => (
-            <Link key={k} href={`/search?type=${k}`} className={`chip transition hover:border-gold ${filter.type === k ? "!bg-navy !text-white ring-1 ring-gold" : ""}`}>
-              {PROPERTY_TYPES[k].ar}
-            </Link>
-          ))}
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="ml-1 text-sm font-extrabold text-navy">المدينة:</span>
+            {(Object.keys(CITIES) as CityKey[]).map((k) => (
+              <Link key={k} href={chipHref(sp, { city: k })} className={`chip transition hover:border-gold ${filter.city === k ? "!bg-navy !text-white ring-1 ring-gold" : ""}`}>
+                {CITIES[k].ar}
+              </Link>
+            ))}
+            <Link href={chipHref(sp, { city: undefined })} className={`chip transition hover:border-gold ${!filter.city ? "!bg-navy !text-white" : ""}`}>كل المدن</Link>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="ml-1 text-sm font-extrabold text-navy">النوع:</span>
+            {(Object.keys(PROPERTY_TYPES) as PropertyType[]).map((k) => (
+              <Link key={k} href={chipHref(sp, { type: k })} className={`chip transition hover:border-gold ${filter.type === k ? "!bg-navy !text-white ring-1 ring-gold" : ""}`}>
+                {PROPERTY_TYPES[k].ar}
+              </Link>
+            ))}
+            <Link href={chipHref(sp, { type: undefined })} className={`chip transition hover:border-gold ${!filter.type ? "!bg-navy !text-white" : ""}`}>كل الأنواع</Link>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="ml-1 text-sm font-extrabold text-navy">التقييم:</span>
+            {[undefined, 3, 4, 5].map((r) => (
+              <Link
+                key={r ?? "all"}
+                href={chipHref(sp, { minRating: r === undefined ? undefined : String(r) })}
+                className={`chip transition hover:border-gold ${filter.minRating === r ? "!bg-navy !text-white ring-1 ring-gold" : ""}`}
+              >
+                {r === undefined ? "كل التقييمات" : `★ ${toArabicDigits(r)} فأكثر`}
+              </Link>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="ml-1 text-sm font-extrabold text-navy">المرافق:</span>
+            {AMENITIES.map((amenity) => {
+              const active = activeAmenities.includes(amenity);
+              return (
+                <Link
+                  key={amenity}
+                  href={chipHref(sp, { amenities: toggleAmenity(amenity) })}
+                  className={`chip transition hover:border-gold ${active ? "chip-gold ring-1 ring-gold" : ""}`}
+                  aria-pressed={active}
+                >
+                  {active ? "✓ " : "+ "}{amenity}
+                </Link>
+              );
+            })}
+          </div>
         </div>
 
         {/* ===== Results bar ===== */}
@@ -83,18 +166,30 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           <p className="text-sm font-bold text-muted">
             <span className="text-lg font-extrabold text-navy">{toArabicDigits(properties.length)}</span> نتيجة
           </p>
-          <form action="/search" method="get" className="flex gap-2">
-            {Object.entries(filter).map(([k, v]) =>
-              v && typeof v !== "object" ? <input key={k} type="hidden" name={k} value={String(v)} /> : null,
+          <div className="flex flex-wrap items-center gap-3">
+            {hasFilters && (
+              <Link href="/search" className="text-xs font-bold text-muted underline decoration-gold underline-offset-4 transition hover:text-navy">
+                مسح الفلاتر
+              </Link>
             )}
-            <select name="sort" className="input !w-auto !py-2 text-sm" defaultValue={filter.sort}>
-              <option value="recommended">الأنسب</option>
-              <option value="price_asc">السعر: الأقل أولاً</option>
-              <option value="price_desc">السعر: الأعلى أولاً</option>
-              <option value="rating">الأعلى تقييماً</option>
-            </select>
-            <button className="btn-ghost !py-2 text-sm">ترتيب</button>
-          </form>
+            <form action="/search" method="get" className="flex gap-2">
+              {/* Keep every current filter when changing the sort order. */}
+              {Object.entries(sp).flatMap(([key, value]) =>
+                key === "sort"
+                  ? []
+                  : (key === "amenities" ? amenitiesFrom(value) : values(value)).map((v, i) => (
+                      <input key={`${key}-${i}`} type="hidden" name={key} value={v} />
+                    )),
+              )}
+              <select name="sort" className="input !w-auto !py-2 text-sm" defaultValue={filter.sort}>
+                <option value="recommended">الأنسب</option>
+                <option value="price_asc">السعر: الأقل أولاً</option>
+                <option value="price_desc">السعر: الأعلى أولاً</option>
+                <option value="rating">الأعلى تقييماً</option>
+              </select>
+              <button className="btn-ghost !py-2 text-sm">ترتيب</button>
+            </form>
+          </div>
         </div>
 
         {/* ===== Results ===== */}
