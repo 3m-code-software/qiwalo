@@ -16,7 +16,8 @@
 - ✅ Paymob webhook فقط (تحقق HMAC + تحديث حالة الحجز). **لا يوجد checkout حي بعد.**
 - ✅ Cloudinary signed upload لصور الوحدات (السيرفر يوقّع، المالك يرفع من النموذج).
 - ✅ خريطة Leaflet/OpenStreetMap مجانية بنقطتين (الوحدة + الاستلام) وزر اتجاهات Google Maps.
-- ✅ شات Tawk.to في كل الصفحات (يُحمّل في وقت الخمول عبر `next/script`).
+- ✅ شات Tawk.to في كل الصفحات (يُحمّل عبر `next/script` مع إجبار الأيقونة على الظهور).
+- ✅ سيرفر MCP للقراءة فقط على `/api/mcp` بـ 4 أدوات دعم، محمي بـ `MCP_API_TOKEN`. التفاصيل: `docs/QIWALO-MCP.md`.
 - ⏳ Vercel Blob / Paymob checkout حي / Flutter — لاحقاً.
 
 ## التشغيل محلياً
@@ -78,6 +79,7 @@ npm run db:seed:admin
 > ملاحظة أمنية: بما إن تأكيد الإيميل متوقف في الـ MVP، سجّل الدخول بحساباتك الحقيقية فقط. الدور بيُحدد عند أول creation ولا يتغيّر بتسجيل جديد بنفس البريد.
 | `PAYMOB_SECRET_KEY` | مطلوب للـ webhook | مفتاح HMAC في لوحة Paymob |
 | `CRON_SECRET` | لاحقاً | حماية مهام cron |
+| `MCP_API_TOKEN` | مطلوب لتفعيل MCP | Bearer/API key لسيرفر القراءة فقط — Vercel Secrets فقط، ليس في الشات |
 | `CLOUDINARY_CLOUD_NAME` | مطلوب للرفع | `dbmxnruhi` |
 | `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` | مطلوب للرفع | حطّهم في Vercel/.env.local، مش في الشات |
 | `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET` | مطلوب للرفع | `qiwalo_units` |

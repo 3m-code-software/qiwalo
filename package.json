@@ -15,6 +15,7 @@
     "db:seed:admin": "node prisma/seed-admin.js"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "@prisma/client": "^6.19.3",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.119.2",
