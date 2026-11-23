@@ -258,7 +258,8 @@ export const mockRepo: Repo = {
   async getUserByEmail(email) { const u = users.find((x) => x.email === email); return u ? { email: u.email, name: u.name, role: u.role } : null; },
   async upsertUser(input) {
     const u = users.find((x) => x.email === input.email);
-    if (u) Object.assign(u, input); else users.push(input);
+    if (u) { u.name = input.name; if (input.phone) u.phone = input.phone; }
+    else users.push({ ...input });
   },
   async stats(): Promise<PlatformStats> {
     const confirmed = bookings.filter((b) => b.status === "CONFIRMED" || b.status === "COMPLETED");

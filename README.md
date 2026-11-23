@@ -6,7 +6,7 @@
 
 - ✅ Next.js 16 + React 19 + TypeScript + Tailwind 4.
 - ✅ Prisma schema + طبقة بيانات (Prisma أو بيانات تجريبية تلقائياً لو `DATABASE_URL` فاضي).
-- ✅ تسجيل دخول مؤقت بـ JWT cookie موقّع (`jose`) — يُستبدل لاحقاً بـ Supabase Auth.
+- ✅ Supabase Auth (إيميل + باسورد) مع أدوار GUEST / OWNER / ADMIN؛ الجلسة في كوكيز Supabase الآمنة.
 - ✅ بحث، صفحة وحدة، حجز تجريبي فوري، لوحة مالك، لوحة إدارة.
 - ✅ Paymob webhook فقط (تحقق HMAC + تحديث حالة الحجز). **لا يوجد checkout حي بعد.**
 - ✅ Cloudinary signed upload لصور الوحدات (السيرفر يوقّع، المالك يرفع من النموذج).
@@ -33,6 +33,8 @@ npm run dev
 | `NEXT_PUBLIC_SITE_URL` | مطلوب | رابط الموقع (localhost للتطوير) |
 | `SESSION_SECRET` | مطلوب | توقيع كوكي الجلسة — سلسلة عشوائية طويلة |
 | `DATABASE_URL` | اختياري | Supabase Postgres. فاضي = بيانات تجريبية |
+| `NEXT_PUBLIC_SUPABASE_URL` | مطلوب للدخول الحقيقي | `https://<PROJECT_REF>.supabase.co` (عام) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | مطلوب للدخول الحقيقي | مفتاح anon/public من لوحة Supabase (عام) |
 
 ### الربط بـ Supabase
 
@@ -49,7 +51,24 @@ npm run db:push
 npm run db:seed
 ```
 
-نفس القيمة اتحطّت في Vercel → Settings → Environment Variables (Production / Preview / Development) عشان الإنتاج يقرأ من قاعدة البيانات مش من بيانات الذاكرة.
+نفس القيمة اتحطّت في Vercel → Settings → Environment Variables (**All Environments**) عشان الإنتاج يقرأ من قاعدة البيانات مش من بيانات الذاكرة.
+
+### Supabase Auth
+
+1. لوحة Supabase → **Authentication → Providers → Email** → عطّل **Confirm email** (الدخول فوري في الـ MVP).
+2. **Project Settings → API** → انسخ **Project URL** و**anon public** key إلى `.env.local` وVercel (كل البيئات).
+3. اعمل حساب الأدمن الحقيقي مرة واحدة محلياً:
+
+```powershell
+$env:ADMIN_EMAIL = "you@example.com"
+$env:ADMIN_PASSWORD = "كلمة-مرور-قوية"
+$env:ADMIN_NAME = "إدارة قيوالو"
+npm run db:seed:admin
+```
+
+الباسورد يتحط في المتغيرات البيئية فقط — **أبداً** في `.env.example` أو في الشات. السكربت ينشئ مستخدم Supabase Auth ويرقّيه لـ `ADMIN` في جدول `User`.
+
+> ملاحظة أمنية: بما إن تأكيد الإيميل متوقف في الـ MVP، سجّل الدخول بحساباتك الحقيقية فقط. الدور بيُحدد عند أول creation ولا يتغيّر بتسجيل جديد بنفس البريد.
 | `PAYMOB_SECRET_KEY` | مطلوب للـ webhook | مفتاح HMAC في لوحة Paymob |
 | `CRON_SECRET` | لاحقاً | حماية مهام cron |
 | `CLOUDINARY_CLOUD_NAME` | مطلوب للرفع | `dbmxnruhi` |
@@ -58,17 +77,13 @@ npm run db:seed
 | `BLOB_READ_WRITE_TOKEN` | لاحقاً | تخزين الفيديو/المرفقات |
 | `RESEND_API_KEY` / `WHATSAPP_*` | لاحقاً | الإشعارات |
 
-## الحسابات التجريبية
+## الحسابات
 
-من صفحة `/login` تقدر تدخل مباشرة بأي من:
+صفحة `/login` فيها وضعين: **دخول** (إيميل + باسورد) و**إنشاء حساب** (الاسم + الإيميل + الباسورد +نوع الحساب: ضيف / صاحب وحدة).
 
-| البريد | الدور |
-|---|---|
-| `guest@qiwalo.test` | ضيف |
-| `owner@qiwalo.test` | مالك |
-| `admin@qiwalo.test` | إدارة (ينشر الوحدات المعلّقة) |
-
-أو اكتب أي بريد جديد && هيتم إنشاء حساب تلقائي.
+- الحسابات التجريبية (`@qiwalo.test`) بتظهر **فقط** محلياً لما Supabase Auth مش معرّف — في الإنتاج مش موجودة.
+- الأدمن بيتعمل بسكربت `npm run db:seed:admin` (موضح فوق) ومش قابل للاختيار من نموذج التسجيل.
+- الضيوف يقدروا يحجزوا **بدون حساب** — الحجز بيطلب الاسم والبريد والتليفون بس.
 
 ## الأوامر المفيدة
 
@@ -79,7 +94,8 @@ npm run typecheck  # فحص TypeScript
 npm run lint       # ESLint
 npm run db:generate
 npm run db:push    # بعد ما تحط DATABASE_URL
-npm run db:seed    # بيانات تجريبية: 3 مستخدمين + 8 وحدات + 3 حجوزات
+npm run db:seed         # بيانات تجريبية: 3 مستخدمين + 8 وحدات + 3 حجوزات
+npm run db:seed:admin   # حساب الأدمن الحقيقي (ADMIN_EMAIL/PASSWORD/NAME من البيئة)
 ```
 
 ## Cloudinary (مُدمج ✅)
@@ -138,14 +154,14 @@ git push
 
 1. Vercel → **Add New → Project** واختار repo `qiwalo`.
 2. Framework: Next.js (بيكتشفه تلقائياً). Build command: `npm run build`.
-3. في **Environment Variables** أضف: `NEXT_PUBLIC_SITE_URL`, `SESSION_SECRET`, `PAYMOB_SECRET_KEY`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET`، و`DATABASE_URL` لو حابب تربط Supabase.
+3. في **Environment Variables** (All Environments) أضف: `NEXT_PUBLIC_SITE_URL`, `SESSION_SECRET`, `PAYMOB_SECRET_KEY`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET`, `DATABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
 4. انشر. لو بيانات تجريبية بس، الموقع هيشتغل من غير قاعدة بيانات.
 
 ## خريطة الطريق
 
 1. ✅ الأساس + مسار الضيف + المالك/الإدارة + webhook.
 2. ✅ Cloudinary signed upload لصور الوحدات.
-3. ربط Supabase Postgres فعلي + استبدال الجلسة المؤقتة.
+3. ✅ ربط Supabase Postgres فعلي + Supabase Auth بدل الجلسة المؤقتة.
 4. Paymob checkout حي.
 5. Vercel Blob للفيديو/المرفقات.
 6. Resend / WhatsApp + cron للتذكير.

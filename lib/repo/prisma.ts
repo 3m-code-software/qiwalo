@@ -167,7 +167,9 @@ export const prismaRepo: Repo = {
     await prisma.user.upsert({
       where: { email: input.email },
       create: { id: input.email, email: input.email, name: input.name, role: input.role as any, phone: input.phone },
-      update: { name: input.name, role: input.role as any, phone: input.phone },
+      // Never overwrite an existing role here — roles are assigned at first
+      // creation or promoted explicitly by an admin seed/script.
+      update: { name: input.name, phone: input.phone },
     });
   },
   async stats(): Promise<PlatformStats> {

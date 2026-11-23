@@ -1,7 +1,11 @@
+import "server-only";
+
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { getRepo } from "./repo";
 import type { Role } from "./types";
+import { createSupabaseServerClient, isSupabaseConfigured } from "./supabase/server";
 
 export interface Session {
   email: string;
@@ -9,12 +13,13 @@ export interface Session {
   role: Role;
 }
 
+/* Legacy local-dev session. Supabase Auth replaces this when configured. */
 const COOKIE = "qiwalo_session";
 const secret = new TextEncoder().encode(
   process.env.SESSION_SECRET ?? "qiwalo-local-dev-secret-change-before-production",
 );
 
-export async function createSession(session: Session): Promise<void> {
+async function createLegacySession(session: Session): Promise<void> {
   const token = await new SignJWT({ ...session })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
@@ -31,7 +36,7 @@ export async function createSession(session: Session): Promise<void> {
   });
 }
 
-export async function getSession(): Promise<Session | null> {
+async function getLegacySession(): Promise<Session | null> {
   const store = await cookies();
   const token = store.get(COOKIE)?.value;
   if (!token) return null;
@@ -45,6 +50,31 @@ export async function getSession(): Promise<Session | null> {
   } catch {
     return null;
   }
+}
+
+/** Kept for local development only. Production uses Supabase Auth. */
+export async function createSession(session: Session): Promise<void> {
+  if (isSupabaseConfigured()) return;
+  await createLegacySession(session);
+}
+
+export async function getSession(): Promise<Session | null> {
+  if (!isSupabaseConfigured()) {
+    return process.env.NODE_ENV === "production" ? null : getLegacySession();
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user?.email) return null;
+
+  const email = user.email.toLowerCase();
+  const repo = await getRepo();
+  const dbUser = await repo.getUserByEmail(email);
+  if (!dbUser) return null;
+
+  return { email: dbUser.email, name: dbUser.name, role: dbUser.role };
 }
 
 export async function requireRole(role: Role): Promise<Session> {

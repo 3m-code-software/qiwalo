@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { logoutAction } from "@/app/actions";
 import { getSession } from "@/lib/auth";
 
 export default async function SiteHeader() {
@@ -32,7 +33,14 @@ export default async function SiteHeader() {
                   الإدارة
                 </Link>
               )}
-              <Link href="/owner" className="btn-gold !px-3 !py-2 !text-xs">لوحة المالك</Link>
+              {(session.role === "OWNER" || session.role === "ADMIN") && (
+                <Link href="/owner" className="btn-gold !px-3 !py-2 !text-xs">لوحة المالك</Link>
+              )}
+              <form action={logoutAction}>
+                <button type="submit" className="btn-ghost !border-white/20 !bg-transparent !px-3 !py-2 !text-white !text-xs">
+                  خروج
+                </button>
+              </form>
             </>
           ) : (
             <>

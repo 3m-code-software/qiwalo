@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { clearSession, createSession, getSession, requireRole, type Session } from "@/lib/auth";
+import { clearSession, createSession, getSession, requireRole } from "@/lib/auth";
+import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { quoteStay } from "@/lib/pricing";
 import { getRepo } from "@/lib/repo";
 import type { CityKey, PropertyType, Role } from "@/lib/types";
@@ -19,31 +20,93 @@ function safeNext(value: FormDataEntryValue | null): string {
   return path.startsWith("/") && !path.startsWith("//") ? path : "";
 }
 
-export async function loginAction(_prev: FormState, form: FormData): Promise<FormState> {
+function redirectForRole(next: string, role: Role): never {
+  redirect(next || (role === "ADMIN" ? "/admin" : role === "OWNER" ? "/owner" : "/"));
+}
+
+function authError(message: string): FormState {
+  if (message.includes("Invalid login credentials")) return { error: "البريد أو كلمة المرور غير صحيحة." };
+  if (message.includes("User already registered")) return { error: "الحساب موجود بالفعل — سجّل الدخول بدلاً من ذلك." };
+  if (message.includes("Password should be at least")) return { error: "كلمة المرور يجب ألا تقل عن 6 أحرف." };
+  if (message.includes("Email not confirmed")) return { error: "لازم تأكيد البريد الإلكتروني أولاً." };
+  if (message.includes("fetch failed") || message.includes("fetch")) return { error: "تعذّر الاتصال بخدمة الدخول. حاول مرة ثانية." };
+  return { error: "حصل خطأ في الدخول. حاول مرة ثانية." };
+}
+
+export async function signInAction(_prev: FormState, form: FormData): Promise<FormState> {
   const email = String(form.get("email") ?? "").trim().toLowerCase();
+  const password = String(form.get("password") ?? "");
+  if (!/^\S+@\S+\.\S+$/.test(email)) return { error: "أدخل بريداً إلكترونياً صحيحاً." };
+  if (!password) return { error: "أدخل كلمة المرور." };
+
+  const repo = await getRepo();
+
+  // Local mock mode: no Supabase, keep the simple dev login working.
+  if (!isSupabaseConfigured()) {
+    const user = await repo.getUserByEmail(email);
+    if (!user) return { error: "هذا الحساب غير موجود. أنشئ حساباً أولاً." };
+    await createSession({ email: user.email, name: user.name, role: user.role });
+    redirectForRole(safeNext(form.get("next")), user.role);
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) return authError(error.message);
+
+  const user = await repo.getUserByEmail(email);
+  if (!user) {
+    await supabase.auth.signOut();
+    return { error: "هذا الحساب غير مسجّل في قيوالو. تواصل مع الدعم." };
+  }
+  redirectForRole(safeNext(form.get("next")), user.role);
+}
+
+export async function signUpAction(_prev: FormState, form: FormData): Promise<FormState> {
+  const email = String(form.get("email") ?? "").trim().toLowerCase();
+  const password = String(form.get("password") ?? "");
   const name = String(form.get("name") ?? "").trim();
   const requested = String(form.get("role") ?? "GUEST");
   if (!/^\S+@\S+\.\S+$/.test(email)) return { error: "أدخل بريداً إلكترونياً صحيحاً." };
+  if (name.length < 2) return { error: "أدخل اسمك الكامل." };
+  if (password.length < 6) return { error: "كلمة المرور يجب ألا تقل عن 6 أحرف." };
 
+  const role: Role = requested === "OWNER" ? "OWNER" : "GUEST";
   const repo = await getRepo();
-  let user = await repo.getUserByEmail(email);
-  if (!user) {
-    const role: Role = requested === "OWNER" ? "OWNER" : "GUEST";
-    const displayName = name || email.split("@")[0];
-    await repo.upsertUser({ email, name: displayName, role });
-    user = { email, name: displayName, role };
+
+  // Local mock mode: no Supabase, create the user in mock state directly.
+  if (!isSupabaseConfigured()) {
+    await repo.upsertUser({ email, name, role });
+    await createSession({ email, name, role });
+    redirectForRole(safeNext(form.get("next")), role);
   }
-  await createSession({ email: user.email, name: user.name, role: user.role });
-  redirect(safeNext(form.get("next")) || (user.role === "ADMIN" ? "/admin" : user.role === "OWNER" ? "/owner" : "/"));
+
+  // Don't let a signup claim an email that already exists in our user table
+  // (e.g. seeded owner/admin accounts) — that could hijack their role/data.
+  if (await repo.getUserByEmail(email)) {
+    return { error: "هذا البريد مسجّل بالفعل — سجّل الدخول بدلاً من ذلك." };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { data: { name, role } },
+  });
+  if (error) return authError(error.message);
+
+  await repo.upsertUser({ email, name, role });
+  redirectForRole(safeNext(form.get("next")), role);
 }
 
 export async function logoutAction(): Promise<void> {
+  const supabase = await createSupabaseServerClient();
+  await supabase.auth.signOut();
   await clearSession();
   redirect("/");
 }
 
 export async function createPropertyAction(_prev: FormState, form: FormData): Promise<FormState> {
-  const session: Session | null = await getSession();
+  const session = await getSession();
   if (!session || (session.role !== "OWNER" && session.role !== "ADMIN")) {
     return { error: "سجّل الدخول كصاحب وحدة أولاً." };
   }
@@ -114,15 +177,15 @@ export async function confirmBookingAction(form: FormData): Promise<void> {
   const result = quoteStay(property, rules, availability, checkIn, checkOut);
   if (!result.ok) redirect(`/stay/${slug}?error=dates`);
 
-  let session: Session | null = await getSession();
+  // Guests can book without an account. Never create an authenticated session here.
+  const session = await getSession();
+  const guestEmail = session?.email ?? email;
   if (!session) {
     await repo.upsertUser({ email, name: fullName, role: "GUEST", phone });
-    await createSession({ email, name: fullName, role: "GUEST" });
-    session = { email, name: fullName, role: "GUEST" };
   }
 
   const booking = await repo.createBooking({
-    propertyId: property.id, guestId: session.email, guestName: fullName,
+    propertyId: property.id, guestId: guestEmail, guestName: fullName,
     checkIn, checkOut, guests,
     subtotal: result.quote.subtotal, serviceFee: result.quote.serviceFee,
     commission: result.quote.commission, total: result.quote.total, provider: "MANUAL",

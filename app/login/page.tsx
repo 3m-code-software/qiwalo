@@ -1,5 +1,6 @@
 import Link from "next/link";
 import LoginForm from "@/components/LoginForm";
+import { isSupabaseConfigured } from "@/lib/supabase/server";
 
 export const instant = false;
 
@@ -15,7 +16,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <h1 className="mt-3 text-2xl font-black">أهلاً بك</h1>
           <p className="muted mt-1 text-sm">سجّل الدخول أو أنشئ حساباً جديداً ببريدك.</p>
         </div>
-        <LoginForm next={next} role={role} />
+        <LoginForm next={next} role={role} showDemo={!isSupabaseConfigured()} />
       </div>
       <p className="muted mt-5 text-center text-xs">
         بالدخول أنت بتوافق على <Link href="/" className="text-nile">شروط الاستخدام</Link> وسياسة الخصوصية.
