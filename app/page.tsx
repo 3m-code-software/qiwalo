@@ -12,7 +12,7 @@ export const instant = false;
 
 const DESTINATION_IMAGES: Record<CityKey, string> = {
   LUXOR: "https://images.unsplash.com/photo-1568393691622-c7ba131d63b4?auto=format&fit=crop&w=1200&q=80",
-  ASWAN: "https://images.unsplash.com/photo-1584224741213-276f3be15a83?auto=format&fit=crop&w=1200&q=80",
+  ASWAN: "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=1200&q=80",
 };
 
 export default async function HomePage() {

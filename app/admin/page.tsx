@@ -123,7 +123,7 @@ export default async function AdminPage() {
         <div className="soft-card"><p className="muted text-xs">الوحدات</p><p className="mt-1 text-2xl font-black">{stats.properties}</p><p className="muted text-xs">{stats.published} منشورة · {stats.pending} بانتظار المراجعة</p></div>
         <div className="soft-card"><p className="muted text-xs">الحجوزات</p><p className="mt-1 text-2xl font-black">{stats.bookings}</p><p className="muted text-xs">{stats.confirmed} مؤكدة</p></div>
         <div className="soft-card"><p className="muted text-xs">إجمالي الحجوزات</p><p className="mt-1 text-2xl font-black text-nile">{money(stats.revenue)}</p></div>
-        <div className="soft-card"><p className="muted text-xs">عمولة المنصة (12%)</p><p className="mt-1 text-2xl font-black text-nile">{money(stats.commission)}</p><p className="muted text-xs">{stats.guests} ضيوف</p></div>
+        <div className="soft-card"><p className="muted text-xs">عمولة المنصة</p><p className="mt-1 text-2xl font-black text-nile">{money(stats.commission)}</p><p className="muted text-xs">{stats.guests} ضيوف</p></div>
       </div>
 
       <section className="mt-10">
