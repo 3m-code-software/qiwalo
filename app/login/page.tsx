@@ -8,6 +8,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const sp = await searchParams;
   const next = Array.isArray(sp.next) ? sp.next[0] : sp.next;
   const role = Array.isArray(sp.role) ? sp.role[0] : sp.role;
+  const passwordReset = sp.reset === "1";
   return (
     <div className="mx-auto max-w-md px-4 py-14">
       <div className="soft-card">
@@ -15,6 +16,11 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <span className="chip">دخول قيوالو</span>
           <h1 className="mt-3 text-2xl font-black">أهلاً بك</h1>
           <p className="muted mt-1 text-sm">سجّل الدخول أو أنشئ حساباً جديداً ببريدك.</p>
+          {passwordReset && (
+            <p className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-2 text-xs font-bold text-emerald-800">
+              تم تحديث كلمة المرور — سجّل الدخول بها الآن.
+            </p>
+          )}
         </div>
         <LoginForm next={next} role={role} showDemo={!isSupabaseConfigured()} />
       </div>

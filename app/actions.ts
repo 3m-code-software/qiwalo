@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { eachDayOfInterval, format, parseISO } from "date-fns";
 import { clearSession, createSession, getSession, requireRole, type Session } from "@/lib/auth";
@@ -13,7 +14,7 @@ import type {
   ReviewStatus, Role, VerificationStatus,
 } from "@/lib/types";
 
-export interface FormState { error?: string }
+export interface FormState { error?: string; ok?: string }
 
 const COORDS: Record<CityKey, { lat: number; lng: number }> = {
   LUXOR: { lat: 25.6872, lng: 32.6396 },
@@ -114,6 +115,22 @@ export async function signUpAction(_prev: FormState, form: FormData): Promise<Fo
 
   await repo.upsertUser({ email, name, role, termsAcceptedAt });
   redirectForRole(safeNext(form.get("next")), role);
+}
+
+export async function requestPasswordResetAction(_prev: FormState, form: FormData): Promise<FormState> {
+  const email = String(form.get("email") ?? "").trim().toLowerCase();
+  if (!/^\S+@\S+\.\S+$/.test(email)) return { error: "أدخل بريداً إلكترونياً صحيحاً." };
+  if (!isSupabaseConfigured()) return { error: "استعادة كلمة المرور متاحة في النسخة المنشورة فقط." };
+
+  const requestHeaders = await headers();
+  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "qiwalo-ygzh.vercel.app";
+  const protocol = requestHeaders.get("x-forwarded-proto") ?? "https";
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${protocol}://${host}/reset-password`,
+  });
+  if (error) return authError(error.message);
+  return { ok: "لو البريد مسجّل، هتوصلك رسالة استعادة كلمة المرور." };
 }
 
 export async function acceptTermsAction(form: FormData): Promise<void> {

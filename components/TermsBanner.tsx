@@ -1,21 +1,43 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { acceptTermsAction } from "@/app/actions";
 
-export default function TermsBanner() {
+const ACK_KEY = "qiwalo-terms-ack-v1";
+const subscribe = () => () => {};
+const getAcknowledged = () => {
+  try {
+    return window.localStorage.getItem(ACK_KEY) === "1";
+  } catch {
+    return false;
+  }
+};
+const getServerAcknowledged = () => false;
+
+export default function TermsBanner({ accepted = false }: { accepted?: boolean }) {
   const pathname = usePathname() || "/";
+  const acknowledged = useSyncExternalStore(subscribe, getAcknowledged, getServerAcknowledged);
   const [visible, setVisible] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
+    if (accepted || acknowledged) return;
     const timer = window.setTimeout(() => setVisible(true), 10_000);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [accepted, acknowledged]);
 
-  if (!visible || dismissed) return null;
+  function acknowledge() {
+    try {
+      window.localStorage.setItem(ACK_KEY, "1");
+    } catch {
+      /* Ignore storage failures; hiding locally is enough. */
+    }
+    setDismissed(true);
+  }
+
+  if (accepted || acknowledged || !visible || dismissed) return null;
 
   const isOwnerArea =
     pathname === "/owner" ||
@@ -33,7 +55,7 @@ export default function TermsBanner() {
       <div className="flex items-start gap-3 p-3.5">
         <button
           type="button"
-          onClick={() => setDismissed(true)}
+          onClick={acknowledge}
           aria-label="إغلاق التنبيه"
           className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-lg leading-none text-white/50 transition hover:bg-white/10 hover:text-white"
         >
@@ -49,6 +71,7 @@ export default function TermsBanner() {
               <input type="hidden" name="next" value={pathname} />
               <button
                 type="submit"
+                onClick={acknowledge}
                 className="rounded-lg bg-gradient-to-l from-gold-bright to-gold px-4 py-1.5 text-xs font-extrabold text-navy-deep transition hover:brightness-105"
               >
                 قبول
@@ -56,6 +79,7 @@ export default function TermsBanner() {
             </form>
             <Link
               href={termsHref}
+              onClick={acknowledge}
               className="rounded-lg border border-white/20 px-4 py-1.5 text-xs font-bold text-white/80 transition hover:border-gold/60 hover:text-gold-bright"
             >
               مراجعة الشروط

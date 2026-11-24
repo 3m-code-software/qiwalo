@@ -65,7 +65,9 @@ npm run db:seed
 
 1. لوحة Supabase → **Authentication → Providers → Email** → عطّل **Confirm email** (الدخول فوري في الـ MVP).
 2. **Project Settings → API** → انسخ **Project URL** و**anon public** key إلى `.env.local` وVercel (كل البيئات).
-3. اعمل حساب الأدمن الحقيقي مرة واحدة محلياً:
+3. **Authentication → URL Configuration → Redirect URLs** → أضف `https://qiwalo-ygzh.vercel.app/reset-password` عشان رابط استعادة الباسورد يشتغل.
+4. `/forgot-password` → `/reset-password` + `proxy.ts` (تجديد كوكيز Supabase) شغّالين؛ البانر بيحترم `termsAcceptedAt` بعد القبول.
+5. اعمل حساب الأدمن الحقيقي مرة واحدة محلياً:
 
 ```powershell
 $env:ADMIN_EMAIL = "you@example.com"
@@ -125,8 +127,11 @@ npm run db:seed:admin   # حساب الأدمن الحقيقي (ADMIN_EMAIL/PASS
 
 1. المالك بعد تسجيل الدخول يختار صورة من نموذج إضافة الوحدة.
 2. المتصفح يبعتهلـ `POST /api/upload` (multipart).
-3. الـ Route Handler بيتحقق من الجلسة ونوع الملف والحجم (لحد 5MB)، وبعدين يوقّع الرفع بالـ API Secret ويبعته لـ Cloudinary.
-4. Cloudinary يرجّع `secure_url`، والصورة تظهر في معاينة النموذج وتتحفظ مع الوحدة.
+3. المتصفح يضغّط الصورة تلقائياً (تصغير لأقصى 1600px + JPEG 82%)، ثم يبعتهلـ `POST /api/upload`.
+4. الـ Route Handler بيتحقق من الجلسة ونوع الملف والحجم (لحد 4MB — تحت حد Vercel)، ويوقّع الرفع بالـ API Secret ويبعته لـ Cloudinary.
+5. Cloudinary يرجّع `secure_url`، والصورة تظهر في معاينة النموذج وتتحفظ مع الوحدة.
+
+> **لو ظهر «الرفع فشل. حاول مرة تانية.»**: غالباً الـ API Key في Cloudinary مفيش عليه صلاحية `create`. روح **Cloudinary → Settings → API Keys** وفعّل صلاحية الرفع/الإنشاء للـ key المستخدم (أو أنشئ key جديد بصلاحيات كاملة وحدّث `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` في Vercel + redeploy). الـ `api.ping()` شغال حتى لو صلاحية الرفع غير مفعّلة.
 
 اللي لازم تضيفه **أنت** في `.env.local` أو Vercel (ما تبعتهوش في الشات):
 

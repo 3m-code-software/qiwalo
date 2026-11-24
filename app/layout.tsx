@@ -7,6 +7,8 @@ import "leaflet/dist/leaflet.css";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import TermsBanner from "@/components/TermsBanner";
+import { getSession } from "@/lib/auth";
+import { getRepo } from "@/lib/repo";
 
 const cairo = Cairo({
   subsets: ["arabic", "latin"],
@@ -21,6 +23,13 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = { themeColor: "#0a2440" };
 
+async function TermsBannerGate() {
+  const session = await getSession();
+  if (!session) return <TermsBanner />;
+  const user = await getRepo().then((repo) => repo.getUserByEmail(session.email));
+  return <TermsBanner accepted={Boolean(user?.termsAcceptedAt)} />;
+}
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="ar" dir="rtl" className={`h-full ${cairo.variable}`}>
@@ -31,7 +40,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <main className="flex-1">{children}</main>
         <SiteFooter />
         <Suspense fallback={null}>
-          <TermsBanner />
+          <TermsBannerGate />
         </Suspense>
         <Script id="tawk-api-init" strategy="beforeInteractive">
           {`var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();

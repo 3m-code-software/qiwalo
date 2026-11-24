@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "فقط الصور مسموحة." }, { status: 400 });
   }
   if (file.size > MAX_UPLOAD_BYTES) {
-    return Response.json({ error: "حجم الصورة لازم يكون أقل من 5 ميجابايت." }, { status: 400 });
+    return Response.json({ error: "حجم الصورة لازم يكون أقل من 4 ميجابايت." }, { status: 400 });
   }
 
   try {
@@ -33,6 +33,12 @@ export async function POST(request: Request) {
     return Response.json(result);
   } catch (error) {
     console.error("[upload] Cloudinary failed:", error);
+    if (error instanceof Error && error.message.includes("403")) {
+      return Response.json(
+        { error: "صلاحية رفع الصور غير مفعّلة في إعدادات التخزين — تواصل مع الدعم." },
+        { status: 502 },
+      );
+    }
     return Response.json({ error: "الرفع فشل. حاول مرة تانية." }, { status: 502 });
   }
 }

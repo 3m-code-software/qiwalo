@@ -12,7 +12,8 @@ cloudinary.config({
   secure: true,
 });
 
-export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+// Vercel functions accept at most ~4.5 MB of request body, so keep headroom.
+export const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
 
 export function isCloudinaryConfigured(): boolean {
   return Boolean(cloudName && apiKey && apiSecret);
@@ -31,7 +32,7 @@ export async function uploadUnitImage(file: File): Promise<UploadedImage> {
     throw new Error("فقط الصور مسموحة.");
   }
   if (file.size > MAX_UPLOAD_BYTES) {
-    throw new Error("حجم الصورة لازم يكون أقل من 5 ميجابايت.");
+    throw new Error("حجم الصورة لازم يكون أقل من 4 ميجابايت.");
   }
 
   const bytes = await file.arrayBuffer();

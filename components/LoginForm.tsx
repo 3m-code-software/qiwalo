@@ -62,6 +62,9 @@ export default function LoginForm({
           <div>
             <label className="label" htmlFor="signin-password">كلمة المرور</label>
             <input id="signin-password" name="password" type="password" autoComplete="current-password" className="input" placeholder="••••••••" required minLength={6} />
+            <Link href="/forgot-password" className="mt-1 inline-block text-xs font-bold text-navy underline decoration-gold underline-offset-2">
+              نسيت كلمة المرور؟
+            </Link>
           </div>
           {signInState.error && <p className="text-sm text-red-600">{signInState.error}</p>}
           <button type="submit" disabled={signInPending} className="btn-primary w-full">
