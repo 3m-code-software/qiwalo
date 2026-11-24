@@ -8,6 +8,7 @@ import type {
   NewReviewInput,
   NewVerificationInput,
   OwnerVerification,
+  PropertyUpdateInput,
   PaymentProvider,
   PaymentStatus,
   PlatformStats,
@@ -26,6 +27,7 @@ export interface Repo {
   getPropertyBySlug(slug: string): Promise<Property | null>;
   getPropertyById(id: string): Promise<Property | null>;
   createProperty(input: NewPropertyInput): Promise<Property>;
+  updateProperty(id: string, patch: PropertyUpdateInput): Promise<Property | null>;
   moderateProperty(id: string, status: ModerationStatus): Promise<void>;
   getAvailability(propertyId: string): Promise<Availability[]>;
   getPriceRules(propertyId: string): Promise<PriceRule[]>;

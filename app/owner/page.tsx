@@ -141,6 +141,7 @@ export default async function OwnerPage({ searchParams }: { searchParams: Promis
                       </Link>
                     )}
                     {p.status === "PUBLISHED" && <Link href={`/stay/${p.slug}`} className="text-xs font-bold hover:text-nile">معاينة ↗</Link>}
+                    <Link href={`/owner/units/${p.id}/edit`} className="text-xs font-bold text-nile hover:text-gold">تعديل ✎</Link>
                   </div>
                   <form action={duplicatePropertyAction} className="mt-3">
                     <input type="hidden" name="id" value={p.id} />

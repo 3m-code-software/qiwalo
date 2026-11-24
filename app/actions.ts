@@ -11,7 +11,7 @@ import { getRepo } from "@/lib/repo";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import type {
   BookingStatus, CityKey, ModerationStatus, PaymentMethod, PropertyType,
-  ReviewStatus, Role, VerificationStatus,
+  PropertyUpdateInput, ReviewStatus, Role, VerificationStatus,
 } from "@/lib/types";
 
 export interface FormState { error?: string; ok?: string }
@@ -152,12 +152,10 @@ export async function logoutAction(): Promise<void> {
 
 // ===== Owner units =====
 
-export async function createPropertyAction(_prev: FormState, form: FormData): Promise<FormState> {
-  const session = await getSession();
-  if (!session || (session.role !== "OWNER" && session.role !== "ADMIN")) {
-    return { error: "سجّل الدخول كصاحب وحدة أولاً." };
-  }
+type ParsedProperty = { error: string } | { input: PropertyUpdateInput };
 
+/** قراءة وتحقق نموذج الوحدة، مشتركة بين الإنشاء والتعديل. */
+function parsePropertyForm(form: FormData): ParsedProperty {
   const name = String(form.get("name") ?? "").trim();
   const city = String(form.get("city") ?? "LUXOR") as CityKey;
   const type = String(form.get("type") ?? "APARTMENT") as PropertyType;
@@ -187,17 +185,32 @@ export async function createPropertyAction(_prev: FormState, form: FormData): Pr
 
   const pickupLatRaw = String(form.get("pickupLat") ?? "").trim();
   const pickupLngRaw = String(form.get("pickupLng") ?? "").trim();
+
+  return {
+    input: {
+      name, city, type, address, description,
+      lat: Number(form.get("lat")) || COORDS[city].lat,
+      lng: Number(form.get("lng")) || COORDS[city].lng,
+      pickupLat: pickupLatRaw ? Number(pickupLatRaw) : null,
+      pickupLng: pickupLngRaw ? Number(pickupLngRaw) : null,
+      images, videoUrl: String(form.get("videoUrl") ?? "").trim() || null,
+      amenities, maxGuests, bedrooms, bathrooms, areaSqm, houseRules, basePrice,
+      cancelPolicy: String(form.get("cancelPolicy") ?? "FREE_48H"),
+    },
+  };
+}
+
+export async function createPropertyAction(_prev: FormState, form: FormData): Promise<FormState> {
+  const session = await getSession();
+  if (!session || (session.role !== "OWNER" && session.role !== "ADMIN")) {
+    return { error: "سجّل الدخول كصاحب وحدة أولاً." };
+  }
+
+  const parsed = parsePropertyForm(form);
+  if ("error" in parsed) return { error: parsed.error };
+
   const repo = await getRepo();
-  const property = await repo.createProperty({
-    ownerId: session.email, name, city, type, address, description,
-    lat: Number(form.get("lat")) || COORDS[city].lat,
-    lng: Number(form.get("lng")) || COORDS[city].lng,
-    pickupLat: pickupLatRaw ? Number(pickupLatRaw) : null,
-    pickupLng: pickupLngRaw ? Number(pickupLngRaw) : null,
-    images, videoUrl: String(form.get("videoUrl") ?? "").trim() || null,
-    amenities, maxGuests, bedrooms, bathrooms, areaSqm, houseRules, basePrice,
-    cancelPolicy: String(form.get("cancelPolicy") ?? "FREE_48H"),
-  });
+  const property = await repo.createProperty({ ownerId: session.email, ...parsed.input });
   revalidatePath("/owner");
   redirect(`/owner/units/${property.id}/preview`);
 }
@@ -236,6 +249,34 @@ export async function duplicatePropertyAction(form: FormData): Promise<void> {
   revalidatePath("/owner");
   revalidatePath(`/owner/units/${copy.id}/preview`);
   redirect(`/owner/units/${copy.id}/preview?copied=1`);
+}
+
+/** تعديل وحدة موجودة في مكانها؛ السلوج والحالة والعمولة مش بيتغيروا هنا. */
+export async function updatePropertyAction(_prev: FormState, form: FormData): Promise<FormState> {
+  const session = await getSession();
+  if (!session || (session.role !== "OWNER" && session.role !== "ADMIN")) {
+    return { error: "سجّل الدخول كصاحب وحدة أولاً." };
+  }
+
+  const id = String(form.get("id") ?? "");
+  const source = await assertOwnerOf(session, id);
+  if (!source) return { error: "الوحدة مش موجودة أو مش ملكك." };
+
+  const parsed = parsePropertyForm(form);
+  if ("error" in parsed) return { error: parsed.error };
+
+  const repo = await getRepo();
+  const updated = await repo.updateProperty(id, parsed.input);
+  if (!updated) return { error: "تعذّر حفظ التعديلات. حاول مرة تانية." };
+
+  // الوحدة المنشورة لازم ترجع للمراجعة بعد أي تعديل جوهرية.
+  if (source.status === "PUBLISHED") await repo.moderateProperty(id, "PENDING" as ModerationStatus);
+
+  revalidatePath("/owner");
+  revalidatePath(`/owner/units/${id}/preview`);
+  revalidatePath("/search");
+  revalidatePath(`/stay/${updated.slug}`);
+  redirect(`/owner/units/${id}/preview?updated=${source.status === "PUBLISHED" ? "review" : "1"}`);
 }
 
 export async function submitPropertyForReviewAction(form: FormData): Promise<void> {

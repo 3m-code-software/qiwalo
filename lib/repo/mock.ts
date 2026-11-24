@@ -285,6 +285,21 @@ export const mockRepo: Repo = {
     priceRules.set(p.id, makeRules(p.basePrice));
     return clone(p);
   },
+  async updateProperty(id, patch) {
+    const p = props.find((x) => x.id === id);
+    if (!p) return null;
+    Object.assign(p, {
+      name: patch.name, type: patch.type, city: patch.city, address: patch.address,
+      description: patch.description, lat: patch.lat, lng: patch.lng,
+      pickupLat: patch.pickupLat ?? null, pickupLng: patch.pickupLng ?? null,
+      images: [...patch.images], videoUrl: patch.videoUrl ?? null,
+      amenities: [...patch.amenities], maxGuests: patch.maxGuests,
+      bedrooms: patch.bedrooms, bathrooms: patch.bathrooms ?? 1,
+      areaSqm: patch.areaSqm ?? null, houseRules: patch.houseRules ?? null,
+      basePrice: patch.basePrice, cancelPolicy: patch.cancelPolicy ?? "FREE_48H",
+    });
+    return clone(p);
+  },
   async moderateProperty(id, status) { const p = props.find((x) => x.id === id); if (p) p.status = status; },
   async getAvailability(propertyId) { return clone(availability.get(propertyId) ?? []); },
   async getPriceRules(propertyId) { return clone(priceRules.get(propertyId) ?? []); },

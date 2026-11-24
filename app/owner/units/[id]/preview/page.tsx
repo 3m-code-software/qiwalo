@@ -74,6 +74,16 @@ export default async function PropertyPreviewPage({
           ✅ تم نسخ الوحدة كمسودة جديدة بالتفاصيل والصور والسعر. راجعها ثم أرسلها للمراجعة.
         </p>
       )}
+      {sp.updated === "1" && (
+        <p className="mb-6 rounded-xl bg-nile-soft p-4 text-sm font-bold text-nile-dark">
+          ✅ تم حفظ التعديلات على نفس الوحدة.
+        </p>
+      )}
+      {sp.updated === "review" && (
+        <p className="mb-6 rounded-xl border border-gold/50 bg-gold-soft p-4 text-sm font-bold text-navy">
+          ✅ تم حفظ التعديلات. الوحدة بقت قيد المراجعة وهتظهر في البحث بعد موافقة الإدارة.
+        </p>
+      )}
 
       {/* ===== Gallery ===== */}
       <div className="mb-8 grid gap-2 sm:grid-cols-4">
@@ -226,8 +236,9 @@ export default async function PropertyPreviewPage({
               </form>
             )}
             {property.status === "PENDING" && <span className="chip mt-5">قيد المراجعة</span>}
+            <Link href={`/owner/units/${property.id}/edit`} className="btn-ghost mt-5 w-full text-sm">تعديل الوحدة ✎</Link>
             {property.status === "PUBLISHED" && (
-              <Link href={`/stay/${property.slug}`} className="btn-ghost mt-5 w-full text-sm">عرض الوحدة المنشورة ↗</Link>
+              <Link href={`/stay/${property.slug}`} className="btn-ghost mt-2 w-full text-sm">عرض الوحدة المنشورة ↗</Link>
             )}
           </section>
         </aside>

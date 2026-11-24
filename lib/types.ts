@@ -128,6 +128,9 @@ export interface NewPropertyInput {
   cancelPolicy?: string;
 }
 
+/** الحقول القابلة للتعديل من النموذج؛ السلوج والحالة والتقييم والعمولة مش من ضمنها. */
+export type PropertyUpdateInput = Omit<NewPropertyInput, "ownerId" | "commissionRate">;
+
 export interface Review {
   id: string;
   propertyId: string;

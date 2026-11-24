@@ -154,6 +154,22 @@ export const prismaRepo: Repo = {
     });
     return mapProperty(row);
   },
+  async updateProperty(id, patch) {
+    const row = await prisma.property.update({
+      where: { id },
+      data: {
+        name: patch.name, type: patch.type as any, city: patch.city as any,
+        address: patch.address, description: patch.description, lat: patch.lat, lng: patch.lng,
+        pickupLat: patch.pickupLat ?? null, pickupLng: patch.pickupLng ?? null,
+        images: patch.images, videoUrl: patch.videoUrl ?? null, amenities: patch.amenities,
+        maxGuests: patch.maxGuests, bedrooms: patch.bedrooms, bathrooms: patch.bathrooms ?? 1,
+        areaSqm: patch.areaSqm ?? null, houseRules: patch.houseRules ?? null,
+        basePrice: patch.basePrice, cancelPolicy: patch.cancelPolicy ?? "FREE_48H",
+      },
+      include: { owner: true },
+    });
+    return mapProperty(row);
+  },
   async moderateProperty(id, status) {
     await prisma.property.update({ where: { id }, data: { status: status as any } });
   },
