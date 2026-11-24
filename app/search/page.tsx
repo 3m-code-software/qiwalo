@@ -1,8 +1,9 @@
 import Link from "next/link";
 import PropertyCard from "@/components/PropertyCard";
+import ResultsMap from "@/components/ResultsMap";
 import SearchForm from "@/components/SearchForm";
 import { AMENITIES, CITIES, PROPERTY_TYPES } from "@/lib/constants";
-import { toArabicDigits } from "@/lib/format";
+import { money, toArabicDigits } from "@/lib/format";
 import { quoteStay } from "@/lib/pricing";
 import { getRepo } from "@/lib/repo";
 import type { CityKey, PropertyType, SearchFilter } from "@/lib/types";
@@ -108,6 +109,20 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     activeAmenities.length || filter.sort !== "recommended",
   );
 
+  const stayParams = new URLSearchParams();
+  if (filter.checkIn) stayParams.set("checkIn", filter.checkIn);
+  if (filter.checkOut) stayParams.set("checkOut", filter.checkOut);
+  if (filter.guests) stayParams.set("guests", String(filter.guests));
+  const staySuffix = stayParams.toString() ? `?${stayParams}` : "";
+  const mapUnits = properties.map((p) => ({
+    id: p.id,
+    name: p.name,
+    lat: p.lat,
+    lng: p.lng,
+    label: money(pricing.get(p.id) ?? p.basePrice),
+    href: `/stay/${p.slug}${staySuffix}`,
+  }));
+
   return (
     <>
       {/* ===== Search header ===== */}
@@ -209,6 +224,9 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
             </form>
           </div>
         </div>
+
+        {/* ===== Mini map of visible results ===== */}
+        <ResultsMap unitsJson={JSON.stringify(mapUnits)} />
 
         {/* ===== Results ===== */}
         <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
