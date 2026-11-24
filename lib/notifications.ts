@@ -234,8 +234,21 @@ const VERIFICATION_LABELS: Record<VerificationNotice["stage"], string> = {
   rejected: "تم رفض التحقق",
 };
 
+const ADMIN_URL = `${(process.env.NEXT_PUBLIC_SITE_URL || "https://qiwalo-ygzh.vercel.app").replace(/\/$/, "")}/admin`;
+
+// Only send the document that is new at each stage. ID photos go once on
+// submission, the selfie goes once when uploaded; decisions stay text-only.
+const VERIFICATION_PHOTOS: Record<VerificationNotice["stage"], { id: boolean; selfie: boolean }> = {
+  submitted: { id: true, selfie: false },
+  selfie: { id: false, selfie: true },
+  selfie_required: { id: false, selfie: false },
+  approved: { id: false, selfie: false },
+  rejected: { id: false, selfie: false },
+};
+
 export async function sendVerificationNotice(notice: VerificationNotice) {
   const label = VERIFICATION_LABELS[notice.stage];
+  const withDocuments = VERIFICATION_PHOTOS[notice.stage].id || VERIFICATION_PHOTOS[notice.stage].selfie;
   const text = [
     `${label} — قيوالو`,
     `المالك: ${notice.name || notice.email}`,
@@ -245,6 +258,7 @@ export async function sendVerificationNotice(notice: VerificationNotice) {
     `تاريخ الميلاد: ${notice.birthDate || "غير مذكور"}`,
     `العمولة: ${notice.commissionRate ?? 12}%`,
     notice.note ? `ملاحظة الإدارة: ${notice.note}` : "",
+    withDocuments ? "" : `رابط المراجعة: ${ADMIN_URL}`,
   ].filter(Boolean).join("\n");
 
   // Audit trail in Vercel logs even if no channel is configured.
@@ -256,12 +270,12 @@ export async function sendVerificationNotice(notice: VerificationNotice) {
     sendTelegram(text),
   ]);
 
-  // Telegram shows the actual documents inline so the admin can review them.
+  const include = VERIFICATION_PHOTOS[notice.stage];
   const photos = [
-    { url: notice.idFront, caption: "بطاقة الهوية — الوجه" },
-    { url: notice.idBack, caption: "بطاقة الهوية — الظهر" },
-    { url: notice.selfie, caption: "الصورة الشخصية (سيلفي)" },
-  ].filter((photo) => Boolean(photo.url));
+    include.id ? { url: notice.idFront, caption: "بطاقة الهوية — الوجه" } : null,
+    include.id ? { url: notice.idBack, caption: "بطاقة الهوية — الظهر" } : null,
+    include.selfie ? { url: notice.selfie, caption: "الصورة الشخصية (سيلفي)" } : null,
+  ].filter((photo): photo is { url: string; caption: string } => Boolean(photo?.url));
   for (const photo of photos) {
     await sendTelegramPhoto(photo.url!, `${label} — ${photo.caption}\n${notice.name || notice.email}`);
   }
