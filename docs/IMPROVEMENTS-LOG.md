@@ -234,7 +234,7 @@
 ### التغييرات
 - رحلة التقييم بعد الحجز كانت موجودة أصلاً: الضيف يقيّم بعد `COMPLETED` عبر `submitReviewAction`، والإدارة تنشر/تخفي عبر `moderateReviewAction` (اتختبرت في E2E السابق برقم `QW-MWUNMFL2-Q364`).
 - أضفنا رد المالك:
-  - حقلان في `prisma/schema.prisma`: `ownerReply` و`ownerReplyAt`، مع ملف `prisma/sql/add-review-owner-reply.sql` لتنفيذه يدوياً في Supabase **قبل** نشر النسخة الجديدة. لم يُنفَّذ على الإنتاج.
+  - حقلان في `prisma/schema.prisma`: `ownerReply` و`ownerReplyAt`، مع ملف `prisma/sql/add-review-owner-reply.sql`. نُفِّذ الملف على Supabase **قبل** الدفع على `main` باستخدام `DATABASE_URL` الموجود في `.env.local` (Session pooler)، من غير تخزين أي سر في المستودع.
   - `lib/repo/index.ts` + `mock`/`prisma`: طريقة `replyToReview(id, ownerId, text)` مع تحقّق من ملكية الوحدة ومن أن التقييم `PUBLISHED`.
   - `app/actions.ts`: `replyToReviewAction` يتحقق من دور `OWNER`، وملكية الوحدة، وطول الرد (٥–٦٠٠ حرف)، ثم يعمل `revalidatePath` للوحة المالك وصفحة الوحدة.
   - `components/OwnerReviewReplyForm.tsx`: نموذج نشر/تعديل الرد مع رسائل نجاح وخطأ عربية.
@@ -254,5 +254,6 @@
 | صفحة `/stay/aswan-nubian-house` | قسم «آراء الضيوف» عرض `رد المالك` بالنص نفسه |
 | Console | 504 واحدة لصورة Unsplash عبر محسّن صور Next في DEV (شبكة خارجية)، غير مرتبطة بالرد |
 | `typecheck` و`lint` و`build` | نجحوا بعد `prisma generate`، مع بقاء `cacheComponents` و`partialPrefetching` مفعّلين |
+| ترتيب النشر | بعد موافقتك، نُفِّذ `add-review-owner-reply.sql` على Session pooler، وتحقّقنا من العمودين باستعلام `SELECT` ناجح، وبعدها اتدفع الكوميت `494de5f` على `main` |
 
-- قاعدة بيانات الإنتاج **لم تُلمس**؛ ملف SQL جاهز فقط ومطلوب تنفيذه **قبل** دفع الكود على `main` لأن Vercel بيعمل auto-deploy فوراً.
+- قاعدة بيانات الإنتاج اتلمست بس بإضافة عمودين فاضغين اختيارياً (`ADD COLUMN IF NOT EXISTS`)؛ مفيش أي تعديل على التقييمات أو الحجوزات الموجودة.
