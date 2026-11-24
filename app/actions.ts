@@ -5,7 +5,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { eachDayOfInterval, format, parseISO } from "date-fns";
 import { clearSession, createSession, getSession, requireRole, type Session } from "@/lib/auth";
-import { sendBookingNotifications, sendReviewNotice } from "@/lib/notifications";
+import { sendBookingNotifications, sendReviewNotice, sendVerificationNotice } from "@/lib/notifications";
 import { quoteStay } from "@/lib/pricing";
 import { getRepo } from "@/lib/repo";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
@@ -425,6 +425,10 @@ export async function submitVerificationAction(_prev: FormState, form: FormData)
     userId: session.email, phoneAlt, nationality, birthDate, idFront, idBack,
     commissionRate, termsAcceptedAt,
   });
+  await sendVerificationNotice({
+    stage: "submitted", email: session.email, name: session.name,
+    phoneAlt, nationality, birthDate, commissionRate, idFront, idBack,
+  });
   revalidatePath("/owner");
   revalidatePath("/admin");
   redirect("/owner/profile?verified=1");
@@ -440,6 +444,12 @@ export async function submitSelfieAction(_prev: FormState, form: FormData): Prom
     return { error: "السيلفي مطلوب بعد الموافقة المبدئية فقط." };
   }
   await (await getRepo()).setSelfie(session.email, selfie);
+  await sendVerificationNotice({
+    stage: "selfie", email: session.email, name: session.name,
+    phoneAlt: verification.phoneAlt, nationality: verification.nationality,
+    birthDate: verification.birthDate, commissionRate: verification.commissionRate,
+    idFront: verification.idFront, idBack: verification.idBack, selfie,
+  });
   revalidatePath("/owner/profile");
   revalidatePath("/admin");
   redirect("/owner/profile?selfie=1");
@@ -451,6 +461,17 @@ export async function moderateVerificationAction(form: FormData): Promise<void> 
   const status = String(form.get("status") ?? "") as VerificationStatus;
   if (!["SELFIE_REQUIRED", "SELFIE_PENDING", "APPROVED", "REJECTED"].includes(status)) return;
   await (await getRepo()).moderateVerification(userId, status, String(form.get("note") ?? "").trim() || null);
+  const repo = await getRepo();
+  const verification = await repo.getVerification(userId);
+  const user = await repo.getUserByEmail(userId);
+  const stage = status === "APPROVED" ? "approved" : status === "REJECTED" ? "rejected" : status === "SELFIE_REQUIRED" ? "selfie_required" : "submitted";
+  await sendVerificationNotice({
+    stage, email: userId, name: user?.name,
+    phoneAlt: verification?.phoneAlt, nationality: verification?.nationality,
+    birthDate: verification?.birthDate, commissionRate: verification?.commissionRate ?? 12,
+    note: verification?.note,
+    idFront: verification?.idFront, idBack: verification?.idBack, selfie: verification?.selfie,
+  });
   revalidatePath("/admin");
   revalidatePath("/owner/profile");
 }

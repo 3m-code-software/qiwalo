@@ -93,10 +93,44 @@ async function sendTelegram(text: string): Promise<boolean> {
       signal: AbortSignal.timeout(8000),
       cache: "no-store",
     });
-    if (!response.ok) console.warn("[notify] Telegram failed", await response.text());
-    return response.ok;
+    if (!response.ok) {
+      console.warn("[notify] Telegram failed", await response.text());
+      return false;
+    }
+    const body = await response.json();
+    console.info("[notify] Telegram text sent", body.result?.message_id);
+    return true;
   } catch (error) {
     console.warn("[notify] Telegram unavailable", error);
+    return false;
+  }
+}
+
+async function sendTelegramPhoto(photoUrl: string, caption: string): Promise<boolean> {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+  if (!token || !chatId || !photoUrl.startsWith("https://")) return false;
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        photo: photoUrl,
+        caption: caption.slice(0, 1000),
+      }),
+      signal: AbortSignal.timeout(15000),
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      console.warn("[notify] Telegram photo failed", await response.text());
+      return false;
+    }
+    const body = await response.json();
+    console.info("[notify] Telegram photo sent", body.result?.message_id);
+    return true;
+  } catch (error) {
+    console.warn("[notify] Telegram photo unavailable", error);
     return false;
   }
 }
@@ -176,4 +210,59 @@ export async function sendReviewNotice(propertyName: string, rating: number, com
     sendWhatsApp(ADMIN_WHATSAPP, text),
     sendTelegram(text),
   ]);
+}
+
+export interface VerificationNotice {
+  stage: "submitted" | "selfie" | "selfie_required" | "approved" | "rejected";
+  email: string;
+  name?: string;
+  phoneAlt?: string | null;
+  nationality?: string | null;
+  birthDate?: string | null;
+  commissionRate?: number;
+  note?: string | null;
+  idFront?: string | null;
+  idBack?: string | null;
+  selfie?: string | null;
+}
+
+const VERIFICATION_LABELS: Record<VerificationNotice["stage"], string> = {
+  submitted: "بيانات تحقق جديدة",
+  selfie: "صورة شخصية جديدة",
+  selfie_required: "طلب سيلفي",
+  approved: "تمت الموافقة على التحقق",
+  rejected: "تم رفض التحقق",
+};
+
+export async function sendVerificationNotice(notice: VerificationNotice) {
+  const label = VERIFICATION_LABELS[notice.stage];
+  const text = [
+    `${label} — قيوالو`,
+    `المالك: ${notice.name || notice.email}`,
+    `البريد: ${notice.email}`,
+    `الهاتف البديل: ${notice.phoneAlt || "غير مذكور"}`,
+    `الجنسية: ${notice.nationality || "غير محددة"}`,
+    `تاريخ الميلاد: ${notice.birthDate || "غير مذكور"}`,
+    `العمولة: ${notice.commissionRate ?? 12}%`,
+    notice.note ? `ملاحظة الإدارة: ${notice.note}` : "",
+  ].filter(Boolean).join("\n");
+
+  // Audit trail in Vercel logs even if no channel is configured.
+  console.info(`[verification-notice] ${label}\n${text}`);
+
+  await Promise.allSettled([
+    sendEmail(process.env.ADMIN_EMAIL || "3mcodesoftwaresolutions@gmail.com", `${label} — قيوالو`, text),
+    sendWhatsApp(ADMIN_WHATSAPP, text),
+    sendTelegram(text),
+  ]);
+
+  // Telegram shows the actual documents inline so the admin can review them.
+  const photos = [
+    { url: notice.idFront, caption: "بطاقة الهوية — الوجه" },
+    { url: notice.idBack, caption: "بطاقة الهوية — الظهر" },
+    { url: notice.selfie, caption: "الصورة الشخصية (سيلفي)" },
+  ].filter((photo) => Boolean(photo.url));
+  for (const photo of photos) {
+    await sendTelegramPhoto(photo.url!, `${label} — ${photo.caption}\n${notice.name || notice.email}`);
+  }
 }
