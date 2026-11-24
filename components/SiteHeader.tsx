@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { logoutAction } from "@/app/actions";
+import FavoritesNavLink from "@/components/FavoritesNavLink";
 import SupportLinks from "@/components/SupportLinks";
 import { getSession } from "@/lib/auth";
 
@@ -22,6 +23,7 @@ export default async function SiteHeader() {
           <Link href="/search?city=LUXOR" className="transition hover:text-gold-bright">الأقصر</Link>
           <Link href="/search?city=ASWAN" className="transition hover:text-gold-bright">أسوان</Link>
           <Link href="/search" className="transition hover:text-gold-bright">كل الوحدات</Link>
+          <FavoritesNavLink />
           <Link href="/owner" className="transition hover:text-gold-bright">للمالكين</Link>
           <Link href="/terms" className="transition hover:text-gold-bright">الشروط</Link>
         </nav>
@@ -61,6 +63,7 @@ export default async function SiteHeader() {
       <div className="border-t border-white/10 md:hidden">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2">
           <SupportLinks compact />
+          <FavoritesNavLink compact />
           <Link href="/terms" className="shrink-0 text-xs font-bold text-white/70 transition hover:text-gold-bright">
             الشروط
           </Link>

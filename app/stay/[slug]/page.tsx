@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import FavoriteButton from "@/components/FavoriteButton";
 import MapView from "@/components/MapView";
 import PriceBreakdown from "@/components/PriceBreakdown";
 import ReviewsTab from "@/components/ReviewsTab";
@@ -82,6 +83,7 @@ export default async function StayPage({ params, searchParams }: Props) {
             <span className="chip">{PROPERTY_TYPES[property.type].ar}</span>
             <span className="chip">{CITIES[property.city].ar}</span>
             {property.reviewCount > 0 && <span className="chip chip-gold">★ {property.rating} ({property.reviewCount} تقييم)</span>}
+            <FavoriteButton propertyId={property.id} name={property.name} inline showText />
           </div>
           <span className="eyebrow !text-gold">إقامة مميزة</span>
           <h1 className="mt-3 text-3xl font-black leading-tight text-navy md:text-4xl">{property.name}</h1>
