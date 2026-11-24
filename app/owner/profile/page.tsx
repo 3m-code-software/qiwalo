@@ -81,7 +81,7 @@ export default async function OwnerProfilePage({
       {notice === "1" && (
         <p className="mb-5 rounded-xl bg-navy-soft p-4 text-sm font-bold text-navy">✅ تم إرسال بيانات التحقق للمراجعة.</p>
       )}
-      {selfieNotice === "1" && (
+      {selfieNotice === "1" && (verification?.status === "SELFIE_PENDING" || verification?.status === "APPROVED") && (
         <p className="mb-5 rounded-xl bg-navy-soft p-4 text-sm font-bold text-navy">✅ تم إرسال الصورة الشخصية للمراجعة.</p>
       )}
 
@@ -164,7 +164,11 @@ export default async function OwnerProfilePage({
             />
           </>
         )}
-        {verification?.status === "SELFIE_REQUIRED" && <SelfieForm defaultUrl={verification.selfie} />}
+        {verification?.status === "SELFIE_REQUIRED" && (
+          <div id="selfie" className="scroll-mt-24">
+            <SelfieForm defaultUrl={verification.selfie} />
+          </div>
+        )}
         {(verification?.status === "SELFIE_PENDING" || verification?.status === "APPROVED") && (
           <p className="rounded-xl bg-navy-soft p-4 text-sm leading-7 text-navy">
             {verification?.status === "SELFIE_PENDING"

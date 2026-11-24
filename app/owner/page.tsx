@@ -74,13 +74,29 @@ export default async function OwnerPage({ searchParams }: { searchParams: Promis
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href="/owner/profile" className="btn-ghost !py-2 text-sm">عرض الملف الشخصي</Link>
-          {(!verification || verification.status !== "APPROVED") && (
+          {(!verification || (verification.status !== "APPROVED" && verification.status !== "SELFIE_REQUIRED")) && (
             <Link href="/owner/profile?verify=1" className="btn-primary !py-2 text-sm">
               {verification ? "متابعة التحقق" : "ابدأ التحقق"}
             </Link>
           )}
         </div>
       </div>
+
+      {verification?.status === "SELFIE_REQUIRED" && (
+        <div className="mb-6 rounded-2xl border border-gold/50 bg-gold-soft p-4 sm:p-5">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="font-extrabold text-navy">مطلوب سيلفي لإتمام التحقق 🎯</p>
+              <p className="muted mt-1 text-sm">
+                تمت الموافقة المبدئية على مستنداتك. خطوة واحدة باقية: ارفع صورة شخصية واضحة.
+              </p>
+            </div>
+            <Link href="/owner/profile?selfie=1#selfie" className="btn-primary !py-2 text-sm">
+              ارفع السيلفي ↗
+            </Link>
+          </div>
+        </div>
+      )}
 
       {created === "1" && (
         <p className="mb-5 rounded-xl bg-nile-soft p-4 text-sm font-bold text-nile-dark">
