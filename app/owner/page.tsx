@@ -1,7 +1,8 @@
 import Link from "next/link";
+import OwnerReviewReplyForm from "@/components/OwnerReviewReplyForm";
 import { requireRole } from "@/lib/auth";
 import { CITIES, DEFAULT_COMMISSION_RATE, PROPERTY_TYPES } from "@/lib/constants";
-import { dateAr, money } from "@/lib/format";
+import { dateAr, money, toArabicDigits } from "@/lib/format";
 import { getRepo } from "@/lib/repo";
 
 export const instant = false;
@@ -34,6 +35,11 @@ export default async function OwnerPage({ searchParams }: { searchParams: Promis
   ]);
   const confirmed = bookings.filter((b) => b.status === "CONFIRMED" || b.status === "COMPLETED");
   const commissionRate = verification?.commissionRate ?? user?.commissionRate ?? DEFAULT_COMMISSION_RATE;
+  const ownerPropertyIds = new Set(properties.map((p) => p.id));
+  const reviews = (await repo.listAllReviews())
+    .filter((r) => r.status === "PUBLISHED" && ownerPropertyIds.has(r.propertyId))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const propertyNames = new Map(properties.map((p) => [p.id, p.name]));
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10">
@@ -141,6 +147,36 @@ export default async function OwnerPage({ searchParams }: { searchParams: Promis
             </tbody>
           </table>
         </div>
+      </section>
+
+      <section className="mt-10">
+        <h2 className="mb-4 text-xl font-extrabold">آراء ضيوفك</h2>
+        {reviews.length === 0 ? (
+          <div className="soft-card text-center">
+            <p className="muted">لا توجد تقييمات منشورة على وحداتك بعد.</p>
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2">
+            {reviews.map((r) => (
+              <div key={r.id} className="soft-card">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-extrabold text-navy">{r.guestName}</span>
+                  <span className="chip chip-gold">★ {toArabicDigits(r.rating)}</span>
+                </div>
+                <p className="muted mt-1 text-xs">
+                  {propertyNames.get(r.propertyId)} · {dateAr(r.createdAt.slice(0, 10))}
+                </p>
+                <p className="mt-3 text-sm leading-7">{r.comment}</p>
+                {r.ownerReply && (
+                  <p className="mt-3 rounded-xl border border-gold/40 bg-gold-soft p-3 text-sm leading-7 text-navy">
+                    <span className="font-extrabold">ردك: </span>{r.ownerReply}
+                  </p>
+                )}
+                <OwnerReviewReplyForm reviewId={r.id} reply={r.ownerReply} />
+              </div>
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );

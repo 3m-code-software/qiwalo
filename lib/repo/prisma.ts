@@ -59,8 +59,10 @@ function mapBooking(b: any): Booking {
 function mapReview(r: any): Review {
   return {
     id: r.id, propertyId: r.propertyId, guestId: r.guest?.email ?? r.guestId, guestName: r.guest?.name ?? "",
-    bookingId: r.bookingId ?? null, rating: r.rating, comment: r.comment, isDemo: r.isDemo,
-    status: r.status, createdAt: r.createdAt.toISOString(),
+    bookingId: r.bookingId ?? null, rating: r.rating, comment: r.comment,
+    ownerReply: r.ownerReply ?? null,
+    ownerReplyAt: r.ownerReplyAt ? r.ownerReplyAt.toISOString() : null,
+    isDemo: r.isDemo, status: r.status, createdAt: r.createdAt.toISOString(),
   };
 }
 
@@ -309,6 +311,20 @@ export const prismaRepo: Repo = {
   async moderateReview(id, status) {
     const row = await prisma.review.update({ where: { id }, data: { status: status as any }, include: { guest: true } });
     await refreshRating(row.propertyId);
+  },
+  async replyToReview(id, ownerId, text) {
+    const row = await prisma.review.findUnique({ where: { id } });
+    if (!row || row.status !== ("PUBLISHED" as any)) return;
+    const ownerKey = await resolveUserId(ownerId);
+    const property = await prisma.property.findUnique({
+      where: { id: row.propertyId }, include: { owner: { select: { email: true } } },
+    });
+    const allowed = property?.ownerId === ownerKey || property?.owner?.email === ownerId.toLowerCase();
+    if (!allowed) return;
+    await prisma.review.update({
+      where: { id },
+      data: { ownerReply: text, ownerReplyAt: new Date() },
+    });
   },
   async hasCompletedBooking(guestId, propertyId) {
     const id = await resolveUserId(guestId);

@@ -190,11 +190,13 @@ model Review {
   guestId    String
   guest      User         @relation(fields: [guestId], references: [id])
   bookingId  String?      @unique
-  rating     Int
-  comment    String
-  isDemo     Boolean      @default(false)
-  status     ReviewStatus @default(PENDING)
-  createdAt  DateTime     @default(now())
+  rating       Int
+  comment      String
+  ownerReply   String?
+  ownerReplyAt DateTime?
+  isDemo       Boolean      @default(false)
+  status       ReviewStatus @default(PENDING)
+  createdAt    DateTime     @default(now())
 
   @@index([propertyId, status])
 }

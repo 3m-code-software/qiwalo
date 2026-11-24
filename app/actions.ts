@@ -402,6 +402,25 @@ export async function moderateReviewAction(form: FormData): Promise<void> {
   revalidatePath("/search");
 }
 
+export async function replyToReviewAction(_prev: FormState, form: FormData): Promise<FormState> {
+  const session = await getSession();
+  if (!session || session.role !== "OWNER") return { error: "فقط المالك يقدر يرد على التقييمات." };
+  const id = String(form.get("reviewId") ?? "");
+  const text = String(form.get("reply") ?? "").trim();
+  if (text.length < 5 || text.length > 600) return { error: "اكتب رداً بين ٥ و٦٠٠ حرف." };
+
+  const repo = await getRepo();
+  const review = (await repo.listAllReviews()).find((r) => r.id === id);
+  if (!review || review.status !== "PUBLISHED") return { error: "هذا التقييم غير متاح للرد." };
+  const property = await repo.getPropertyById(review.propertyId);
+  if (!property || property.ownerId !== session.email) return { error: "هذا التقييم ليس لوحدة تملكها." };
+
+  await repo.replyToReview(id, session.email, text);
+  revalidatePath("/owner");
+  revalidatePath(`/stay/${property.slug}`);
+  return { ok: "تم نشر ردك على التقييم." };
+}
+
 // ===== Owner verification & commission =====
 
 export async function submitVerificationAction(_prev: FormState, form: FormData): Promise<FormState> {

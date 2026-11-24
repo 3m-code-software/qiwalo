@@ -207,9 +207,9 @@ function createMockState(): MockState {
 
   const now = new Date().toISOString();
   const reviews: Review[] = [
-    { id: "r1", propertyId: "p1", guestId: "guest@qiwalo.test", guestName: "سارة مسافر", bookingId: null, rating: 5, comment: "الإطلالة على النيل رائعة والشقة نظيفة جداً. تعامل المالك كان سلساً من أول لحظة.", isDemo: true, status: "PUBLISHED", createdAt: now },
-    { id: "r2", propertyId: "p2", guestId: "guest@qiwalo.test", guestName: "منى عبد العزيز", bookingId: null, rating: 5, comment: "بيت نوبى أصيل والإفطار كان لذيذاً. أنصح فيه بشدة لعائلات.", isDemo: true, status: "PUBLISHED", createdAt: now },
-    { id: "r3", propertyId: "p3", guestId: "guest@qiwalo.test", guestName: "خالد حجز", bookingId: "b3", rating: 4, comment: "مسبح وخصوصية ممتازة، والموقع مناسب للضفة الغربية.", isDemo: true, status: "PUBLISHED", createdAt: now },
+    { id: "r1", propertyId: "p1", guestId: "guest@qiwalo.test", guestName: "سارة مسافر", bookingId: null, rating: 5, comment: "الإطلالة على النيل رائعة والشقة نظيفة جداً. تعامل المالك كان سلساً من أول لحظة.", ownerReply: "شكراً لثقتكم، ويسعدنا استقبالكم مجدداً في أي وقت.", ownerReplyAt: now, isDemo: true, status: "PUBLISHED", createdAt: now },
+    { id: "r2", propertyId: "p2", guestId: "guest@qiwalo.test", guestName: "منى عبد العزيز", bookingId: null, rating: 5, comment: "بيت نوبى أصيل والإفطار كان لذيذاً. أنصح فيه بشدة لعائلات.", ownerReply: null, ownerReplyAt: null, isDemo: true, status: "PUBLISHED", createdAt: now },
+    { id: "r3", propertyId: "p3", guestId: "guest@qiwalo.test", guestName: "خالد حجز", bookingId: "b3", rating: 4, comment: "مسبح وخصوصية ممتازة، والموقع مناسب للضفة الغربية.", ownerReply: null, ownerReplyAt: null, isDemo: true, status: "PUBLISHED", createdAt: now },
   ];
 
   return { users, props, availability, priceRules, bookings, reviews, verifications: new Map() };
@@ -384,6 +384,7 @@ export const mockRepo: Repo = {
       id: `r${reviews.length + 1}`, propertyId: input.propertyId, guestId: input.guestId, guestName: input.guestName,
       bookingId: input.bookingId ?? null, rating: input.rating, comment: input.comment,
       isDemo: input.isDemo ?? false, status: input.isDemo ? "PUBLISHED" : "PENDING",
+      ownerReply: null, ownerReplyAt: null,
       createdAt: new Date().toISOString(),
     };
     reviews.unshift(review);
@@ -395,6 +396,13 @@ export const mockRepo: Repo = {
     if (!review) return;
     review.status = status;
     refreshRating(review.propertyId);
+  },
+  async replyToReview(id, ownerId, text) {
+    const review = reviews.find((r) => r.id === id);
+    if (!review || review.status !== "PUBLISHED") return;
+    if (!props.some((p) => p.id === review.propertyId && p.ownerId === ownerId)) return;
+    review.ownerReply = text;
+    review.ownerReplyAt = new Date().toISOString();
   },
   async hasCompletedBooking(guestId, propertyId) {
     return bookings.some((b) => b.guestId === guestId && b.propertyId === propertyId && b.status === "COMPLETED");

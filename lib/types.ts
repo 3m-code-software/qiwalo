@@ -136,6 +136,8 @@ export interface Review {
   bookingId: string | null;
   rating: number;
   comment: string;
+  ownerReply: string | null;
+  ownerReplyAt: string | null;
   isDemo: boolean;
   status: ReviewStatus;
   createdAt: string;

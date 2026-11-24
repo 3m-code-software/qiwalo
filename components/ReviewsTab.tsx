@@ -60,6 +60,13 @@ export default function ReviewsTab({ reviews }: { reviews: Review[] }) {
 
         <p className="min-h-24 py-5 text-sm leading-8 text-foreground/85">{review.comment}</p>
 
+        {review.ownerReply && (
+          <div className="mb-5 rounded-xl border border-gold/40 bg-gold-soft p-4 text-sm leading-7 text-navy">
+            <p className="mb-1 text-xs font-black">رد المالك</p>
+            <p>{review.ownerReply}</p>
+          </div>
+        )}
+
         <div className="flex items-center justify-between gap-3 border-t border-line pt-4">
           <div className="flex items-center gap-1.5" aria-hidden="true">
             {reviews.map((r, i) => (

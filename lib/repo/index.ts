@@ -66,6 +66,7 @@ export interface Repo {
   listAllReviews(): Promise<Review[]>;
   createReview(input: NewReviewInput): Promise<Review>;
   moderateReview(id: string, status: ReviewStatus): Promise<void>;
+  replyToReview(id: string, ownerId: string, text: string): Promise<void>;
   hasCompletedBooking(guestId: string, propertyId: string): Promise<boolean>;
   getVerification(userId: string): Promise<OwnerVerification | null>;
   listVerifications(): Promise<OwnerVerification[]>;
