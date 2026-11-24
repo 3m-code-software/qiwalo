@@ -3,6 +3,7 @@ import { createPriceRuleAction, deletePriceRuleAction, saveAvailabilityAction } 
 import { requireRole } from "@/lib/auth";
 import { dateAr, money, toArabicDigits } from "@/lib/format";
 import { getRepo } from "@/lib/repo";
+import type { Booking } from "@/lib/types";
 
 export const instant = false;
 
@@ -87,10 +88,25 @@ export default async function OwnerCalendarPage({
     repo.getAvailability(selected.id),
     repo.getPriceRules(selected.id),
   ]);
+  const bookings = await repo.listBookingsForOwner(session.email);
   const byDate = new Map(availability.map((a) => [a.date, a]));
   const today = isoDay(new Date());
   const days = Array.from({ length: 30 }, (_, i) => shiftDays(today, i));
   const defaultEnd = shiftDays(today, 7);
+
+  const visibleBookings = bookings
+    .filter((b) => b.propertyId === selected.id && b.status !== "CANCELLED"
+      && b.checkIn <= days[29] && b.checkOut > today)
+    .sort((a, b) => a.checkIn.localeCompare(b.checkIn));
+  const bookedByDate = new Map<string, Booking>();
+  for (const booking of visibleBookings) {
+    for (let date = booking.checkIn; date < booking.checkOut; date = shiftDays(date, 1)) {
+      bookedByDate.set(date, booking);
+    }
+  }
+  const bookingStatusAr: Record<string, string> = {
+    PENDING: "قيد الانتظار", CONFIRMED: "مؤكد", COMPLETED: "مكتمل",
+  };
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
@@ -119,27 +135,57 @@ export default async function OwnerCalendarPage({
           <div className="flex flex-wrap gap-3 text-xs">
             <span className="chip">متاح</span>
             <span className="chip chip-gold">سعر خاص</span>
-            <span className="chip !bg-red-50 !text-red-700">محجوز</span>
+            <span className="chip !bg-navy !text-white">حجز</span>
+            <span className="chip !bg-red-50 !text-red-700">مغلق يدوياً</span>
           </div>
         </div>
         <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-10">
           {days.map((date) => {
             const entry = byDate.get(date);
-            const tone = entry?.isBlocked
-              ? "border-red-200 bg-red-50 text-red-700"
-              : entry?.priceOverride
-                ? "border-gold/50 bg-gold-soft text-navy"
-                : "border-line bg-navy-soft text-navy";
+            const booking = bookedByDate.get(date);
+            const manualBlock = Boolean(entry?.isBlocked && !booking);
+            const tone = booking
+              ? "border-navy bg-navy text-white"
+              : manualBlock
+                ? "border-red-200 bg-red-50 text-red-700"
+                : entry?.priceOverride
+                  ? "border-gold/50 bg-gold-soft text-navy"
+                  : "border-line bg-navy-soft text-navy";
             return (
-              <div key={date} className={`rounded-xl border p-2 text-center ${tone}`}>
+              <div
+                key={date}
+                className={`rounded-xl border p-2 text-center ${tone}`}
+                title={booking ? `${booking.reference} · ${booking.guestName}` : undefined}
+              >
                 <p className="text-xs font-bold">{weekdayAr(date)}</p>
                 <p className="text-lg font-black">{toArabicDigits(Number(date.slice(8)))}</p>
                 <p className="text-[10px] font-bold">
-                  {entry?.isBlocked ? "محجوز" : entry?.priceOverride ? money(entry.priceOverride) : "متاح"}
+                  {booking ? `حجز · ${booking.guestName.split(" ")[0]}` : manualBlock ? "مغلق" : entry?.priceOverride ? money(entry.priceOverride) : "متاح"}
                 </p>
               </div>
             );
           })}
+        </div>
+
+        <div className="mt-5 border-t border-line pt-4">
+          <h3 className="mb-3 text-sm font-extrabold text-navy">الحجوزات في هذه الفترة</h3>
+          {visibleBookings.length === 0 ? (
+            <p className="muted text-sm">لا توجد حجوزات خلال الـ ٣٠ يوماً القادمة لهذه الوحدة.</p>
+          ) : (
+            <div className="grid gap-2 sm:grid-cols-2">
+              {visibleBookings.map((booking) => (
+                <div key={booking.reference} className="rounded-xl border border-line bg-ivory p-3 text-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-extrabold text-navy">{booking.guestName}</span>
+                    <span className="chip">{bookingStatusAr[booking.status] ?? booking.status}</span>
+                  </div>
+                  <p className="muted mt-1 text-xs">
+                    {booking.reference} · {dateAr(booking.checkIn)} – {dateAr(booking.checkOut)} · {toArabicDigits(booking.nights)} ليالي · {money(booking.total)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
