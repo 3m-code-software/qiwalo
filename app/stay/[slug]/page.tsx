@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import MapView from "@/components/MapView";
+import PriceBreakdown from "@/components/PriceBreakdown";
 import ReviewsTab from "@/components/ReviewsTab";
 import { CITIES, COMMISSION_RATE, PROPERTY_TYPES, SUPPORT_PHONE, SUPPORT_TELEGRAM, SUPPORT_WHATSAPP } from "@/lib/constants";
 import { dateAr, money, toArabicDigits } from "@/lib/format";
@@ -183,18 +184,7 @@ export default async function StayPage({ params, searchParams }: Props) {
                 {quote.ok ? (
                   <>
                     <p className="mb-3 font-extrabold text-navy">{quote.quote.nights} ليالي · {dateAr(checkIn)} – {dateAr(checkOut)}</p>
-                    <div className="space-y-2 text-muted">
-                      {quote.quote.nightly.map((n) => (
-                        <div key={n.date} className="flex justify-between gap-3">
-                          <span>{dateAr(n.date)}{n.ruleName ? ` · ${n.ruleName}` : ""}</span>
-                          <span className="font-bold">{money(n.price)}</span>
-                        </div>
-                      ))}
-                      <div className="flex justify-between gap-3 border-t border-line pt-3 font-extrabold text-navy">
-                        <span>الإجمالي</span>
-                        <span>{money(quote.quote.total)}</span>
-                      </div>
-                    </div>
+                    <PriceBreakdown quote={quote.quote} openNights />
                   </>
                 ) : (
                   <p className="font-bold text-red-600">

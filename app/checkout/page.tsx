@@ -2,8 +2,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import CheckoutForm from "@/components/CheckoutForm";
+import PriceBreakdown from "@/components/PriceBreakdown";
 import { CITIES } from "@/lib/constants";
-import { dateAr, money } from "@/lib/format";
+import { dateAr } from "@/lib/format";
 import { quoteStay } from "@/lib/pricing";
 import { getRepo } from "@/lib/repo";
 
@@ -62,10 +63,8 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
               <div className="flex justify-between"><span className="muted">الليالي</span><span className="font-bold">{result.quote.nights}</span></div>
               <div className="flex justify-between"><span className="muted">الضيوف</span><span className="font-bold">{guests}</span></div>
             </div>
-            <div className="mt-4 space-y-2 border-t border-line pt-4 text-sm">
-              <div className="flex justify-between"><span className="muted">المجموع الفرعي</span><span>{money(result.quote.subtotal)}</span></div>
-              <div className="flex justify-between"><span className="muted">رسوم الخدمة</span><span>{money(result.quote.serviceFee)}</span></div>
-              <div className="flex justify-between text-lg font-black text-nile"><span>الإجمالي</span><span>{money(result.quote.total)}</span></div>
+            <div className="mt-4 border-t border-line pt-4">
+              <PriceBreakdown quote={result.quote} commissionRate={property.commissionRate} />
             </div>
             <p className="mt-4 border-t border-line pt-4 text-xs font-bold leading-6 text-muted">تحويل بنكي أو كاش عند الوصول</p>
           </aside>
