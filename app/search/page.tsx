@@ -68,14 +68,32 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const sp = await searchParams;
   const filter = parseFilter(sp);
   const repo = await getRepo();
-  const properties = await repo.listProperties(filter);
+  const priced = Boolean(filter.checkIn && filter.checkOut);
+
+  // With dates, the card shows the quoted nightly price, so price filters must
+  // use that value instead of the property's base price.
+  let properties = await repo.listProperties(priced
+    ? { ...filter, minPrice: undefined, maxPrice: undefined }
+    : filter);
   const pricing = new Map<string, number>();
-  if (filter.checkIn && filter.checkOut) {
+  if (priced) {
     await Promise.all(properties.map(async (p) => {
       const [rules, availability] = await Promise.all([repo.getPriceRules(p.id), repo.getAvailability(p.id)]);
       const q = quoteStay(p, rules, availability, filter.checkIn!, filter.checkOut!);
       if (q.ok) pricing.set(p.id, Math.round(q.quote.subtotal / q.quote.nights));
     }));
+    properties = properties
+      .filter((p) => {
+        const price = pricing.get(p.id);
+        if (price === undefined) return false;
+        return (filter.minPrice == null || price >= filter.minPrice)
+          && (filter.maxPrice == null || price <= filter.maxPrice);
+      })
+      .sort((a, b) => {
+        if (filter.sort === "price_asc") return pricing.get(a.id)! - pricing.get(b.id)!;
+        if (filter.sort === "price_desc") return pricing.get(b.id)! - pricing.get(a.id)!;
+        return 0;
+      });
   }
 
   const activeAmenities = filter.amenities ?? [];
