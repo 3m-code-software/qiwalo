@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useActionState, useState } from "react";
 import { createPropertyAction, type FormState } from "@/app/actions";
+import { prepareImage } from "@/lib/client-image";
 import { AMENITIES, CITIES, PROPERTY_TYPES } from "@/lib/constants";
 import type { CityKey, PropertyType } from "@/lib/types";
 
@@ -18,12 +19,23 @@ export default function PropertyForm() {
     setUploading(true);
     setUploadError("");
     try {
+      const payload = await prepareImage(file);
       const body = new FormData();
-      body.set("file", file);
+      body.set("file", payload);
       const response = await fetch("/api/upload", { method: "POST", body });
-      const json = (await response.json()) as { url?: string; error?: string };
+      let json: { url?: string; error?: string };
+      try {
+        json = (await response.json()) as { url?: string; error?: string };
+      } catch {
+        setUploadError(
+          response.status === 413
+            ? "حجم الصورة كبير جداً — جرّب صورة أصغر."
+            : `الرفع فشل (${response.status}). تأكد من الاتصال وحاول مرة تانية.`,
+        );
+        return;
+      }
       if (!response.ok || !json.url) {
-        setUploadError(json.error ?? "الرفع فشل. حاول مرة تانية.");
+        setUploadError(json.error ?? `الرفع فشل (${response.status}). حاول مرة تانية.`);
       } else {
         setUploaded((prev) => (prev.includes(json.url!) || prev.length >= 8 ? prev : [...prev, json.url!]));
         setFile(null);
@@ -118,7 +130,7 @@ export default function PropertyForm() {
             </button>
             <span className="muted text-xs">{uploaded.length} / 8 صور</span>
           </div>
-          <p className="muted mt-1 text-xs">JPG أو PNG أو WebP، لحد 5 ميجابايت للصورة. التوقيع بيتم على السيرفر.</p>
+          <p className="muted mt-1 text-xs">JPG أو PNG أو WebP، لحد 4 ميجابايت. الصورة بتتضغط تلقائياً قبل الرفع، والتوقيع بيتم على السيرفر.</p>
           {uploadError && <p className="mt-2 text-sm text-red-600">{uploadError}</p>}
 
           {uploaded.length > 0 && (
