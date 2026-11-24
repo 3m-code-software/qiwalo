@@ -1,8 +1,10 @@
 import Link from "next/link";
 import OwnerReviewReplyForm from "@/components/OwnerReviewReplyForm";
+import OwnerStats from "@/components/OwnerStats";
 import { requireRole } from "@/lib/auth";
 import { CITIES, DEFAULT_COMMISSION_RATE, PROPERTY_TYPES } from "@/lib/constants";
 import { dateAr, money, toArabicDigits } from "@/lib/format";
+import { buildOwnerStats } from "@/lib/owner-stats";
 import { getRepo } from "@/lib/repo";
 
 export const instant = false;
@@ -40,6 +42,8 @@ export default async function OwnerPage({ searchParams }: { searchParams: Promis
     .filter((r) => r.status === "PUBLISHED" && ownerPropertyIds.has(r.propertyId))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const propertyNames = new Map(properties.map((p) => [p.id, p.name]));
+  const publishedCount = properties.filter((p) => p.status === "PUBLISHED").length;
+  const stats = buildOwnerStats({ bookings, reviews, publishedCount });
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10">
@@ -86,10 +90,12 @@ export default async function OwnerPage({ searchParams }: { searchParams: Promis
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="soft-card"><p className="muted text-xs">وحداتي</p><p className="mt-1 text-2xl font-black">{properties.length}</p></div>
-        <div className="soft-card"><p className="muted text-xs">منشورة</p><p className="mt-1 text-2xl font-black">{properties.filter((p) => p.status === "PUBLISHED").length}</p></div>
+        <div className="soft-card"><p className="muted text-xs">منشورة</p><p className="mt-1 text-2xl font-black">{publishedCount}</p></div>
         <div className="soft-card"><p className="muted text-xs">حجوزات مؤكدة</p><p className="mt-1 text-2xl font-black">{confirmed.length}</p></div>
         <div className="soft-card"><p className="muted text-xs">إجمالي المستحق</p><p className="mt-1 text-2xl font-black text-nile">{money(confirmed.reduce((s, b) => s + b.total - b.commission, 0))}</p></div>
       </div>
+
+      <OwnerStats stats={stats} />
 
       <section className="mt-10">
         <h2 className="mb-4 text-xl font-extrabold">وحداتي</h2>
