@@ -1,7 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import { useActionState, useState } from "react";
+import ImageOrderEditor, { type EditableImage } from "@/components/ImageOrderEditor";
 import UploadProgress from "@/components/UploadProgress";
 import { createPropertyAction, type FormState } from "@/app/actions";
 import { uploadImage, UploadError } from "@/lib/client-upload";
@@ -12,21 +12,24 @@ import type { CityKey, PropertyType } from "@/lib/types";
 export default function PropertyForm() {
   const [state, action, pending] = useActionState<FormState, FormData>(createPropertyAction, {});
   const [file, setFile] = useState<File | null>(null);
-  const [uploaded, setUploaded] = useState<string[]>([]);
+  const [images, setImages] = useState<EditableImage[]>([]);
+  const [externalText, setExternalText] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [progress, setProgress] = useState(0);
   const [lastUpload, setLastUpload] = useState<{ originalSize: number; compressedSize: number } | null>(null);
 
   async function handleUpload() {
-    if (!file || uploading || uploaded.length >= 8) return;
+    if (!file || uploading || images.length >= 8) return;
     setUploading(true);
     setUploadError("");
     setProgress(0);
     try {
       const result = await uploadImage(file, setProgress);
-      setUploaded((prev) => (
-        prev.includes(result.url) || prev.length >= 8 ? prev : [...prev, result.url]
+      setImages((prev) => (
+        prev.some((item) => item.url === result.url) || prev.length >= 8
+          ? prev
+          : [...prev, { url: result.url, source: "upload" }]
       ));
       setLastUpload({ originalSize: result.originalSize, compressedSize: result.compressedSize });
       setFile(null);
@@ -35,6 +38,23 @@ export default function PropertyForm() {
     } finally {
       setUploading(false);
     }
+  }
+
+  function handleExternalChange(value: string) {
+    setExternalText(value);
+    const links = [...new Set(value.split(/[\n,]+/).map((s) => s.trim()).filter((s) => s.startsWith("https://")))].slice(0, 8);
+    setImages((prev) => {
+      const uploads = prev.filter((item) => item.source === "upload");
+      return [
+        ...uploads,
+        ...links.map((url) => prev.find((item) => item.url === url && item.source === "link") ?? { url, source: "link" as const }),
+      ].slice(0, 8);
+    });
+  }
+
+  function syncImages(next: EditableImage[]) {
+    setImages(next);
+    setExternalText(next.filter((item) => item.source === "link").map((item) => item.url).join("\n"));
   }
 
   return (
@@ -118,12 +138,12 @@ export default function PropertyForm() {
             <button
               type="button"
               onClick={handleUpload}
-              disabled={!file || uploading || uploaded.length >= 8}
+              disabled={!file || uploading || images.length >= 8}
               className="btn-ghost !py-2 text-sm disabled:opacity-50"
             >
               ارفع الصورة
             </button>
-            <span className="muted text-xs">{uploaded.length} / 8 صور</span>
+            <span className="muted text-xs">{images.length} / 8 صور</span>
           </div>
           {uploading && (
             <div className="mt-2">
@@ -139,30 +159,23 @@ export default function PropertyForm() {
           )}
           {uploadError && <p className="mt-2 text-sm text-red-600">{uploadError}</p>}
 
-          {uploaded.length > 0 && (
-            <div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-6">
-              {uploaded.map((url) => (
-                <div key={url} className="relative aspect-square overflow-hidden rounded-xl border border-line">
-                  <Image src={url} alt="صورة الوحدة" fill sizes="120px" className="object-cover" />
-                  <button
-                    type="button"
-                    aria-label="حذف الصورة"
-                    onClick={() => setUploaded((prev) => prev.filter((u) => u !== url))}
-                    className="absolute left-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-black/60 text-white"
-                  >
-                    ×
-                  </button>
-                  <input type="hidden" name="images" value={url} />
-                </div>
-              ))}
-            </div>
+          <ImageOrderEditor images={images} onChange={syncImages} />
+          {images.length > 0 && (
+            <p className="muted mt-1 text-xs">اسحب الصور لتغيير ترتيبها، أو اضغط «الغلاف» على أي صورة لتجعلها أول صورة تظهر في البحث.</p>
           )}
         </div>
 
         <div className="sm:col-span-2">
-          <label className="label" htmlFor="images">أو روابط صور خارجية (رابط في كل سطر)</label>
-          <textarea id="images" name="images" rows={3} className="input" placeholder="https://..." />
-          <p className="muted mt-1 text-xs">اتركه فارغاً لاستخدام صورة افتراضية.</p>
+          <label className="label" htmlFor="externalImages">أو روابط صور خارجية (رابط في كل سطر)</label>
+          <textarea
+            id="externalImages"
+            rows={3}
+            className="input"
+            placeholder="https://..."
+            value={externalText}
+            onChange={(event) => handleExternalChange(event.target.value)}
+          />
+          <p className="muted mt-1 text-xs">اتركه فارغاً لاستخدام صورة افتراضية. الترتيب هنا بيتبع ترتيب الصور في المعرض.</p>
         </div>
         <div className="sm:col-span-2">
           <label className="label" htmlFor="videoUrl">رابط فيديو (اختياري)</label>
