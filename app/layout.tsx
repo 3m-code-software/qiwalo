@@ -32,7 +32,7 @@ async function TermsBannerGate() {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ar" dir="rtl" className={`h-full ${cairo.variable}`}>
+    <html lang="ar" dir="rtl" data-scroll-behavior="smooth" className={`h-full ${cairo.variable}`}>
       <body className="flex min-h-full flex-col bg-ivory">
         <Suspense fallback={<div className="h-[74px] border-b border-line bg-white" />}>
           <SiteHeader />
