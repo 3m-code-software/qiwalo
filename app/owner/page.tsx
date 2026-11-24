@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { duplicatePropertyAction } from "@/app/actions";
 import OwnerReviewReplyForm from "@/components/OwnerReviewReplyForm";
 import OwnerStats from "@/components/OwnerStats";
 import { requireRole } from "@/lib/auth";
@@ -141,6 +142,10 @@ export default async function OwnerPage({ searchParams }: { searchParams: Promis
                     )}
                     {p.status === "PUBLISHED" && <Link href={`/stay/${p.slug}`} className="text-xs font-bold hover:text-nile">معاينة ↗</Link>}
                   </div>
+                  <form action={duplicatePropertyAction} className="mt-3">
+                    <input type="hidden" name="id" value={p.id} />
+                    <button type="submit" className="btn-ghost !px-2 !py-1 text-xs">نسخ الوحدة ⧉</button>
+                  </form>
                 </div>
               );
             })}

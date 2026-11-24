@@ -202,6 +202,42 @@ export async function createPropertyAction(_prev: FormState, form: FormData): Pr
   redirect(`/owner/units/${property.id}/preview`);
 }
 
+/** ينسخ تفاصيل الوحدة في مسودة جديدة، من غير التوفر أو الحجوزات أو التقييمات. */
+export async function duplicatePropertyAction(form: FormData): Promise<void> {
+  const session = await requireRole("OWNER");
+  const id = String(form.get("id") ?? "");
+  const source = await assertOwnerOf(session, id);
+  if (!source) redirect("/owner");
+
+  const repo = await getRepo();
+  const copy = await repo.createProperty({
+    ownerId: source.ownerId,
+    name: `${source.name} (نسخة)`,
+    type: source.type,
+    city: source.city,
+    address: source.address,
+    description: source.description,
+    lat: source.lat,
+    lng: source.lng,
+    pickupLat: source.pickupLat,
+    pickupLng: source.pickupLng,
+    images: [...source.images],
+    videoUrl: source.videoUrl,
+    amenities: [...source.amenities],
+    maxGuests: source.maxGuests,
+    bedrooms: source.bedrooms,
+    bathrooms: source.bathrooms,
+    areaSqm: source.areaSqm,
+    houseRules: source.houseRules,
+    basePrice: source.basePrice,
+    commissionRate: source.commissionRate,
+    cancelPolicy: source.cancelPolicy,
+  });
+  revalidatePath("/owner");
+  revalidatePath(`/owner/units/${copy.id}/preview`);
+  redirect(`/owner/units/${copy.id}/preview?copied=1`);
+}
+
 export async function submitPropertyForReviewAction(form: FormData): Promise<void> {
   const session = await requireRole("OWNER");
   const id = String(form.get("id") ?? "");

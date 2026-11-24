@@ -21,8 +21,16 @@ function isoDay(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
-export default async function PropertyPreviewPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function PropertyPreviewPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { id } = await params;
+  const sp = await searchParams;
+  const copied = Array.isArray(sp.copied) ? sp.copied[0] : sp.copied;
   const session = await getSession();
   if (!session) redirect(`/login?next=${encodeURIComponent(`/owner/units/${id}/preview`)}`);
   if (session.role !== "OWNER" && session.role !== "ADMIN") redirect("/");
@@ -60,6 +68,12 @@ export default async function PropertyPreviewPage({ params }: { params: Promise<
           <Link href="/owner/calendar" className="btn-ghost !py-2 text-sm">التقويم والأسعار</Link>
         </div>
       </div>
+
+      {copied === "1" && (
+        <p className="mb-6 rounded-xl bg-nile-soft p-4 text-sm font-bold text-nile-dark">
+          ✅ تم نسخ الوحدة كمسودة جديدة بالتفاصيل والصور والسعر. راجعها ثم أرسلها للمراجعة.
+        </p>
+      )}
 
       {/* ===== Gallery ===== */}
       <div className="mb-8 grid gap-2 sm:grid-cols-4">
