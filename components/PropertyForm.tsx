@@ -2,9 +2,11 @@
 
 import Image from "next/image";
 import { useActionState, useState } from "react";
+import UploadProgress from "@/components/UploadProgress";
 import { createPropertyAction, type FormState } from "@/app/actions";
-import { prepareImage } from "@/lib/client-image";
+import { uploadImage, UploadError } from "@/lib/client-upload";
 import { AMENITIES, CITIES, PROPERTY_TYPES } from "@/lib/constants";
+import { fileSizeAr } from "@/lib/format";
 import type { CityKey, PropertyType } from "@/lib/types";
 
 export default function PropertyForm() {
@@ -13,35 +15,23 @@ export default function PropertyForm() {
   const [uploaded, setUploaded] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  const [progress, setProgress] = useState(0);
+  const [lastUpload, setLastUpload] = useState<{ originalSize: number; compressedSize: number } | null>(null);
 
   async function handleUpload() {
     if (!file || uploading || uploaded.length >= 8) return;
     setUploading(true);
     setUploadError("");
+    setProgress(0);
     try {
-      const payload = await prepareImage(file);
-      const body = new FormData();
-      body.set("file", payload);
-      const response = await fetch("/api/upload", { method: "POST", body });
-      let json: { url?: string; error?: string };
-      try {
-        json = (await response.json()) as { url?: string; error?: string };
-      } catch {
-        setUploadError(
-          response.status === 413
-            ? "حجم الصورة كبير جداً — جرّب صورة أصغر."
-            : `الرفع فشل (${response.status}). تأكد من الاتصال وحاول مرة تانية.`,
-        );
-        return;
-      }
-      if (!response.ok || !json.url) {
-        setUploadError(json.error ?? `الرفع فشل (${response.status}). حاول مرة تانية.`);
-      } else {
-        setUploaded((prev) => (prev.includes(json.url!) || prev.length >= 8 ? prev : [...prev, json.url!]));
-        setFile(null);
-      }
-    } catch {
-      setUploadError("الرفع فشل. تأكد من الاتصال وحاول مرة تانية.");
+      const result = await uploadImage(file, setProgress);
+      setUploaded((prev) => (
+        prev.includes(result.url) || prev.length >= 8 ? prev : [...prev, result.url]
+      ));
+      setLastUpload({ originalSize: result.originalSize, compressedSize: result.compressedSize });
+      setFile(null);
+    } catch (error) {
+      setUploadError(error instanceof UploadError ? error.message : "الرفع فشل. تأكد من الاتصال وحاول مرة تانية.");
     } finally {
       setUploading(false);
     }
@@ -118,7 +108,12 @@ export default function PropertyForm() {
               type="file"
               accept="image/*"
               className="input max-w-xs"
-              onChange={(e) => { setFile(e.target.files?.[0] ?? null); setUploadError(""); }}
+              onChange={(e) => {
+                setFile(e.target.files?.[0] ?? null);
+                setUploadError("");
+                setProgress(0);
+                setLastUpload(null);
+              }}
             />
             <button
               type="button"
@@ -126,11 +121,22 @@ export default function PropertyForm() {
               disabled={!file || uploading || uploaded.length >= 8}
               className="btn-ghost !py-2 text-sm disabled:opacity-50"
             >
-              {uploading ? "جارٍ الرفع..." : "ارفع الصورة"}
+              ارفع الصورة
             </button>
             <span className="muted text-xs">{uploaded.length} / 8 صور</span>
           </div>
+          {uploading && (
+            <div className="mt-2">
+              <UploadProgress value={progress} />
+            </div>
+          )}
           <p className="muted mt-1 text-xs">JPG أو PNG أو WebP، لحد 4 ميجابايت. الصورة بتتضغط تلقائياً قبل الرفع، والتوقيع بيتم على السيرفر.</p>
+          {file && !uploading && <p className="muted mt-1 text-xs">الحجم قبل الضغط: {fileSizeAr(file.size)}</p>}
+          {lastUpload && (
+            <p className="muted mt-1 text-xs">
+              آخر صورة: {fileSizeAr(lastUpload.originalSize)} ← {fileSizeAr(lastUpload.compressedSize)} بعد الضغط
+            </p>
+          )}
           {uploadError && <p className="mt-2 text-sm text-red-600">{uploadError}</p>}
 
           {uploaded.length > 0 && (

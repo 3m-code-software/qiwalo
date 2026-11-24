@@ -17,3 +17,10 @@ export function dateAr(iso: string): string {
     timeZone: "UTC",
   }).format(d);
 }
+
+export function fileSizeAr(bytes: number): string {
+  const size = bytes >= 1024 * 1024
+    ? `${(bytes / (1024 * 1024)).toFixed(1)} ميجابايت`
+    : `${Math.max(1, Math.round(bytes / 1024))} كيلوبايت`;
+  return toArabicDigits(size);
+}

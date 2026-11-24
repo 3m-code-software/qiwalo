@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { prepareImage } from "@/lib/client-image";
+import UploadProgress from "@/components/UploadProgress";
+import { uploadImage, UploadError } from "@/lib/client-upload";
+import { fileSizeAr } from "@/lib/format";
 
 interface DocumentUploadProps {
   name: string;
@@ -23,36 +25,22 @@ export default function DocumentUpload({
   const [url, setUrl] = useState(defaultUrl ?? "");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const [progress, setProgress] = useState(0);
+  const [lastUpload, setLastUpload] = useState<{ originalSize: number; compressedSize: number } | null>(null);
 
   async function handleUpload() {
     if (!file || uploading) return;
     setUploading(true);
     setError("");
+    setProgress(0);
     try {
-      const payload = await prepareImage(file);
-      const body = new FormData();
-      body.set("file", payload);
-      const response = await fetch("/api/upload", { method: "POST", body });
-      let json: { url?: string; error?: string };
-      try {
-        json = (await response.json()) as { url?: string; error?: string };
-      } catch {
-        setError(
-          response.status === 413
-            ? "حجم الصورة كبير جداً — جرّب صورة أصغر."
-            : "الرفع فشل. تأكد من الاتصال وحاول مرة تانية.",
-        );
-        return;
-      }
-      if (!response.ok || !json.url) {
-        setError(json.error ?? `الرفع فشل (${response.status}). حاول مرة تانية.`);
-      } else {
-        setUrl(json.url);
-        onUrlChange?.(json.url);
-        setFile(null);
-      }
-    } catch {
-      setError("الرفع فشل. تأكد من الاتصال وحاول مرة تانية.");
+      const result = await uploadImage(file, setProgress);
+      setUrl(result.url);
+      onUrlChange?.(result.url);
+      setLastUpload({ originalSize: result.originalSize, compressedSize: result.compressedSize });
+      setFile(null);
+    } catch (uploadError) {
+      setError(uploadError instanceof UploadError ? uploadError.message : "الرفع فشل. تأكد من الاتصال وحاول مرة تانية.");
     } finally {
       setUploading(false);
     }
@@ -62,6 +50,8 @@ export default function DocumentUpload({
     setUrl("");
     setFile(null);
     setError("");
+    setProgress(0);
+    setLastUpload(null);
     onUrlChange?.("");
   }
 
@@ -74,7 +64,12 @@ export default function DocumentUpload({
           type="file"
           accept="image/*"
           className="input max-w-xs"
-          onChange={(e) => { setFile(e.target.files?.[0] ?? null); setError(""); }}
+          onChange={(e) => {
+            setFile(e.target.files?.[0] ?? null);
+            setError("");
+            setProgress(0);
+            setLastUpload(null);
+          }}
         />
         <button
           type="button"
@@ -82,7 +77,7 @@ export default function DocumentUpload({
           disabled={!file || uploading}
           className="btn-ghost !py-2 text-sm disabled:opacity-50"
         >
-          {uploading ? "جارٍ الرفع..." : "ارفع الصورة"}
+          ارفع الصورة
         </button>
         {url && (
           <button type="button" onClick={clear} className="btn-ghost !px-3 !py-2 text-xs">
@@ -90,6 +85,11 @@ export default function DocumentUpload({
           </button>
         )}
       </div>
+      {uploading && (
+        <div className="mt-2">
+          <UploadProgress value={progress} />
+        </div>
+      )}
       <input type="hidden" name={name} value={url} />
       {(hint || file) && (
         <p className="muted mt-1 text-xs">
@@ -97,6 +97,12 @@ export default function DocumentUpload({
           {file && file.size > 4 * 1024 * 1024
             ? " — هتتضغط الصورة تلقائياً قبل الرفع."
             : ""}
+        </p>
+      )}
+      {file && !uploading && <p className="muted mt-1 text-xs">الحجم قبل الضغط: {fileSizeAr(file.size)}</p>}
+      {lastUpload && (
+        <p className="muted mt-1 text-xs">
+          آخر صورة: {fileSizeAr(lastUpload.originalSize)} ← {fileSizeAr(lastUpload.compressedSize)} بعد الضغط
         </p>
       )}
       {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
