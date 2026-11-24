@@ -35,6 +35,8 @@ function authError(message: string): FormState {
   if (message.includes("User already registered")) return { error: "الحساب موجود بالفعل — سجّل الدخول بدلاً من ذلك." };
   if (message.includes("Password should be at least")) return { error: "كلمة المرور يجب ألا تقل عن 6 أحرف." };
   if (message.includes("Email not confirmed")) return { error: "لازم تأكيد البريد الإلكتروني أولاً." };
+  if (message.includes("For security purposes")) return { error: "طلبت الاستعادة مؤخراً — استنى شوية وجرّب تاني." };
+  if (message.toLowerCase().includes("redirect")) return { error: "رابط الاستعادة غير مسموح — تواصل مع الدعم." };
   if (message.includes("fetch failed") || message.includes("fetch")) return { error: "تعذّر الاتصال بخدمة الدخول. حاول مرة ثانية." };
   return { error: "حصل خطأ في الدخول. حاول مرة ثانية." };
 }
@@ -130,7 +132,7 @@ export async function requestPasswordResetAction(_prev: FormState, form: FormDat
     redirectTo: `${protocol}://${host}/reset-password`,
   });
   if (error) return authError(error.message);
-  return { ok: "لو البريد مسجّل، هتوصلك رسالة استعادة كلمة المرور." };
+  return { ok: "لو البريد مسجّل، هتوصلك رسالة استعادة كلمة المرور. دور كمان في Spam / Promotions." };
 }
 
 export async function acceptTermsAction(form: FormData): Promise<void> {

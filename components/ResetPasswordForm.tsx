@@ -16,6 +16,7 @@ export default function ResetPasswordForm({ code }: { code: string }) {
       createBrowserClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        { auth: { flowType: "implicit" } },
       ),
     [],
   );
@@ -23,19 +24,35 @@ export default function ResetPasswordForm({ code }: { code: string }) {
   useEffect(() => {
     let active = true;
     async function verify() {
-      if (window.location.hash.includes("access_token")) {
-        const { data } = await supabase.auth.getSession();
-        if (active) setReady(Boolean(data.session));
+      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      const accessToken = hash.get("access_token");
+      const refreshToken = hash.get("refresh_token");
+
+      if (accessToken && refreshToken) {
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        if (active) {
+          if (sessionError) setError("رابط الاستعادة غير صالح. اطلب رابط جديد.");
+          else setReady(true);
+        }
         return;
       }
-      if (!code) {
-        if (active) setError("رابط الاستعادة غير صالح. اطلب رابط جديد.");
+
+      if (code) {
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        if (active) {
+          if (exchangeError) setError("انتهت صلاحية رابط الاستعادة. اطلب رابط جديد.");
+          else setReady(true);
+        }
         return;
       }
-      const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+
+      const { data } = await supabase.auth.getSession();
       if (active) {
-        if (exchangeError) setError("انتهت صلاحية رابط الاستعادة. اطلب رابط جديد.");
-        else setReady(true);
+        if (data.session) setReady(true);
+        else setError("رابط الاستعادة غير صالح. اطلب رابط جديد.");
       }
     }
     void verify();

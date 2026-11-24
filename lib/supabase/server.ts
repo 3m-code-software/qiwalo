@@ -17,6 +17,9 @@ export async function createSupabaseServerClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      // Recovery links carry tokens in the URL fragment so they work even when
+      // the email is opened on a different browser/device than the request.
+      auth: { flowType: "implicit" },
       cookies: {
         getAll() {
           return cookieStore.getAll();
