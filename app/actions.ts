@@ -213,15 +213,24 @@ export async function submitPropertyForReviewAction(form: FormData): Promise<voi
   redirect("/owner?created=1");
 }
 
-export async function moderatePropertyAction(form: FormData): Promise<void> {
+export async function moderatePropertyAction(_prev: FormState, form: FormData): Promise<FormState> {
   await requireRole("ADMIN");
   const id = String(form.get("id") ?? "");
   const status = String(form.get("status") ?? "") as ModerationStatus;
-  if (!id || !["PUBLISHED", "REJECTED", "DRAFT"].includes(status)) return;
+  if (!id || !["PUBLISHED", "REJECTED", "DRAFT"].includes(status)) {
+    return { error: "تعذّر تحديث الوحدة. حاول مرة أخرى." };
+  }
   await (await getRepo()).moderateProperty(id, status);
   revalidatePath("/admin");
   revalidatePath("/owner");
   revalidatePath("/search");
+  return {
+    ok: status === "PUBLISHED"
+      ? "تم نشر الوحدة بنجاح ✅"
+      : status === "REJECTED"
+        ? "تم رفض الوحدة ✅"
+        : "تم تحديث الوحدة ✅",
+  };
 }
 
 // ===== Availability & price rules =====

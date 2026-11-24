@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { AdminNoticeProvider } from "@/components/AdminNoticeProvider";
+import PropertyModerationForm from "@/components/PropertyModerationForm";
 import {
-  moderatePropertyAction, moderateReviewAction, moderateVerificationAction,
+  moderateReviewAction, moderateVerificationAction,
   setCommissionRateAction, updateBookingStatusAction,
 } from "@/app/actions";
 import { requireRole } from "@/lib/auth";
@@ -109,6 +111,7 @@ export default async function AdminPage() {
   const propertyNames = new Map(properties.map((p) => [p.id, p.name]));
 
   return (
+    <AdminNoticeProvider>
     <div className="mx-auto max-w-7xl px-4 py-10">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -143,16 +146,20 @@ export default async function AdminPage() {
                   <td>
                     {p.status === "PENDING" && (
                       <div className="flex gap-2">
-                        <form action={moderatePropertyAction}>
-                          <input type="hidden" name="id" value={p.id} />
-                          <input type="hidden" name="status" value="PUBLISHED" />
-                          <button className="btn-primary !px-3 !py-1.5 text-xs">نشر</button>
-                        </form>
-                        <form action={moderatePropertyAction}>
-                          <input type="hidden" name="id" value={p.id} />
-                          <input type="hidden" name="status" value="REJECTED" />
-                          <button className="btn-ghost !px-3 !py-1.5 text-xs">رفض</button>
-                        </form>
+                        <PropertyModerationForm
+                          propertyId={p.id}
+                          propertyName={p.name}
+                          status="PUBLISHED"
+                          label="نشر"
+                          className="btn-primary !px-3 !py-1.5 text-xs"
+                        />
+                        <PropertyModerationForm
+                          propertyId={p.id}
+                          propertyName={p.name}
+                          status="REJECTED"
+                          label="رفض"
+                          className="btn-ghost !px-3 !py-1.5 text-xs"
+                        />
                       </div>
                     )}
                     {p.status === "PUBLISHED" && <span className="muted text-xs">منشورة</span>}
@@ -301,5 +308,6 @@ export default async function AdminPage() {
         </div>
       </section>
     </div>
+    </AdminNoticeProvider>
   );
 }
