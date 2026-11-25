@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { moderatePropertyAction, type FormState } from "@/app/actions";
 import { useAdminNotice } from "@/components/AdminNoticeProvider";
+import type { ModerationStatus } from "@/lib/types";
 
 export default function PropertyModerationForm({
   propertyId,
@@ -13,7 +14,7 @@ export default function PropertyModerationForm({
 }: {
   propertyId: string;
   propertyName: string;
-  status: "PUBLISHED" | "REJECTED";
+  status: ModerationStatus;
   label: string;
   className: string;
 }) {
@@ -26,6 +27,8 @@ export default function PropertyModerationForm({
     },
     {},
   );
+  // النشر والرفض إجراءان خطيران؛ الإرجاع للمسودة أو للمراجعة لا يحتاج تأكيد.
+  const needsConfirm = status === "PUBLISHED" || status === "REJECTED";
   const confirmText = status === "PUBLISHED"
     ? `تنشر الوحدة «${propertyName}»؟`
     : `ترفض الوحدة «${propertyName}»؟`;
@@ -35,7 +38,7 @@ export default function PropertyModerationForm({
       action={formAction}
       className="flex flex-col items-start gap-1"
       onSubmit={(event) => {
-        if (!window.confirm(confirmText)) event.preventDefault();
+        if (needsConfirm && !window.confirm(confirmText)) event.preventDefault();
       }}
     >
       <input type="hidden" name="id" value={propertyId} />

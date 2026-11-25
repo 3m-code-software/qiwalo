@@ -1,4 +1,5 @@
 import Link from "next/link";
+import ConfirmSubmitButton from "@/components/ConfirmSubmitButton";
 import { AdminNoticeProvider } from "@/components/AdminNoticeProvider";
 import PropertyModerationForm from "@/components/PropertyModerationForm";
 import {
@@ -32,6 +33,7 @@ const activityLabel: Record<string, string> = {
   PROPERTY_PUBLISHED: "نشر وحدة",
   PROPERTY_REJECTED: "رفض وحدة",
   PROPERTY_DRAFT: "إرجاع وحدة لمسودة",
+  PROPERTY_PENDING: "إعادة وحدة للمراجعة",
   COMMISSION_CHANGED: "تغيير عمولة",
   VERIFICATION_APPROVED: "موافقة على توثيق مالك",
   VERIFICATION_REJECTED: "رفض توثيق مالك",
@@ -99,32 +101,34 @@ function ageFromBirthDate(value: string | null): number | null {
   return age;
 }
 
-function VerificationActions({ userId }: { userId: string }) {
-  const options = [
-    { status: "SELFIE_REQUIRED", label: "طلب سيلفي", primary: false },
-    { status: "APPROVED", label: "موافقة", primary: true },
-    { status: "REJECTED", label: "رفض", primary: false },
-  ] as const;
+function VerificationActions({ userId, ownerName }: { userId: string; ownerName: string }) {
+  // ملاحظة واحدة تكفي كل القرارات، فلا تضيع كتابة المستخدم بين النماذج الثلاثة.
   return (
-    <div className="space-y-2">
-      {options.map((option) => (
-        <form key={option.status} action={moderateVerificationAction} className="flex items-center gap-1">
-          <input type="hidden" name="userId" value={userId} />
-          <input type="hidden" name="status" value={option.status} />
-          <input name="note" aria-label="ملاحظة قرار التوثيق" className="input min-h-11 !w-32 !px-2 text-xs md:!w-40" placeholder="ملاحظة" />
-          <button type="submit" className={option.primary ? "btn-primary !px-2 !py-1 text-xs" : "btn-ghost !px-2 !py-1 text-xs"}>
-            {option.label}
-          </button>
-        </form>
-      ))}
-    </div>
+    <form action={moderateVerificationAction} className="flex min-w-40 flex-col items-start gap-2">
+      <input type="hidden" name="userId" value={userId} />
+      <input name="note" aria-label="ملاحظة قرار التوثيق" className="input min-h-11 !w-full !px-2 text-xs" placeholder="ملاحظة مشتركة" />
+      <div className="flex flex-wrap gap-2">
+        <button type="submit" name="status" value="SELFIE_REQUIRED" className="btn-ghost !px-2 !py-1 text-xs">طلب سيلفي</button>
+        <button type="submit" name="status" value="APPROVED" className="btn-primary !px-2 !py-1 text-xs">موافقة</button>
+        <ConfirmSubmitButton
+          name="status"
+          value="REJECTED"
+          confirmText={`ترفض توثيق «${ownerName}»؟`}
+          className="btn-ghost !px-2 !py-1 text-xs"
+        >
+          رفض
+        </ConfirmSubmitButton>
+      </div>
+    </form>
   );
 }
 
 function ReviewActions({ id, status }: { id: string; status: string }) {
-  const options = status === "HIDDEN"
-    ? [{ status: "PUBLISHED", label: "نشر" }]
-    : [{ status: "PUBLISHED", label: "نشر" }, { status: "HIDDEN", label: "إخفاء" }];
+  const options = status === "PENDING"
+    ? [{ status: "PUBLISHED", label: "نشر" }, { status: "HIDDEN", label: "إخفاء" }]
+    : status === "HIDDEN"
+      ? [{ status: "PUBLISHED", label: "نشر" }, { status: "PENDING", label: "إعادة للمراجعة" }]
+      : [{ status: "HIDDEN", label: "إخفاء" }, { status: "PENDING", label: "إعادة للمراجعة" }];
   return (
     <div className="flex flex-wrap gap-2">
       {options.map((option) => (
@@ -307,7 +311,25 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
                         />
                       </div>
                     )}
-                    {p.status === "PUBLISHED" && <span className="muted text-xs">منشورة</span>}
+                    {p.status === "PUBLISHED" && (
+                      <PropertyModerationForm
+                        propertyId={p.id}
+                        propertyName={p.name}
+                        status="DRAFT"
+                        label="إرجاع لمسودة"
+                        className="btn-ghost !px-3 !py-1.5 text-xs"
+                      />
+                    )}
+                    {p.status === "REJECTED" && (
+                      <PropertyModerationForm
+                        propertyId={p.id}
+                        propertyName={p.name}
+                        status="PENDING"
+                        label="إعادة للمراجعة"
+                        className="btn-ghost !px-3 !py-1.5 text-xs"
+                      />
+                    )}
+                    {p.status === "DRAFT" && <span className="muted text-xs">مسودة</span>}
                   </td>
                 </tr>
               ))}
@@ -348,7 +370,12 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
                         <form action={updateBookingStatusAction}>
                           <input type="hidden" name="reference" value={b.reference} />
                           <input type="hidden" name="status" value="CANCELLED" />
-                          <button type="submit" className="btn-ghost !px-2 !py-1 text-xs">إلغاء</button>
+                          <ConfirmSubmitButton
+                            confirmText={`تلغي الحجز «${b.reference}»؟`}
+                            className="btn-ghost !px-2 !py-1 text-xs"
+                          >
+                            إلغاء
+                          </ConfirmSubmitButton>
                         </form>
                       )}
                     </div>
@@ -400,7 +427,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
                     </td>
                     <td>{verificationStatusLabel[v.status] ?? v.status}</td>
                     <td className="max-w-52 whitespace-normal text-xs">{v.note ?? "—"}</td>
-                    <td><VerificationActions userId={v.userId} /></td>
+                    <td><VerificationActions userId={v.userId} ownerName={user?.name ?? v.userId} /></td>
                   </tr>
                 );
               })}

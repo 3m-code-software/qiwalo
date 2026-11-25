@@ -110,7 +110,7 @@ npm run build      # prisma generate + بناء الإنتاج
 npm run typecheck  # فحص TypeScript
 npm run lint       # ESLint
 npx playwright install chromium   # مرة واحدة فقط
-npm run test:e2e       # ١٩ اختبار على Mock محلي (بدون Supabase/Cloudinary/إنتاج)
+npm run test:e2e       # ٢٣ اختبار على Mock محلي (بدون Supabase/Cloudinary/إنتاج)
 npm run test:recovery  # ٣ اختبارات لمسار استعادة كلمة المرور بـ Supabase وهمي
 npm run qa:tour     # جولة تصويرية: ٢٢ خطوة × ديسكتوب/أندرويد (سيرفر Mock على 3140)
 npm run db:generate
@@ -122,7 +122,7 @@ npm run db:seed:admin   # حساب الأدمن الحقيقي (ADMIN_EMAIL/PASS
 
 ## التوثيق والجولة التفقدية
 
-- سجل التطوير الكامل (البنود ١–٢٨ والإصلاحات): [`docs/IMPROVEMENTS-LOG.md`](docs/IMPROVEMENTS-LOG.md).
+- سجل التطوير الكامل (البنود ١–٢٩ والإصلاحات): [`docs/IMPROVEMENTS-LOG.md`](docs/IMPROVEMENTS-LOG.md).
 - صفحة تحميل أندرويد المستقلة (تظهر بعد الضغط على «تحميل تطبيق أندرويد» في الفوتر أو «تحميل» في الهيدر): `/download` — فيها ملف `qiwalo.apk` وأربع خطوات تثبيت مصوّرة، ومخفية من محركات البحث.
 - تقرير التجربة الشاملة مع **٤٤ لقطة شاشة** لكل خطوة على الديسكتوب والأندرويد، والقياسات وملاحظات UX: [`docs/QA-REPORT.md`](docs/QA-REPORT.md). الصور في `docs/qa/screenshots/` والنتائج الخام في `docs/qa/qa-results.json`.
 - لإعادة الجولة: شغّل سيرفر Mock على المنفذ ٣١٤٠ مع تفريغ `DATABASE_URL` ومتغيرات Supabase/Telegram/Cloudinary/Resend/WhatsApp/البنك (زي ما في `playwright.config.ts`)، ثم `npm run qa:tour`. لا تتصل الجولة بالإنتاج ولا تستخدم أسراراً.

@@ -87,6 +87,7 @@ test("الشريط اللاصق متجاوب وزر إكمال مخفي للحج
   await expect(confirmedRow).toBeVisible();
   const reference = (await confirmedRow.locator("td").first().innerText()).trim();
 
+  page.once("dialog", (dialog) => dialog.accept());
   await confirmedRow.getByRole("button", { name: "إلغاء" }).click();
   const updatedRow = page.locator("#bookings tbody tr").filter({ hasText: reference });
   await expect(updatedRow).toContainText("ملغية");

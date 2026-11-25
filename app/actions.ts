@@ -297,7 +297,7 @@ export async function moderatePropertyAction(_prev: FormState, form: FormData): 
   const session = await requireRole("ADMIN");
   const id = String(form.get("id") ?? "");
   const status = String(form.get("status") ?? "") as ModerationStatus;
-  if (!id || !["PUBLISHED", "REJECTED", "DRAFT"].includes(status)) {
+  if (!id || !["PUBLISHED", "REJECTED", "DRAFT", "PENDING"].includes(status)) {
     return { error: "تعذّر تحديث الوحدة. حاول مرة أخرى." };
   }
   const repo = await getRepo();
@@ -306,7 +306,9 @@ export async function moderatePropertyAction(_prev: FormState, form: FormData): 
   await repo.logActivity({
     actorEmail: session.email,
     actorName: session.name,
-    action: status === "PUBLISHED" ? "PROPERTY_PUBLISHED" : status === "REJECTED" ? "PROPERTY_REJECTED" : "PROPERTY_DRAFT",
+    action: status === "PUBLISHED" ? "PROPERTY_PUBLISHED"
+      : status === "REJECTED" ? "PROPERTY_REJECTED"
+      : status === "DRAFT" ? "PROPERTY_DRAFT" : "PROPERTY_PENDING",
     target: id,
     detail: property?.name ?? id,
   });
@@ -318,7 +320,9 @@ export async function moderatePropertyAction(_prev: FormState, form: FormData): 
       ? "تم نشر الوحدة بنجاح ✅"
       : status === "REJECTED"
         ? "تم رفض الوحدة ✅"
-        : "تم تحديث الوحدة ✅",
+        : status === "PENDING"
+          ? "تمت إعادة الوحدة للمراجعة ✅"
+          : "تم تحديث الوحدة ✅",
   };
 }
 
@@ -485,7 +489,7 @@ export async function moderateReviewAction(form: FormData): Promise<void> {
   await requireRole("ADMIN");
   const id = String(form.get("id") ?? "");
   const status = String(form.get("status") ?? "") as ReviewStatus;
-  if (!["PUBLISHED", "HIDDEN"].includes(status)) return;
+  if (!["PENDING", "PUBLISHED", "HIDDEN"].includes(status)) return;
   await (await getRepo()).moderateReview(id, status);
   revalidatePath("/admin");
   revalidatePath("/search");
