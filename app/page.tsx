@@ -1,6 +1,7 @@
 import { connection } from "next/server";
 import Image from "next/image";
 import Link from "next/link";
+import JourneyStory from "@/components/JourneyStory";
 import PropertyCard from "@/components/PropertyCard";
 import SearchForm from "@/components/SearchForm";
 import { CITIES } from "@/lib/constants";
@@ -58,6 +59,9 @@ export default async function HomePage() {
       <div className="relative z-10 mx-auto -mt-20 max-w-7xl px-4 md:-mt-24">
         <SearchForm />
       </div>
+
+      {/* ===== Journey story ===== */}
+      <JourneyStory />
 
       {/* ===== Destinations ===== */}
       <section className="mx-auto max-w-7xl px-4 py-16 md:py-20">
