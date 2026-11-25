@@ -9,7 +9,7 @@ import PriceBreakdown from "@/components/PriceBreakdown";
 import ReviewsTab from "@/components/ReviewsTab";
 import { CITIES, COMMISSION_RATE, PROPERTY_TYPES, SUPPORT_PHONE, SUPPORT_TELEGRAM, SUPPORT_WHATSAPP } from "@/lib/constants";
 import { dateAr, money, toArabicDigits } from "@/lib/format";
-import { cloudinaryDeliveryUrl, propertyImageAlt } from "@/lib/image-assets";
+import { cloudinaryDeliveryUrl, propertyImageAlt, socialImageUrl } from "@/lib/image-assets";
 import { cancelPolicyText } from "@/lib/notifications";
 import { quoteStay } from "@/lib/pricing";
 import { getRepo } from "@/lib/repo";
@@ -31,8 +31,33 @@ function SectionHeading({ children }: { children: ReactNode }) {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const property = await (await getRepo()).getPropertyBySlug(slug);
-  if (!property) return { title: "وحدة غير موجودة" };
-  return { title: property.name, description: property.description.slice(0, 155) };
+  if (!property || property.status !== "PUBLISHED") {
+    return { title: "وحدة غير موجودة", robots: { index: false, follow: false } };
+  }
+
+  const city = CITIES[property.city].ar;
+  const type = PROPERTY_TYPES[property.type].ar;
+  const highlights = property.amenities.slice(0, 3).join("، ");
+  const raw = `${property.name} — ${type} في ${city} بسعر ${money(property.basePrice)} للليلة${highlights ? `، وتشمل ${highlights}` : ""}.`;
+  const description = raw.length <= 160 ? raw : `${raw.slice(0, 157).trimEnd()}…`;
+  const title = `${property.name} | ${city}`;
+  const image = socialImageUrl(property.images[0]);
+
+  return {
+    title,
+    description,
+    alternates: { canonical: `/stay/${property.slug}` },
+    openGraph: {
+      type: "website",
+      locale: "ar_EG",
+      siteName: "قيوالو",
+      title,
+      description,
+      url: `/stay/${property.slug}`,
+      images: [{ url: image, width: 1200, height: 630, alt: propertyImageAlt(property) }],
+    },
+    twitter: { card: "summary_large_image", title, description, images: [image] },
+  };
 }
 
 export default async function StayPage({ params, searchParams }: Props) {
@@ -51,8 +76,37 @@ export default async function StayPage({ params, searchParams }: Props) {
   const guests = Math.max(1, Number(one(sp.guests)) || 1);
   const quote = checkIn && checkOut ? quoteStay(property, rules, availability, checkIn, checkOut) : null;
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "LodgingBusiness",
+    name: property.name,
+    description: property.description,
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: property.address,
+      addressLocality: CITIES[property.city].ar,
+      addressCountry: "EG",
+    },
+    telephone: SUPPORT_PHONE,
+    priceRange: money(property.basePrice),
+    ...(property.reviewCount > 0
+      ? {
+          aggregateRating: {
+            "@type": "AggregateRating",
+            ratingValue: property.rating,
+            reviewCount: property.reviewCount,
+            bestRating: 5,
+          },
+        }
+      : {}),
+  };
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
+      />
       {/* ===== Breadcrumb ===== */}
       <div className="mb-6 flex flex-wrap items-center gap-2 text-sm font-bold text-muted">
         <Link href="/" className="transition hover:text-gold">الرئيسية</Link>

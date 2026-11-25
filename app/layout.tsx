@@ -9,6 +9,7 @@ import SiteFooter from "@/components/SiteFooter";
 import TermsBanner from "@/components/TermsBanner";
 import { getSession } from "@/lib/auth";
 import { getRepo } from "@/lib/repo";
+import { SITE_URL } from "@/lib/site-url";
 
 const cairo = Cairo({
   subsets: ["arabic", "latin"],
@@ -16,9 +17,30 @@ const cairo = Cairo({
   display: "swap",
 });
 
+const DEFAULT_TITLE = "قيوالو | إقامات الأقصر وأسوان";
+const DEFAULT_DESCRIPTION = "شقق وشاليهات وفنادق في الأقصر وأسوان بأسعار واضحة وتأكيد فوري.";
+
 export const metadata: Metadata = {
-  title: { default: "قيوالو | إقامات الأقصر وأسوان", template: "%s | قيوالو" },
-  description: "شقق وشاليهات وفنادق في الأقصر وأسوان بأسعار واضحة وتأكيد فوري.",
+  metadataBase: new URL(SITE_URL),
+  title: { default: DEFAULT_TITLE, template: "%s | قيوالو" },
+  description: DEFAULT_DESCRIPTION,
+  applicationName: "قيوالو",
+  robots: { index: true, follow: true },
+  openGraph: {
+    type: "website",
+    locale: "ar_EG",
+    siteName: "قيوالو",
+    url: SITE_URL,
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESCRIPTION,
+    images: [{ url: "/og-default.svg", width: 1200, height: 630, alt: "قيوالو — إقامات الأقصر وأسوان" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESCRIPTION,
+    images: ["/og-default.svg"],
+  },
 };
 
 export const viewport: Viewport = { themeColor: "#0a2440" };

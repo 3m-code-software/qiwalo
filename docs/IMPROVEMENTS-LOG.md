@@ -541,3 +541,38 @@
 - `npm run typecheck` ✅ · `npm run lint` ✅ · `npm run build` ✅ (٣٠ صفحة prerender، و`cacheComponents`/`partialPrefetching` مفعّلان).
 - مفيش أي تغيير على الإنتاج؛ الاختبار كله على Mock محلي.
 
+## البند ١٩ — SEO: عنوان ووصف وصورة مشاركة لكل وحدة + sitemap
+
+**الحالة: تم ✅ (الكود والاختبار)**
+
+### التغييرات
+- ملف جديد `lib/site-url.ts`: `SITE_URL` من `NEXT_PUBLIC_SITE_URL` مع fallback `https://qiwalo-ygzh.vercel.app` (بدون شرطة مائلة أخيرة) + `absoluteUrl()`. ما أضفناش أي سر.
+- `app/layout.tsx`: `metadataBase` + `applicationName` + `robots: index, follow` + OpenGraph افتراضي (`siteName: قيوالو`، `locale: ar_EG`) + Twitter Card افتراضي + صورة مشاركة افتراضية `public/og-default.svg`.
+- `app/stay/[slug]/page.tsx`:
+  - `generateMetadata` موسّع: العنوان `اسم الوحدة | المدينة`، وصف عربي ≤١٦٠ حرفاً يشمل نوع الوحدة والمدينة والسعر وأول ٣ مرافق، `alternates.canonical`، `og:title/description/image/locale/siteName/url`، و`twitter: summary_large_image`. الصفحات غير المنشورة `noindex`.
+  - صورة المشاركة: `socialImageUrl()` في `lib/image-assets.ts` تُنتج ١٢٠٠×٦٣٠ (`f_auto,q_auto,c_fill,g_auto,w_1200,h_630` لـ Cloudinary، و`w/h/fit` لـ Unsplash، و`/og-default.svg` كحل أخير). الدالة idempotent.
+  - **JSON-LD مجاني** (`LodgingBusiness`) بالاسم والوصف والعنوان والهاتف ونطاق السعر، مع `aggregateRating` فقط لو `reviewCount > 0`، وتطهير `<` إلى `\\u003c` قبل الحقن (طبقاً لدليل Next ١٦).
+- `app/sitemap.ts` جديد: ٩ صفحات عامة + الوحدات `PUBLISHED` فقط، مع `lastmod` ثابت `2026-11-25` لأن الـ schema مفيهوش `updatedAt` (ما اتضافش عمود DB). استخدمنا `await connection()` عشان القراءة تحصل عند الطلب مش وقت الـ build.
+- `app/robots.ts` جديد: `Allow: /` مع منع `/admin`، `/owner`، `/checkout`، `/booking`، `/payment`، `/login`، `/forgot-password`، `/reset-password`، `/api/` + رابط الـ sitemap.
+- `public/og-default.svg` جديد: شارة قيوالو بالألوان المعتمدة كحل أخير للصور.
+
+### التجربة
+البيئة: خادم Mock على `http://localhost:3130`. الرابط الأساسي في الاختبار `http://localhost:3000` من `.env.local`؛ على الإنتاج يستخدم المتغير أو الـ fallback.
+
+| الفحص | النتيجة |
+|---|---|
+| `og:title` | `دار المدينة بإطلالة على النيل \| الأقصر` |
+| `og:description` | `دار المدينة بإطلالة على النيل — شقة في الأقصر بسعر ١,٤٥٠ ج.م للليلة، وتشمل واي فاي، مكيف، مطبخ.` (أقل من ١٦٠ حرفاً) |
+| `og:image` | رابط Unsplash بمقاس `w=1200&h=630&fit=crop` |
+| `og:locale` / `twitter:card` / `robots` | `ar_EG` / `summary_large_image` / `index, follow` |
+| `rel=canonical` | `/stay/nile-view-dar-al-madina` (مطلقاً بالـ metadataBase) |
+| JSON-LD | `LodgingBusiness` صالح بعد `JSON.parse`، فيه `aggregateRating` ٤٫٨ من ٣٤ تقييم |
+| `/sitemap.xml` | ٩ صفحات عامة + ٦ وحدات منشورة؛ **بدون** الوحدتين `PENDING`/`DRAFT` ولا أي مسار خاص |
+| `/robots.txt` | كل المسارات الخاصة ممنوعة + `Sitemap: .../sitemap.xml` |
+| دالة صورة المشاركة | Cloudinary ← `.../f_auto,q_auto,c_fill,g_auto,w_1200,h_630/...`، تمريرها تاني = نفس الرابط، Unsplash ← مقاسات المشاركة، وبدون صورة ← `/og-default.svg` |
+
+- صفحة اختبار مؤقتة استُخدمت لفحص الدالة ثم حُذفت قبل الـ commit.
+- `npm run typecheck` ✅ · `npm run lint` ✅ · `npm run build` ✅ (٣٢ صفحة؛ `/robots.txt` ثابت و`/sitemap.xml` عند الطلب، و`cacheComponents`/`partialPrefetching` مفعّلان).
+- تحذيرات DEV المعروفة (`new Date()` في `lib/auth.ts:44`، hydration، Unsplash timeout) ما اتغيرتش.
+- مفيش أي تغيير على الإنتاج؛ الاختبار كله على Mock محلي.
+

@@ -25,6 +25,41 @@ export function imageOrderAlt(index: number): string {
  * يطلب من Cloudinary أفضل صيغة مدعومة (WebP/AVIF) بأقل جودة مقبولة،
  * ويمرّر روابط المواقع الأخرى كما هي. الدالة idempotent: لا تضيف تحويلين.
  */
+/** صورة مشاركة بقياس ١٢٠٠×٦٣٠؛ ترجع شارة قيوالو المحلية لو مفيش مصدر صالح. */
+export function socialImageUrl(src: string | undefined): string {
+  const fallback = "/og-default.svg";
+  if (!src || !src.startsWith("https://")) return fallback;
+
+  let url: URL;
+  try {
+    url = new URL(src);
+  } catch {
+    return fallback;
+  }
+
+  if (url.hostname === CLOUDINARY_HOST) {
+    const at = url.pathname.indexOf(UPLOAD_MARKER);
+    if (at === -1) return fallback;
+    const prefix = url.pathname.slice(0, at + UPLOAD_MARKER.length);
+    const tail = url.pathname.slice(at + UPLOAD_MARKER.length);
+    if (!tail.includes("f_auto") && !tail.includes("c_fill")) {
+      url.pathname = `${prefix}f_auto,q_auto,c_fill,g_auto,w_1200,h_630/${tail}`;
+    }
+    return url.toString();
+  }
+
+  if (url.hostname === "images.unsplash.com") {
+    url.searchParams.set("auto", "format");
+    url.searchParams.set("fit", "crop");
+    url.searchParams.set("w", "1200");
+    url.searchParams.set("h", "630");
+    url.searchParams.set("q", "80");
+    return url.toString();
+  }
+
+  return fallback;
+}
+
 export function cloudinaryDeliveryUrl(src: string, width?: number): string {
   if (!src.startsWith("https://")) return src;
 
