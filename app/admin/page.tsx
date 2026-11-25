@@ -28,6 +28,24 @@ const reviewStatusLabel: Record<string, string> = {
   PENDING: "قيد المراجعة", PUBLISHED: "منشور", HIDDEN: "مخفي",
 };
 
+const activityLabel: Record<string, string> = {
+  PROPERTY_PUBLISHED: "نشر وحدة",
+  PROPERTY_REJECTED: "رفض وحدة",
+  PROPERTY_DRAFT: "إرجاع وحدة لمسودة",
+  COMMISSION_CHANGED: "تغيير عمولة",
+  VERIFICATION_APPROVED: "موافقة على توثيق مالك",
+  VERIFICATION_REJECTED: "رفض توثيق مالك",
+  SELFIE_REQUESTED: "طلب سيلفي من مالك",
+};
+
+function activityTime(iso: string): string {
+  return new Intl.DateTimeFormat("ar-EG-u-nu-arab", {
+    day: "numeric", month: "long", year: "numeric",
+    hour: "2-digit", minute: "2-digit", hour12: false,
+    timeZone: "Africa/Cairo",
+  }).format(new Date(iso));
+}
+
 function ageFromBirthDate(value: string | null): number | null {
   if (!value) return null;
   const [year, month, day] = value.split("-").map(Number);
@@ -89,9 +107,9 @@ function ReviewActions({ id, status }: { id: string; status: string }) {
 export default async function AdminPage() {
   await requireRole("ADMIN");
   const repo = await getRepo();
-  const [stats, properties, bookings, verifications, reviews] = await Promise.all([
+  const [stats, properties, bookings, verifications, reviews, activities] = await Promise.all([
     repo.stats(), repo.listAllProperties(), repo.listAllBookings(),
-    repo.listVerifications(), repo.listAllReviews(),
+    repo.listVerifications(), repo.listAllReviews(), repo.listActivities(30),
   ]);
   const verificationRows = await Promise.all(verifications.map(async (verification) => ({
     verification,
@@ -303,6 +321,33 @@ export default async function AdminPage() {
                 </tr>
               ))}
               {ownerRows.length === 0 && <tr><td colSpan={4} className="py-6 text-center muted">لا يوجد ملاك بعد.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="mt-10">
+        <h2 className="mb-1 text-xl font-extrabold">سجل العمليات</h2>
+        <p className="muted mb-4 text-xs">آخر ٣٠ عملية: نشر أو رفض الوحدات، تغيير العمولة، وقرارات توثيق الملاك.</p>
+        <div className="card table-wrap">
+          <table className="w-full text-sm">
+            <thead><tr><th>التاريخ</th><th>الإجراء</th><th>التفصيل</th><th>بواسطة</th></tr></thead>
+            <tbody>
+              {activities.map((entry) => (
+                <tr key={entry.id}>
+                  <td className="whitespace-nowrap text-xs">{activityTime(entry.createdAt)}</td>
+                  <td className="font-bold">{activityLabel[entry.action] ?? entry.action}</td>
+                  <td>
+                    <span className="font-medium">{entry.target}</span>
+                    {entry.detail && <span className="muted block text-xs">{entry.detail}</span>}
+                  </td>
+                  <td>
+                    <span>{entry.actorName}</span>
+                    <span dir="ltr" className="muted block text-xs">{entry.actorEmail}</span>
+                  </td>
+                </tr>
+              ))}
+              {activities.length === 0 && <tr><td colSpan={4} className="py-6 text-center muted">لا توجد عمليات مسجّلة بعد.</td></tr>}
             </tbody>
           </table>
         </div>

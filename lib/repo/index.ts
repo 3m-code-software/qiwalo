@@ -1,4 +1,5 @@
 import type {
+  ActivityLog,
   Availability,
   Booking,
   BookingStatus,
@@ -6,6 +7,7 @@ import type {
   NewBookingInput,
   NewPropertyInput,
   NewReviewInput,
+  NewActivityInput,
   NewVerificationInput,
   OwnerVerification,
   PropertyUpdateInput,
@@ -75,6 +77,8 @@ export interface Repo {
   createVerification(input: NewVerificationInput): Promise<OwnerVerification>;
   setSelfie(userId: string, url: string): Promise<void>;
   moderateVerification(userId: string, status: VerificationStatus, note?: string | null): Promise<void>;
+  logActivity(input: NewActivityInput): Promise<void>;
+  listActivities(limit?: number): Promise<ActivityLog[]>;
   stats(): Promise<PlatformStats>;
 }
 

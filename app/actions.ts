@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { eachDayOfInterval, format, parseISO } from "date-fns";
+import { DEFAULT_COMMISSION_RATE } from "@/lib/constants";
+import { toArabicDigits } from "@/lib/format";
 import { clearSession, createSession, getSession, requireRole, type Session } from "@/lib/auth";
 import { sendBookingNotifications, sendReviewNotice, sendVerificationNotice } from "@/lib/notifications";
 import { quoteStay } from "@/lib/pricing";
@@ -291,13 +293,22 @@ export async function submitPropertyForReviewAction(form: FormData): Promise<voi
 }
 
 export async function moderatePropertyAction(_prev: FormState, form: FormData): Promise<FormState> {
-  await requireRole("ADMIN");
+  const session = await requireRole("ADMIN");
   const id = String(form.get("id") ?? "");
   const status = String(form.get("status") ?? "") as ModerationStatus;
   if (!id || !["PUBLISHED", "REJECTED", "DRAFT"].includes(status)) {
     return { error: "تعذّر تحديث الوحدة. حاول مرة أخرى." };
   }
-  await (await getRepo()).moderateProperty(id, status);
+  const repo = await getRepo();
+  const property = await repo.getPropertyById(id);
+  await repo.moderateProperty(id, status);
+  await repo.logActivity({
+    actorEmail: session.email,
+    actorName: session.name,
+    action: status === "PUBLISHED" ? "PROPERTY_PUBLISHED" : status === "REJECTED" ? "PROPERTY_REJECTED" : "PROPERTY_DRAFT",
+    target: id,
+    detail: property?.name ?? id,
+  });
   revalidatePath("/admin");
   revalidatePath("/owner");
   revalidatePath("/search");
@@ -561,14 +572,25 @@ export async function submitSelfieAction(_prev: FormState, form: FormData): Prom
 }
 
 export async function moderateVerificationAction(form: FormData): Promise<void> {
-  await requireRole("ADMIN");
+  const session = await requireRole("ADMIN");
   const userId = String(form.get("userId") ?? "");
   const status = String(form.get("status") ?? "") as VerificationStatus;
   if (!["SELFIE_REQUIRED", "SELFIE_PENDING", "APPROVED", "REJECTED"].includes(status)) return;
-  await (await getRepo()).moderateVerification(userId, status, String(form.get("note") ?? "").trim() || null);
+  const note = String(form.get("note") ?? "").trim() || null;
   const repo = await getRepo();
+  await repo.moderateVerification(userId, status, note);
   const verification = await repo.getVerification(userId);
   const user = await repo.getUserByEmail(userId);
+  const action = status === "APPROVED" ? "VERIFICATION_APPROVED"
+    : status === "REJECTED" ? "VERIFICATION_REJECTED"
+    : status === "SELFIE_REQUIRED" ? "SELFIE_REQUESTED" : null;
+  if (action) {
+    await repo.logActivity({
+      actorEmail: session.email, actorName: session.name,
+      action, target: userId,
+      detail: [user?.name ?? userId, note].filter(Boolean).join(" — ") || null,
+    });
+  }
   const stage = status === "APPROVED" ? "approved" : status === "REJECTED" ? "rejected" : status === "SELFIE_REQUIRED" ? "selfie_required" : "submitted";
   await sendVerificationNotice({
     stage, email: userId, name: user?.name,
@@ -582,11 +604,21 @@ export async function moderateVerificationAction(form: FormData): Promise<void> 
 }
 
 export async function setCommissionRateAction(form: FormData): Promise<void> {
-  await requireRole("ADMIN");
+  const session = await requireRole("ADMIN");
   const email = String(form.get("email") ?? "").trim().toLowerCase();
   const rate = Number(form.get("rate"));
   if (!email || !Number.isFinite(rate) || rate < 0 || rate > 100) return;
-  await (await getRepo()).setOwnerCommissionRate(email, rate);
+  const repo = await getRepo();
+  const owner = await repo.getUserByEmail(email);
+  const previous = owner?.commissionRate ?? DEFAULT_COMMISSION_RATE;
+  await repo.setOwnerCommissionRate(email, rate);
+  if (previous !== rate) {
+    await repo.logActivity({
+      actorEmail: session.email, actorName: session.name,
+      action: "COMMISSION_CHANGED", target: email,
+      detail: `${owner?.name ?? email}: ${toArabicDigits(previous)}٪ ← ${toArabicDigits(rate)}٪`,
+    });
+  }
   revalidatePath("/admin");
   revalidatePath("/owner");
   revalidatePath("/search");

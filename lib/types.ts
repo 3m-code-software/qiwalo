@@ -17,6 +17,33 @@ export type PaymentMethod = "CASH" | "BANK";
 export type ReviewStatus = "PENDING" | "PUBLISHED" | "HIDDEN";
 export type VerificationStatus = "PENDING" | "SELFIE_REQUIRED" | "SELFIE_PENDING" | "APPROVED" | "REJECTED";
 
+export type ActivityAction =
+  | "PROPERTY_PUBLISHED"
+  | "PROPERTY_REJECTED"
+  | "PROPERTY_DRAFT"
+  | "COMMISSION_CHANGED"
+  | "VERIFICATION_APPROVED"
+  | "VERIFICATION_REJECTED"
+  | "SELFIE_REQUESTED";
+
+export interface ActivityLog {
+  id: string;
+  actorEmail: string;
+  actorName: string;
+  action: ActivityAction;
+  target: string;
+  detail: string | null;
+  createdAt: string;
+}
+
+export interface NewActivityInput {
+  actorEmail: string;
+  actorName: string;
+  action: ActivityAction;
+  target: string;
+  detail?: string | null;
+}
+
 export interface Property {
   id: string;
   slug: string;

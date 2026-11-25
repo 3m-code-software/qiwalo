@@ -2,8 +2,8 @@ import { prisma } from "@/lib/db";
 import { makePropertySlug, slugCandidates } from "@/lib/slug";
 import type { Repo } from "./index";
 import type {
-  Availability, Booking, NewBookingInput, NewPropertyInput, NewReviewInput,
-  NewVerificationInput, OwnerVerification, PlatformStats, PriceRule, Property,
+  ActivityLog, Availability, Booking, NewActivityInput, NewBookingInput, NewPropertyInput,
+  NewReviewInput, NewVerificationInput, OwnerVerification, PlatformStats, PriceRule, Property,
   Review, SearchFilter, UserRecord, VerificationStatus,
 } from "@/lib/types";
 
@@ -79,6 +79,14 @@ function mapVerification(v: any): OwnerVerification {
 
 const include = { property: true, guest: true };
 const verificationInclude = { user: true };
+
+function mapActivity(a: any): ActivityLog {
+  return {
+    id: a.id, actorEmail: a.actorEmail, actorName: a.actorName,
+    action: a.action as ActivityLog["action"], target: a.target,
+    detail: a.detail ?? null, createdAt: a.createdAt.toISOString(),
+  };
+}
 
 async function refreshRating(propertyId: string) {
   const published = await prisma.review.findMany({ where: { propertyId, status: "PUBLISHED" as any } });
@@ -395,6 +403,13 @@ export const prismaRepo: Repo = {
       await prisma.user.update({ where: { id }, data: { commissionRate: row.commissionRate } });
       await prisma.property.updateMany({ where: { ownerId: { in: [id, row.user.email] } }, data: { commissionRate: row.commissionRate } });
     }
+  },
+  async logActivity(input: NewActivityInput) {
+    await prisma.activityLog.create({ data: { ...input, detail: input.detail ?? null } });
+  },
+  async listActivities(limit = 30) {
+    const rows = await prisma.activityLog.findMany({ orderBy: { createdAt: "desc" }, take: limit });
+    return rows.map(mapActivity);
   },
   async stats(): Promise<PlatformStats> {
     const [properties, published, pending, bookings, confirmed, guests, money] = await Promise.all([

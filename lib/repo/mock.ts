@@ -2,8 +2,10 @@ import { addDays, differenceInCalendarDays, format, parseISO, startOfDay } from 
 import { makePropertySlug, slugCandidates } from "@/lib/slug";
 import type { Repo } from "./index";
 import type {
+  ActivityLog,
   Availability,
   Booking,
+  NewActivityInput,
   NewBookingInput,
   NewPropertyInput,
   NewReviewInput,
@@ -29,6 +31,7 @@ interface MockState {
   bookings: Booking[];
   reviews: Review[];
   verifications: Map<string, OwnerVerification>;
+  activities: ActivityLog[];
 }
 
 function makeRules(base: number): PriceRule[] {
@@ -212,14 +215,14 @@ function createMockState(): MockState {
     { id: "r3", propertyId: "p3", guestId: "guest@qiwalo.test", guestName: "خالد حجز", bookingId: "b3", rating: 4, comment: "مسبح وخصوصية ممتازة، والموقع مناسب للضفة الغربية.", ownerReply: null, ownerReplyAt: null, isDemo: true, status: "PUBLISHED", createdAt: now },
   ];
 
-  return { users, props, availability, priceRules, bookings, reviews, verifications: new Map() };
+  return { users, props, availability, priceRules, bookings, reviews, verifications: new Map(), activities: [] };
 }
 
 // Next.js قد يحمّل ملفات الـ route في module graphs مختلفة داخل نفس العملية.
 // تخزين البيانات على globalThis يضمن إن كل الصفحات تشوف نفس وحدات المالك الجديدة.
 const globalStore = globalThis as unknown as { __qiwaloMockState?: MockState };
 const state = (globalStore.__qiwaloMockState ??= createMockState());
-const { users, props, availability, priceRules, bookings, reviews, verifications } = state;
+const { users, props, availability, priceRules, bookings, reviews, verifications, activities } = state;
 
 const clone = <T,>(v: T): T => structuredClone(v);
 const toUserRecord = (u: StoredUser): UserRecord => ({
@@ -446,6 +449,15 @@ export const mockRepo: Repo = {
       if (u) u.commissionRate = v?.commissionRate ?? u.commissionRate;
     }
   },
+  async logActivity(input: NewActivityInput) {
+    activities.unshift({
+      id: `a${activities.length + 1}`,
+      actorEmail: input.actorEmail, actorName: input.actorName,
+      action: input.action, target: input.target, detail: input.detail ?? null,
+      createdAt: new Date().toISOString(),
+    });
+  },
+  async listActivities(limit = 30) { return clone(activities.slice(0, limit)); },
   async stats(): Promise<PlatformStats> {
     const confirmed = bookings.filter((b) => b.status === "CONFIRMED" || b.status === "COMPLETED");
     return {

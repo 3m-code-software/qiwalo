@@ -228,3 +228,15 @@ model Payout {
   status    PayoutStatus @default(PENDING)
   createdAt DateTime     @default(now())
 }
+
+model ActivityLog {
+  id         String   @id @default(cuid())
+  actorEmail String
+  actorName  String
+  action     String
+  target     String
+  detail     String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+}
