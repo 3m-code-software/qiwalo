@@ -3,7 +3,7 @@ import { duplicatePropertyAction } from "@/app/actions";
 import OwnerReviewReplyForm from "@/components/OwnerReviewReplyForm";
 import OwnerStats from "@/components/OwnerStats";
 import { requireRole } from "@/lib/auth";
-import { CITIES, DEFAULT_COMMISSION_RATE, EXPERIENCE_DIFFICULTIES, PROPERTY_TYPES, TRANSPORT_TYPES } from "@/lib/constants";
+import { CITIES, DEFAULT_COMMISSION_RATE, EXPERIENCE_CATEGORIES, EXPERIENCE_DIFFICULTIES, PROPERTY_TYPES, TRANSPORT_TYPES } from "@/lib/constants";
 import { dateAr, money, toArabicDigits } from "@/lib/format";
 import { buildOwnerStats } from "@/lib/owner-stats";
 import { getRepo } from "@/lib/repo";
@@ -174,8 +174,8 @@ export default async function OwnerPage({ searchParams }: { searchParams: Promis
 
       <section className="mt-10" data-testid="owner-experiences">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-xl font-extrabold">تجارب سفاري الجبال</h2>
-          <Link href="/owner/experiences/new" className="btn-ghost text-sm">+ إضافة تجربة</Link>
+          <h2 className="text-xl font-extrabold">التجارب والجولات</h2>
+          <Link href="/owner/experiences/new" className="btn-ghost text-sm">+ إضافة تجربة أو جولة</Link>
         </div>
         {experiences.length === 0 ? (
           <div className="soft-card text-center">
@@ -189,7 +189,9 @@ export default async function OwnerPage({ searchParams }: { searchParams: Promis
                   <span className={`chip !bg-transparent ${statusLabel[experience.status]?.cls ?? ""}`}>
                     {statusLabel[experience.status]?.ar ?? experience.status}
                   </span>
-                  <span className="muted text-xs">{EXPERIENCE_DIFFICULTIES[experience.difficulty].ar}</span>
+                  <span className="muted text-xs">
+                    {EXPERIENCE_CATEGORIES[experience.category].ar} · {EXPERIENCE_DIFFICULTIES[experience.difficulty].ar}
+                  </span>
                 </div>
                 <h3 className="font-extrabold">{experience.name}</h3>
                 <p className="muted mt-1 text-xs">{CITIES[experience.city].ar} · {experience.mountain} · {toArabicDigits(experience.durationHours)} ساعات</p>

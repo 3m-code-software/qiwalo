@@ -30,6 +30,13 @@ export const PROPERTY_TYPES: Record<PropertyType, { ar: string; en: string }> = 
 
 export const EXPERIENCE_CATEGORIES: Record<ExperienceCategory, { ar: string; en: string }> = {
   MOUNTAIN_SAFARI: { ar: "سفاري جبال", en: "Mountain safari" },
+  MOTORCYCLE_TOUR: { ar: "جولات موتوسيكلات", en: "Motorcycle tour" },
+};
+
+/** حقل `mountain` بيُستخدم كمسار/منطقة في جولات الموتوسيكلات. */
+export const EXPERIENCE_PLACE_LABELS: Record<ExperienceCategory, string> = {
+  MOUNTAIN_SAFARI: "الجبل / المنطقة",
+  MOTORCYCLE_TOUR: "المسار / المنطقة",
 };
 
 export const EXPERIENCE_DIFFICULTIES: Record<ExperienceDifficulty, { ar: string }> = {

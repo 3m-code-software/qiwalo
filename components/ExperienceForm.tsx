@@ -1,13 +1,15 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { createExperienceAction, type FormState } from "@/app/actions";
 import {
-  CITIES, EXPERIENCE_CANCEL_POLICY, EXPERIENCE_DIFFICULTIES,
+  CITIES, EXPERIENCE_CANCEL_POLICY, EXPERIENCE_CATEGORIES, EXPERIENCE_DIFFICULTIES, EXPERIENCE_PLACE_LABELS,
 } from "@/lib/constants";
+import type { ExperienceCategory } from "@/lib/types";
 
 export default function ExperienceForm() {
   const [state, action, pending] = useActionState<FormState, FormData>(createExperienceAction, {});
+  const [category, setCategory] = useState<ExperienceCategory>("MOUNTAIN_SAFARI");
 
   return (
     <form action={action} className="space-y-5">
@@ -22,14 +24,32 @@ export default function ExperienceForm() {
           <input name="name" className="input" required minLength={3} placeholder="مثال: سفاري جبل السلسلة عند الغروب" />
         </label>
         <label>
+          <span className="label">نوع التجربة</span>
+          <select
+            name="category"
+            className="input"
+            value={category}
+            onChange={(event) => setCategory(event.target.value as ExperienceCategory)}
+          >
+            {Object.entries(EXPERIENCE_CATEGORIES).map(([key, value]) => (
+              <option key={key} value={key}>{value.ar}</option>
+            ))}
+          </select>
+        </label>
+        <label>
           <span className="label">المدينة</span>
           <select name="city" className="input" defaultValue="LUXOR">
             {Object.entries(CITIES).map(([key, value]) => <option key={key} value={key}>{value.ar}</option>)}
           </select>
         </label>
-        <label>
-          <span className="label">الجبل / المنطقة</span>
-          <input name="mountain" className="input" required placeholder="جبل السلسلة" />
+        <label className="sm:col-span-2">
+          <span className="label">{EXPERIENCE_PLACE_LABELS[category]}</span>
+          <input
+            name="mountain"
+            className="input"
+            required
+            placeholder={category === "MOTORCYCLE_TOUR" ? "الكورنيش ← وادي الملوك" : "جبل السلسلة"}
+          />
         </label>
         <label className="sm:col-span-2">
           <span className="label">نقطة اللقاء</span>

@@ -18,7 +18,7 @@ export type ReviewStatus = "PENDING" | "PUBLISHED" | "HIDDEN";
 export type VerificationStatus = "PENDING" | "SELFIE_REQUIRED" | "SELFIE_PENDING" | "APPROVED" | "REJECTED";
 
 /** السفاري في قيوالو يعني رحلات الصحراء والجبال، مش سفاري حيوانات. */
-export type ExperienceCategory = "MOUNTAIN_SAFARI";
+export type ExperienceCategory = "MOUNTAIN_SAFARI" | "MOTORCYCLE_TOUR";
 export type ExperienceDifficulty = "EASY" | "MODERATE" | "HARD";
 
 /** النقل كيان مستقل عن الوحدات والتجارب: سيارة، كوستر، باص أو موتوسيكل. */
@@ -197,6 +197,7 @@ export interface Experience {
 export interface NewExperienceInput {
   ownerId: string;
   name: string;
+  category: ExperienceCategory;
   city: CityKey;
   mountain: string;
   meetingPoint: string;
@@ -213,6 +214,7 @@ export interface NewExperienceInput {
 export interface ExperienceBookingDetail {
   experienceId: string;
   experienceName: string;
+  category: ExperienceCategory;
   city: CityKey;
   mountain: string;
   meetingPoint: string;

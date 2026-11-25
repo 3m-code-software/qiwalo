@@ -25,6 +25,10 @@ export default async function BookingPage({ params, searchParams }: Props) {
   ]);
   if (!booking) notFound();
 
+  const experienceCategory = booking.experience?.category ?? "MOUNTAIN_SAFARI";
+  const experienceLabel = experienceCategory === "MOTORCYCLE_TOUR" ? "جولات الموتوسيكلات" : "سفاري الجبال";
+  const experiencePlaceLabel = experienceCategory === "MOTORCYCLE_TOUR" ? "المسار" : "الجبل";
+
   const reviews = await repo.listAllReviews();
   const alreadyReviewed = reviews.some((r) => r.bookingId === booking.id);
   const confirmed = booking.status === "CONFIRMED" || booking.status === "COMPLETED";
@@ -84,7 +88,7 @@ export default async function BookingPage({ params, searchParams }: Props) {
           <div className="flex justify-between"><span className="muted">رسوم الخدمة</span><span>{money(booking.serviceFee)}</span></div>
           {booking.experience && (
             <div className="flex justify-between" data-testid="booking-experience-line">
-              <span className="muted">سفاري الجبال · {toArabicDigits(booking.experience.guests)} أفراد</span>
+              <span className="muted">{experienceLabel} · {toArabicDigits(booking.experience.guests)} أفراد</span>
               <span>{money(booking.experience.total)}</span>
             </div>
           )}
@@ -100,12 +104,12 @@ export default async function BookingPage({ params, searchParams }: Props) {
 
       {booking.experience && (
         <div className="soft-card mt-5" data-testid="booking-experience">
-          <h2 className="mb-4 text-lg font-extrabold text-navy">سفاري الجبال</h2>
+          <h2 className="mb-4 text-lg font-extrabold text-navy">{experienceLabel}</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <p className="muted text-xs">التجربة</p>
               <p className="font-bold">{booking.experience.experienceName}</p>
-              <p className="muted text-xs">{booking.experience.mountain} · {CITIES[booking.experience.city].ar}</p>
+              <p className="muted text-xs">{experiencePlaceLabel}: {booking.experience.mountain} · {CITIES[booking.experience.city].ar}</p>
             </div>
             <div>
               <p className="muted text-xs">نقطة اللقاء</p>

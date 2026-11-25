@@ -20,8 +20,8 @@ export default async function AdminExperiencesPage() {
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <span className="chip">لوحة الإدارة</span>
-          <h1 className="section-title mt-2">مراجعة سفاري الجبال</h1>
-          <p className="muted mt-1 text-sm">لا تُنشر أي تجربة قبل مراجعة مستندها. لا يُعرض المستند للضيوف.</p>
+          <h1 className="section-title mt-2">مراجعة التجارب والجولات</h1>
+          <p className="muted mt-1 text-sm">سفاري الجبال وجولات الموتوسيكلات. لا تُنشر أي تجربة قبل مراجعة مستندها، والمستند لا يُعرض للضيوف.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href="/admin" className="btn-ghost text-sm">لوحة الإدارة</Link>

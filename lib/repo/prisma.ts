@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { makePropertySlug, slugCandidates } from "@/lib/slug";
 import type { Repo } from "./index";
 import type {
-  ActivityLog, Availability, Booking, Experience, NewActivityInput, NewBookingInput, NewExperienceInput, NewPropertyInput,
+  ActivityLog, Availability, Booking, CityKey, Experience, ExperienceCategory, NewActivityInput, NewBookingInput, NewExperienceInput, NewPropertyInput,
   NewReviewInput, NewTransportInput, NewVerificationInput, OwnerVerification, PlatformStats, PriceRule, Property,
   Review, SearchFilter, Transport, UserRecord, VerificationStatus,
 } from "@/lib/types";
@@ -206,9 +206,13 @@ export const prismaRepo: Repo = {
   async moderateProperty(id, status) {
     await prisma.property.update({ where: { id }, data: { status: status as any } });
   },
-  async listPublishedExperiences(city) {
+  async listPublishedExperiences(city?: CityKey, category?: ExperienceCategory) {
     const rows = await prisma.experience.findMany({
-      where: { status: "PUBLISHED" as any, ...(city ? { city: city as any } : {}) },
+      where: {
+        status: "PUBLISHED" as any,
+        ...(city ? { city: city as any } : {}),
+        ...(category ? { category: category as any } : {}),
+      },
       include: { owner: true }, orderBy: { createdAt: "desc" },
     });
     return rows.map(mapExperience);
@@ -232,7 +236,7 @@ export const prismaRepo: Repo = {
     const ownerId = await resolveUserId(input.ownerId);
     const row = await prisma.experience.create({
       data: {
-        ownerId, name: input.name, category: "MOUNTAIN_SAFARI" as any, city: input.city as any,
+        ownerId, name: input.name, category: input.category as any, city: input.city as any,
         mountain: input.mountain, meetingPoint: input.meetingPoint, durationHours: input.durationHours,
         capacity: input.capacity, pricePerPerson: input.pricePerPerson, includes: input.includes,
         difficulty: input.difficulty as any, bestSeason: input.bestSeason, cancelPolicy: input.cancelPolicy,

@@ -74,6 +74,7 @@ enum VerificationStatus {
 
 enum ExperienceCategory {
   MOUNTAIN_SAFARI
+  MOTORCYCLE_TOUR
 }
 
 enum ExperienceDifficulty {

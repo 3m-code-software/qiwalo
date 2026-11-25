@@ -13,7 +13,7 @@ import { getRepo } from "@/lib/repo";
 import { createTelegramActivationToken } from "@/lib/telegram";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import type {
-  BookingStatus, CityKey, ExperienceBookingDetail, ExperienceDifficulty, ModerationStatus,
+  BookingStatus, CityKey, ExperienceBookingDetail, ExperienceCategory, ExperienceDifficulty, ModerationStatus,
   PaymentMethod, PropertyType, PropertyUpdateInput, ReviewStatus, Role, TransportBookingDetail,
   TransportType, VerificationStatus,
 } from "@/lib/types";
@@ -361,6 +361,7 @@ export async function moderatePropertyAction(_prev: FormState, form: FormData): 
 export async function createExperienceAction(_prev: FormState, form: FormData): Promise<FormState> {
   const session = await requireRole("OWNER");
   const name = String(form.get("name") ?? "").trim();
+  const category = String(form.get("category") ?? "MOUNTAIN_SAFARI") as ExperienceCategory;
   const city = String(form.get("city") ?? "") as CityKey;
   const mountain = String(form.get("mountain") ?? "").trim();
   const meetingPoint = String(form.get("meetingPoint") ?? "").trim();
@@ -375,7 +376,10 @@ export async function createExperienceAction(_prev: FormState, form: FormData): 
   )].slice(0, 8);
 
   if (name.length < 3 || !mountain || !meetingPoint || !bestSeason) {
-    return { error: "اسم التجربة والجبل ونقطة اللقاء والموسم مطلوبة." };
+    return { error: "اسم التجربة والمسار أو الجبل ونقطة اللقاء والموسم مطلوبة." };
+  }
+  if (category !== "MOUNTAIN_SAFARI" && category !== "MOTORCYCLE_TOUR") {
+    return { error: "نوع التجربة غير صحيح." };
   }
   if (city !== "LUXOR" && city !== "ASWAN") return { error: "اختر مدينة صحيحة." };
   if (!Number.isFinite(durationHours) || durationHours < 1 || durationHours > 24) {
@@ -389,7 +393,7 @@ export async function createExperienceAction(_prev: FormState, form: FormData): 
 
   const repo = await getRepo();
   await repo.createExperience({
-    ownerId: session.email, name, city, mountain, meetingPoint, durationHours, capacity,
+    ownerId: session.email, name, category, city, mountain, meetingPoint, durationHours, capacity,
     pricePerPerson, includes, difficulty, bestSeason, licenseDocUrl,
     cancelPolicy: String(form.get("cancelPolicy") ?? "").trim() || EXPERIENCE_CANCEL_POLICY,
   });
@@ -420,7 +424,8 @@ export async function moderateExperienceAction(_prev: FormState, form: FormData)
   revalidatePath("/owner");
   revalidatePath("/search");
   revalidatePath("/");
-  return { ok: status === "PUBLISHED" ? "تم نشر تجربة سفاري الجبال ✅" : "تم تحديث التجربة ✅" };
+  const label = experience?.category === "MOTORCYCLE_TOUR" ? "جولة الموتوسيكلات" : "تجربة سفاري الجبال";
+  return { ok: status === "PUBLISHED" ? `تم نشر ${label} ✅` : "تم تحديث التجربة ✅" };
 }
 
 // ===== Transport =====
@@ -569,7 +574,7 @@ export async function confirmBookingAction(_prev: FormState, form: FormData): Pr
     }
     const experienceTotal = experience.pricePerPerson * guests;
     experienceDetail = {
-      experienceId: experience.id, experienceName: experience.name, city: experience.city,
+      experienceId: experience.id, experienceName: experience.name, category: experience.category, city: experience.city,
       mountain: experience.mountain, meetingPoint: experience.meetingPoint,
       durationHours: experience.durationHours, pricePerPerson: experience.pricePerPerson,
       guests, total: experienceTotal,

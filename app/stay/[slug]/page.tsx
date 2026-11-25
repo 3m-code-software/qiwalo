@@ -70,11 +70,12 @@ export default async function StayPage({ params, searchParams }: Props) {
   const property = await repo.getPropertyBySlug(slug);
   if (!property || property.status !== "PUBLISHED") notFound();
 
-  const [rules, availability, reviews, experiences, transports] = await Promise.all([
+  const [rules, availability, reviews, safaris, motorcycleTours, transports] = await Promise.all([
     repo.getPriceRules(property.id),
     repo.getAvailability(property.id),
     repo.listReviewsForProperty(property.id),
-    repo.listPublishedExperiences(property.city),
+    repo.listPublishedExperiences(property.city, "MOUNTAIN_SAFARI"),
+    repo.listPublishedExperiences(property.city, "MOTORCYCLE_TOUR"),
     repo.listPublishedTransports(property.city),
   ]);
   const checkIn = /^\d{4}-\d{2}-\d{2}$/.test(one(sp.checkIn)) ? one(sp.checkIn) : "";
@@ -212,12 +213,23 @@ export default async function StayPage({ params, searchParams }: Props) {
           <ReviewsTab reviews={reviews} />
 
           <ExperienceAddOn
-            experiences={experiences}
+            experiences={safaris}
             propertySlug={property.slug}
             checkIn={checkIn}
             checkOut={checkOut}
             guests={guests}
             transportId={transportId}
+            category="MOUNTAIN_SAFARI"
+          />
+
+          <ExperienceAddOn
+            experiences={motorcycleTours}
+            propertySlug={property.slug}
+            checkIn={checkIn}
+            checkOut={checkOut}
+            guests={guests}
+            transportId={transportId}
+            category="MOTORCYCLE_TOUR"
           />
 
           <TransportAddOn

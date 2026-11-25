@@ -41,6 +41,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
     : null;
   const experienceTotal = experience ? experience.pricePerPerson * guests : 0;
   const experienceCommission = experience ? Math.round(experienceTotal * (experience.commissionRate / 100)) : 0;
+  const experienceLabel = experience?.category === "MOTORCYCLE_TOUR" ? "جولات الموتوسيكلات" : "سفاري الجبال";
   const transport = requestedTransport
     && requestedTransport.status === "PUBLISHED"
     && requestedTransport.city === property.city
@@ -99,7 +100,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
             {experience && (
               <div className="mt-4 rounded-xl border border-gold/40 bg-gold-soft p-4" data-testid="checkout-experience">
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-extrabold text-navy">سفاري الجبال</p>
+                  <p className="font-extrabold text-navy">{experienceLabel}</p>
                   <Link href={`/checkout?${withoutExperience.toString()}`} className="text-xs font-bold text-nile hover:text-gold">إزالة ✕</Link>
                 </div>
                 <p className="text-sm font-bold">{experience.name}</p>
@@ -124,7 +125,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
                 commissionRate={property.commissionRate}
                 addOns={[
                   ...(experience ? [{
-                    label: `سفاري الجبال (${experience.name})`,
+                    label: `${experienceLabel} (${experience.name})`,
                     amount: experienceTotal,
                     commission: experienceCommission,
                   }] : []),

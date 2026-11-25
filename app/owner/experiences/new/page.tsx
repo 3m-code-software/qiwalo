@@ -12,8 +12,8 @@ export default async function NewExperiencePage() {
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <span className="eyebrow !text-gold">خدمات المالك</span>
-          <h1 className="section-title mt-2">أضف تجربة سفاري جبال</h1>
-          <p className="muted mt-1 text-sm">السفاري هنا رحلات صحراء وجبال، مش سفاري حيوانات.</p>
+          <h1 className="section-title mt-2">أضف تجربة أو جولة</h1>
+          <p className="muted mt-1 text-sm">سفاري الجبال أو جولات الموتوسيكلات — كلها بتراجع من الإدارة قبل النشر.</p>
         </div>
         <Link href="/owner" className="btn-ghost text-sm">رجوع للوحة المالك</Link>
       </div>

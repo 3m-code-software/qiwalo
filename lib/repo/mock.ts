@@ -6,7 +6,9 @@ import type {
   ActivityLog,
   Availability,
   Booking,
+  CityKey,
   Experience,
+  ExperienceCategory,
   NewActivityInput,
   NewBookingInput,
   NewExperienceInput,
@@ -195,6 +197,24 @@ function seedExperiences(): Experience[] {
       licenseDocUrl: "https://res.cloudinary.com/demo/raw/upload/v1/qiwalo/docs/aswan-mountain-review.pdf",
       status: "PUBLISHED", commissionRate: 12, createdAt: now,
     },
+    {
+      id: "e3", ownerId: "owner@qiwalo.test", ownerName: "محمد مالك", name: "جولة موتوسيكلات غروب الأقصر",
+      category: "MOTORCYCLE_TOUR", city: "LUXOR", mountain: "الكورنيش ← وادي الملوك",
+      meetingPoint: "أمام فندق نيل فيو — الكورنيش", durationHours: 3, capacity: 4, pricePerPerson: 450,
+      includes: ["دراجة للإيجار", "خوذة واقية", "مرشد مرافق", "مياه معدنية"],
+      difficulty: "MODERATE", bestSeason: "أكتوبر — أبريل", cancelPolicy: EXPERIENCE_CANCEL_POLICY,
+      licenseDocUrl: "https://res.cloudinary.com/demo/raw/upload/v1/qiwalo/docs/luxor-motorcycle-review.pdf",
+      status: "PUBLISHED", commissionRate: 12, createdAt: now,
+    },
+    {
+      id: "e4", ownerId: "owner@qiwalo.test", ownerName: "محمد مالك", name: "جولة موتوسيكلات جزيرة أسوان",
+      category: "MOTORCYCLE_TOUR", city: "ASWAN", mountain: "مينا أسوان ← جزيرة الفنتين",
+      meetingPoint: "بوابة مينا أسوان السياحي", durationHours: 4, capacity: 6, pricePerPerson: 400,
+      includes: ["دراجة للإيجار", "خوذة واقية", "مرشد محلي", "العودة للمينا"],
+      difficulty: "EASY", bestSeason: "نوفمبر — مارس", cancelPolicy: EXPERIENCE_CANCEL_POLICY,
+      licenseDocUrl: "https://res.cloudinary.com/demo/raw/upload/v1/qiwalo/docs/aswan-motorcycle-review.pdf",
+      status: "PUBLISHED", commissionRate: 12, createdAt: now,
+    },
   ];
 }
 
@@ -359,8 +379,10 @@ export const mockRepo: Repo = {
     return clone(p);
   },
   async moderateProperty(id, status) { const p = props.find((x) => x.id === id); if (p) p.status = status; },
-  async listPublishedExperiences(city) {
-    return clone(experiences.filter((e) => e.status === "PUBLISHED" && (!city || e.city === city)));
+  async listPublishedExperiences(city?: CityKey, category?: ExperienceCategory) {
+    return clone(experiences.filter((e) => e.status === "PUBLISHED"
+      && (!city || e.city === city)
+      && (!category || e.category === category)));
   },
   async listAllExperiences() { return clone(experiences); },
   async listExperiencesForOwner(ownerId) {
@@ -375,7 +397,7 @@ export const mockRepo: Repo = {
       id: `e${experiences.length + 1}`,
       ownerId: input.ownerId,
       ownerName: users.find((u) => u.email === input.ownerId)?.name ?? "مالك جديد",
-      name: input.name, category: "MOUNTAIN_SAFARI", city: input.city, mountain: input.mountain,
+      name: input.name, category: input.category, city: input.city, mountain: input.mountain,
       meetingPoint: input.meetingPoint, durationHours: input.durationHours, capacity: input.capacity,
       pricePerPerson: input.pricePerPerson, includes: [...input.includes], difficulty: input.difficulty,
       bestSeason: input.bestSeason, cancelPolicy: input.cancelPolicy, licenseDocUrl: input.licenseDocUrl,
