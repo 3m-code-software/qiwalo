@@ -95,6 +95,12 @@ export default function JourneyStory() {
   const [active, setActive] = useState(0);
   const [reducedMotion, setReducedMotion] = useState(false);
   const stepRefs = useRef<Array<HTMLLIElement | null>>([]);
+  const jumpingRef = useRef(false);
+  const jumpTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (jumpTimer.current) clearTimeout(jumpTimer.current);
+  }, []);
 
   useEffect(() => {
     const query = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -109,6 +115,7 @@ export default function JourneyStory() {
     const nodes = stepRefs.current.filter((node): node is HTMLLIElement => Boolean(node));
     const observer = new IntersectionObserver(
       (entries) => {
+        if (jumpingRef.current) return; // أثناء القفز البرمجي ما نخليش الـ observer يلفّر بالمراحل اللي بتمرّ تحتها
         entries.forEach((entry) => {
           if (!entry.isIntersecting) return;
           const index = nodes.indexOf(entry.target as HTMLLIElement);
@@ -122,6 +129,20 @@ export default function JourneyStory() {
   }, [reducedMotion]);
 
   const current = STAGES[active];
+
+  /** قفزة للمرحلة المطلوبة: تحديث فوري للصورة، ثم سكرول ناعم مع تجاهل المراحل اللي بتمرّ تحتها. */
+  const jumpTo = (index: number) => {
+    const node = stepRefs.current[index];
+    if (!node) return;
+    setActive(index);
+    jumpingRef.current = true;
+    if (jumpTimer.current) clearTimeout(jumpTimer.current);
+    jumpTimer.current = setTimeout(() => {
+      jumpingRef.current = false;
+      jumpTimer.current = null;
+    }, 1200);
+    node.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-12 md:py-24" aria-labelledby="journey-title">
@@ -194,13 +215,22 @@ export default function JourneyStory() {
                   <span className="eyebrow !text-gold-bright">
                     المرحلة {toArabicDigits(active + 1)} من {toArabicDigits(STAGES.length)}
                   </span>
-                  <span className="flex shrink-0 gap-1" role="img" aria-label={`تقدم الرحلة: المرحلة ${toArabicDigits(active + 1)} من ${toArabicDigits(STAGES.length)}`}>
+                  <span className="flex shrink-0 items-center" role="group" aria-label={`تقدم الرحلة: المرحلة ${toArabicDigits(active + 1)} من ${toArabicDigits(STAGES.length)}`}>
                     {STAGES.map((stage, i) => (
-                      <span
+                      <button
                         key={stage.id}
-                        aria-hidden
-                        className={`h-1.5 rounded-full transition-all duration-300 ${i === active ? "w-5 bg-gold-bright" : "w-1.5 bg-white/40"}`}
-                      />
+                        type="button"
+                        onClick={() => jumpTo(i)}
+                        aria-label={`الانتقال إلى المرحلة ${toArabicDigits(i + 1)}: ${stage.title}`}
+                        aria-current={i === active ? "step" : undefined}
+                        title={stage.title}
+                        className="flex h-6 w-5 items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold-bright"
+                      >
+                        <span
+                          aria-hidden
+                          className={`block h-1.5 rounded-full transition-all duration-300 ${i === active ? "w-4 bg-gold-bright" : "w-1.5 bg-white/40 hover:bg-white/70"}`}
+                        />
+                      </button>
                     ))}
                   </span>
                 </div>
@@ -223,7 +253,7 @@ export default function JourneyStory() {
                 <span className="absolute -right-[calc(1.5rem+7px)] top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border-2 border-gold bg-ivory md:-right-[calc(2rem+7px)]" aria-hidden />
                 <button
                   type="button"
-                  onClick={() => setActive(i)}
+                  onClick={() => jumpTo(i)}
                   aria-current={active === i ? "step" : undefined}
                   className={`text-right transition-opacity duration-300 ${active === i ? "opacity-100" : "opacity-50 hover:opacity-80"}`}
                 >

@@ -87,7 +87,26 @@ test("ملخص الرحلة وبيانات كل مرحلة + صورة لاصقة
   expect(box!.y).toBeGreaterThanOrEqual(0);
   expect(box!.y).toBeLessThan(140);
 
-  const progress = section.getByRole("img", { name: /تقدم الرحلة/ });
+  const progress = section.getByRole("group", { name: /تقدم الرحلة/ });
   await expect(progress).toBeVisible();
-  await expect(progress.locator("span")).toHaveCount(8);
+  await expect(progress.getByRole("button")).toHaveCount(8);
+  await expect(progress.getByRole("button", { name: /المرحلة ٤/ })).toHaveAttribute("aria-current", "step");
+});
+
+test("الضغط على مؤشر التقدّم أو عنوان مرحلة يقفز للمرحلة المطلوبة", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  const section = journey(page);
+
+  const progress = section.getByRole("group", { name: /تقدم الرحلة/ });
+  await progress.getByRole("button", { name: /المرحلة ٦: جولة النيل/ }).click();
+  await expect(section.locator("h3").first()).toHaveText("جولة النيل", { timeout: 10_000 });
+  await expect(section.locator("ol > li").nth(5).getByRole("button")).toHaveAttribute("aria-current", "step");
+  await expect(progress.getByRole("button", { name: /المرحلة ٦/ })).toHaveAttribute("aria-current", "step");
+
+  await section.locator("ol > li").nth(7).getByRole("heading").click();
+  await expect(section.locator("h3").first()).toHaveText("الرجوع والتقييم", { timeout: 10_000 });
+  const box = await section.locator('[class*="aspect-"]').first().boundingBox();
+  expect(box!.y).toBeGreaterThanOrEqual(0);
+  expect(box!.y).toBeLessThan(140);
 });
