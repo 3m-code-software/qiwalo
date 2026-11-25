@@ -46,6 +46,38 @@ function activityTime(iso: string): string {
   }).format(new Date(iso));
 }
 
+const bookingStatusLabel: Record<string, string> = {
+  PENDING: "قيد الانتظار", CONFIRMED: "مؤكدة", COMPLETED: "مكتملة", CANCELLED: "ملغية",
+};
+
+type AdminSP = Record<string, string | string[] | undefined>;
+
+const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
+
+function pickStatus(v: string | string[] | undefined, allowed: readonly string[]): string {
+  const value = one(v);
+  return allowed.includes(value) ? value : "";
+}
+
+function matches(q: string, values: Array<string | null | undefined>): boolean {
+  return !q || values.some((value) => String(value ?? "").toLowerCase().includes(q));
+}
+
+/** Keep the current filters when toggling "expand all" or jumping between sections. */
+function adminHref(sp: AdminSP, changes: Record<string, string | undefined> = {}, hash = ""): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(sp)) {
+    if (key in changes) continue;
+    const v = Array.isArray(value) ? value[0] : value;
+    if (v) params.set(key, v);
+  }
+  for (const [key, value] of Object.entries(changes)) {
+    if (value) params.set(key, value);
+  }
+  const query = params.toString();
+  return `/admin${query ? `?${query}` : ""}${hash}`;
+}
+
 function ageFromBirthDate(value: string | null): number | null {
   if (!value) return null;
   const [year, month, day] = value.split("-").map(Number);
@@ -104,8 +136,17 @@ function ReviewActions({ id, status }: { id: string; status: string }) {
   );
 }
 
-export default async function AdminPage() {
+export default async function AdminPage({ searchParams }: { searchParams: Promise<AdminSP> }) {
   await requireRole("ADMIN");
+  const sp = await searchParams;
+  const q = one(sp.q).trim().toLowerCase();
+  const propertyStatus = pickStatus(sp.propertyStatus, ["DRAFT", "PENDING", "PUBLISHED", "REJECTED"]);
+  const bookingStatus = pickStatus(sp.bookingStatus, ["PENDING", "CONFIRMED", "COMPLETED", "CANCELLED"]);
+  const verificationStatus = pickStatus(sp.verificationStatus, ["PENDING", "SELFIE_REQUIRED", "SELFIE_PENDING", "APPROVED", "REJECTED"]);
+  const reviewStatus = pickStatus(sp.reviewStatus, ["PENDING", "PUBLISHED", "HIDDEN"]);
+  const hasFilter = Boolean(q || propertyStatus || bookingStatus || verificationStatus || reviewStatus);
+  const expandAll = one(sp.open) === "all";
+
   const repo = await getRepo();
   const [stats, properties, bookings, verifications, reviews, activities] = await Promise.all([
     repo.stats(), repo.listAllProperties(), repo.listAllBookings(),
@@ -128,6 +169,29 @@ export default async function AdminPage() {
   })));
   const propertyNames = new Map(properties.map((p) => [p.id, p.name]));
 
+  const filteredProperties = properties.filter((p) =>
+    (!propertyStatus || p.status === propertyStatus) &&
+    matches(q, [p.name, p.ownerName, p.address, CITIES[p.city]?.ar, PROPERTY_TYPES[p.type]?.ar, statusLabel[p.status], p.id]),
+  );
+  const filteredBookings = bookings.filter((b) =>
+    (!bookingStatus || b.status === bookingStatus) &&
+    matches(q, [b.reference, b.guestName, b.propertyName, bookingStatusLabel[b.status], b.status, b.paymentStatus]),
+  );
+  const filteredVerifications = verificationRows.filter(({ verification: v, user }) =>
+    (!verificationStatus || v.status === verificationStatus) &&
+    matches(q, [user?.name, v.userId, v.phoneAlt, v.nationality, v.note, verificationStatusLabel[v.status], v.status]),
+  );
+  const filteredReviews = reviews.filter((r) =>
+    (!reviewStatus || r.status === reviewStatus) &&
+    matches(q, [propertyNames.get(r.propertyId), r.guestName, r.comment, reviewStatusLabel[r.status], r.status]),
+  );
+  const filteredOwners = ownerRows.filter((o) => matches(q, [o.name, o.email]));
+  const filteredActivities = activities.filter((a) =>
+    matches(q, [activityLabel[a.action], a.action, a.actorName, a.actorEmail, a.target, a.detail]),
+  );
+  const openSection = (id: string) => expandAll || hasFilter || id === "properties";
+  const emptyMessage = hasFilter ? "لا توجد نتائج مطابقة للبحث أو الفلتر." : undefined;
+
   return (
     <AdminNoticeProvider>
     <div className="mx-auto max-w-7xl px-4 py-10">
@@ -147,13 +211,72 @@ export default async function AdminPage() {
         <div className="soft-card"><p className="muted text-xs">عمولة المنصة</p><p className="mt-1 text-2xl font-black text-nile">{money(stats.commission)}</p><p className="muted text-xs">{stats.guests} ضيوف</p></div>
       </div>
 
-      <section className="mt-10">
-        <h2 className="mb-4 text-xl font-extrabold">مراجعة الوحدات</h2>
+      <section className="soft-card sticky top-[68px] z-30 mt-6 !p-3" aria-label="بحث وتصفية لوحة الإدارة">
+        <div className="mb-3 flex flex-wrap items-center gap-2 border-b border-[var(--line)] pb-3">
+          <span className="muted text-xs">انتقال سريع:</span>
+          {[
+            { id: "properties", label: "الوحدات", count: filteredProperties.length, total: properties.length },
+            { id: "bookings", label: "الحجوزات", count: filteredBookings.length, total: bookings.length },
+            { id: "verifications", label: "التوثيق", count: filteredVerifications.length, total: verificationRows.length },
+            { id: "reviews", label: "التقييمات", count: filteredReviews.length, total: reviews.length },
+            { id: "commissions", label: "العمولة", count: filteredOwners.length, total: ownerRows.length },
+            { id: "activity", label: "السجل", count: filteredActivities.length, total: activities.length },
+          ].map((item) => (
+            <a key={item.id} href={`#${item.id}`} className="chip transition hover:border-gold">
+              {item.label} <span className="muted">{toArabicDigits(item.count)}/{toArabicDigits(item.total)}</span>
+            </a>
+          ))}
+          <Link href={adminHref(sp, { open: expandAll ? undefined : "all" })} className="chip chip-gold transition hover:border-gold">
+            {expandAll ? "طي الأقسام" : "فتح كل الأقسام"}
+          </Link>
+          {hasFilter && <Link href="/admin" className="chip transition hover:border-gold">مسح الفلتر ✕</Link>}
+        </div>
+        <form method="get" className="flex flex-wrap items-end gap-2">
+          <label className="min-w-[200px] flex-1 text-xs font-bold">
+            <span className="muted block pb-1">بحث شامل</span>
+            <input name="q" defaultValue={one(sp.q)} className="input !w-full !py-2 text-sm" placeholder="اسم وحدة، مالك، مرجع حجز، بريد، تعليق..." />
+          </label>
+          <label className="min-w-[140px] text-xs font-bold">
+            <span className="muted block pb-1">حالة الوحدة</span>
+            <select name="propertyStatus" defaultValue={propertyStatus} className="input !w-full !py-2 text-sm">
+              <option value="">كل الحالات</option>
+              {Object.entries(statusLabel).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </select>
+          </label>
+          <label className="min-w-[140px] text-xs font-bold">
+            <span className="muted block pb-1">حالة الحجز</span>
+            <select name="bookingStatus" defaultValue={bookingStatus} className="input !w-full !py-2 text-sm">
+              <option value="">كل الحالات</option>
+              {Object.entries(bookingStatusLabel).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </select>
+          </label>
+          <label className="min-w-[140px] text-xs font-bold">
+            <span className="muted block pb-1">حالة التوثيق</span>
+            <select name="verificationStatus" defaultValue={verificationStatus} className="input !w-full !py-2 text-sm">
+              <option value="">كل الحالات</option>
+              {Object.entries(verificationStatusLabel).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </select>
+          </label>
+          <label className="min-w-[140px] text-xs font-bold">
+            <span className="muted block pb-1">حالة التقييم</span>
+            <select name="reviewStatus" defaultValue={reviewStatus} className="input !w-full !py-2 text-sm">
+              <option value="">كل الحالات</option>
+              {Object.entries(reviewStatusLabel).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </select>
+          </label>
+          <button type="submit" className="btn-primary !py-2 text-sm">بحث</button>
+        </form>
+      </section>
+
+      <details id="properties" className="mt-6 scroll-mt-[290px]" open={openSection("properties")}>
+        <summary className="mb-4 cursor-pointer list-none text-xl font-extrabold [&::-webkit-details-marker]:hidden">
+          مراجعة الوحدات <span className="chip">{toArabicDigits(filteredProperties.length)}/{toArabicDigits(properties.length)}</span>
+        </summary>
         <div className="card table-wrap">
           <table className="w-full text-sm">
             <thead><tr><th>الوحدة</th><th>المالك</th><th>المدينة</th><th>النوع</th><th>السعر</th><th>الحالة</th><th>إجراء</th></tr></thead>
             <tbody>
-              {properties.map((p) => (
+              {filteredProperties.map((p) => (
                 <tr key={p.id}>
                   <td className="font-bold">{p.name}</td>
                   <td>{p.ownerName}</td>
@@ -184,18 +307,21 @@ export default async function AdminPage() {
                   </td>
                 </tr>
               ))}
+              {filteredProperties.length === 0 && <tr><td colSpan={7} className="py-6 text-center muted">{emptyMessage ?? "لا توجد وحدات بعد."}</td></tr>}
             </tbody>
           </table>
         </div>
-      </section>
+      </details>
 
-      <section className="mt-10">
-        <h2 className="mb-4 text-xl font-extrabold">أحدث الحجوزات</h2>
+      <details id="bookings" className="mt-6 scroll-mt-[290px]" open={openSection("bookings")}>
+        <summary className="mb-4 cursor-pointer list-none text-xl font-extrabold [&::-webkit-details-marker]:hidden">
+          أحدث الحجوزات <span className="chip">{toArabicDigits(filteredBookings.length)}/{toArabicDigits(bookings.length)}</span>
+        </summary>
         <div className="card table-wrap">
           <table className="w-full text-sm">
             <thead><tr><th>المرجع</th><th>الضيف</th><th>الوحدة</th><th>الوصول</th><th>الإجمالي</th><th>العمولة</th><th>الحالة</th><th>الدفع</th><th>إجراء</th></tr></thead>
             <tbody>
-              {bookings.slice(0, 20).map((b) => (
+              {filteredBookings.slice(0, 20).map((b) => (
                 <tr key={b.id}>
                   <td dir="ltr" className="font-bold text-nile">{b.reference}</td>
                   <td>{b.guestName}</td>
@@ -225,15 +351,17 @@ export default async function AdminPage() {
                   </td>
                 </tr>
               ))}
-              {bookings.length === 0 && <tr><td colSpan={9} className="py-6 text-center muted">لا توجد حجوزات بعد.</td></tr>}
+              {filteredBookings.length === 0 && <tr><td colSpan={9} className="py-6 text-center muted">{emptyMessage ?? "لا توجد حجوزات بعد."}</td></tr>}
             </tbody>
           </table>
         </div>
         <p className="muted mt-2 text-xs">يمكن للضيف تقييم إقامته بعد تحويل الحجز إلى حالة «مكتمل».</p>
-      </section>
+      </details>
 
-      <section className="mt-10">
-        <h2 className="mb-4 text-xl font-extrabold">طلبات توثيق الملاك</h2>
+      <details id="verifications" className="mt-6 scroll-mt-[290px]" open={openSection("verifications")}>
+        <summary className="mb-4 cursor-pointer list-none text-xl font-extrabold [&::-webkit-details-marker]:hidden">
+          طلبات توثيق الملاك <span className="chip">{toArabicDigits(filteredVerifications.length)}/{toArabicDigits(verificationRows.length)}</span>
+        </summary>
         <div className="card table-wrap">
           <table className="w-full text-sm">
             <thead>
@@ -243,7 +371,7 @@ export default async function AdminPage() {
               </tr>
             </thead>
             <tbody>
-              {verificationRows.map(({ verification: v, user }) => {
+              {filteredVerifications.map(({ verification: v, user }) => {
                 const age = ageFromBirthDate(v.birthDate);
                 return (
                   <tr key={v.userId}>
@@ -269,21 +397,23 @@ export default async function AdminPage() {
                   </tr>
                 );
               })}
-              {verificationRows.length === 0 && (
-                <tr><td colSpan={10} className="py-6 text-center muted">لا توجد طلبات تحقق بعد.</td></tr>
+              {filteredVerifications.length === 0 && (
+                <tr><td colSpan={10} className="py-6 text-center muted">{emptyMessage ?? "لا توجد طلبات تحقق بعد."}</td></tr>
               )}
             </tbody>
           </table>
         </div>
-      </section>
+      </details>
 
-      <section className="mt-10">
-        <h2 className="mb-4 text-xl font-extrabold">مراجعة التقييمات</h2>
+      <details id="reviews" className="mt-6 scroll-mt-[290px]" open={openSection("reviews")}>
+        <summary className="mb-4 cursor-pointer list-none text-xl font-extrabold [&::-webkit-details-marker]:hidden">
+          مراجعة التقييمات <span className="chip">{toArabicDigits(filteredReviews.length)}/{toArabicDigits(reviews.length)}</span>
+        </summary>
         <div className="card table-wrap">
           <table className="w-full text-sm">
             <thead><tr><th>الوحدة</th><th>الضيف</th><th>التقييم</th><th>التعليق</th><th>النوع</th><th>الحالة</th><th>إجراء</th></tr></thead>
             <tbody>
-              {reviews.map((review) => (
+              {filteredReviews.map((review) => (
                 <tr key={review.id}>
                   <td className="font-bold">{propertyNames.get(review.propertyId) ?? review.propertyId}</td>
                   <td>{review.guestName}</td>
@@ -294,19 +424,21 @@ export default async function AdminPage() {
                   <td><ReviewActions id={review.id} status={review.status} /></td>
                 </tr>
               ))}
-              {reviews.length === 0 && <tr><td colSpan={7} className="py-6 text-center muted">لا توجد تقييمات بعد.</td></tr>}
+              {filteredReviews.length === 0 && <tr><td colSpan={7} className="py-6 text-center muted">{emptyMessage ?? "لا توجد تقييمات بعد."}</td></tr>}
             </tbody>
           </table>
         </div>
-      </section>
+      </details>
 
-      <section className="mt-10">
-        <h2 className="mb-4 text-xl font-extrabold">نسب العمولة</h2>
+      <details id="commissions" className="mt-6 scroll-mt-[290px]" open={openSection("commissions")}>
+        <summary className="mb-4 cursor-pointer list-none text-xl font-extrabold [&::-webkit-details-marker]:hidden">
+          نسب العمولة <span className="chip">{toArabicDigits(filteredOwners.length)}/{toArabicDigits(ownerRows.length)}</span>
+        </summary>
         <div className="card table-wrap">
           <table className="w-full text-sm">
             <thead><tr><th>المالك</th><th>البريد</th><th>النسبة الحالية</th><th>تعديل</th></tr></thead>
             <tbody>
-              {ownerRows.map((owner) => (
+              {filteredOwners.map((owner) => (
                 <tr key={owner.email}>
                   <td className="font-bold">{owner.name}</td>
                   <td dir="ltr" className="text-xs">{owner.email}</td>
@@ -320,20 +452,22 @@ export default async function AdminPage() {
                   </td>
                 </tr>
               ))}
-              {ownerRows.length === 0 && <tr><td colSpan={4} className="py-6 text-center muted">لا يوجد ملاك بعد.</td></tr>}
+              {filteredOwners.length === 0 && <tr><td colSpan={4} className="py-6 text-center muted">{emptyMessage ?? "لا يوجد ملاك بعد."}</td></tr>}
             </tbody>
           </table>
         </div>
-      </section>
+      </details>
 
-      <section className="mt-10">
-        <h2 className="mb-1 text-xl font-extrabold">سجل العمليات</h2>
+      <details id="activity" className="mt-6 scroll-mt-[290px]" open={openSection("activity")}>
+        <summary className="mb-1 cursor-pointer list-none text-xl font-extrabold [&::-webkit-details-marker]:hidden">
+          سجل العمليات <span className="chip">{toArabicDigits(filteredActivities.length)}/{toArabicDigits(activities.length)}</span>
+        </summary>
         <p className="muted mb-4 text-xs">آخر ٣٠ عملية: نشر أو رفض الوحدات، تغيير العمولة، وقرارات توثيق الملاك.</p>
         <div className="card table-wrap">
           <table className="w-full text-sm">
             <thead><tr><th>التاريخ</th><th>الإجراء</th><th>التفصيل</th><th>بواسطة</th></tr></thead>
             <tbody>
-              {activities.map((entry) => (
+              {filteredActivities.map((entry) => (
                 <tr key={entry.id}>
                   <td className="whitespace-nowrap text-xs">{activityTime(entry.createdAt)}</td>
                   <td className="font-bold">{activityLabel[entry.action] ?? entry.action}</td>
@@ -347,11 +481,11 @@ export default async function AdminPage() {
                   </td>
                 </tr>
               ))}
-              {activities.length === 0 && <tr><td colSpan={4} className="py-6 text-center muted">لا توجد عمليات مسجّلة بعد.</td></tr>}
+              {filteredActivities.length === 0 && <tr><td colSpan={4} className="py-6 text-center muted">{emptyMessage ?? "لا توجد عمليات مسجّلة بعد."}</td></tr>}
             </tbody>
           </table>
         </div>
-      </section>
+      </details>
     </div>
     </AdminNoticeProvider>
   );
