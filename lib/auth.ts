@@ -3,6 +3,7 @@ import "server-only";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { getRepo } from "./repo";
 import type { Role } from "./types";
 import { createSupabaseServerClient, isSupabaseConfigured } from "./supabase/server";
@@ -60,7 +61,11 @@ export async function createSession(session: Session): Promise<void> {
 
 export async function getSession(): Promise<Session | null> {
   if (!isSupabaseConfigured()) {
-    return process.env.NODE_ENV === "production" ? null : getLegacySession();
+    if (process.env.NODE_ENV === "production") return null;
+    // جلسة التطوير المحلية تتحقّق وقت الطلب: jwtVerify بيقرأ الوقت الحالي،
+    // فلا بد نخرج من الـ prerender عشان ما يظهرش خطأ new Date() مع Cache Components.
+    await connection();
+    return getLegacySession();
   }
 
   const supabase = await createSupabaseServerClient();

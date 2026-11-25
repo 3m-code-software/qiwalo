@@ -990,3 +990,20 @@
 - اختبار جديد `e2e/property-gallery.spec.ts` (٣ اختبارات): فتح المعرض من الغلاف وتغيير الصورة بالزر والـ Escape، فتحه من مصغّر والالتفاف والأسهم، وعلى Pixel 7 قياس إن الحوار جوه الشاشة وزر الإغلاق ≥٤٤px والسحب بيغيّر العدّاد.
 - `npm run test:e2e` بقى **٣٣/٣٣**، `npm run test:recovery` **٣/٣**، و`npx next typegen` / `npm run typecheck` / `npm run lint` / `npm run build` كلهم أخضر (٣٥ صفحة).
 - ما حصلش تغيير في الحجز أو العمولة أو نص الدفع أو البيانات أو الإعدادات الخارجية.
+
+## إصلاح — خطأ الوقت أثناء الـ prerender وخطأ نسخ نافذة المطوّر
+
+**الحالة: تم ✅**
+
+### اللي ظهر
+- تحذير/خطأ في نافذة تطوير Next: `Next.js encountered the unstable value new Date() while prerendering` من `getLegacySession` في `lib/auth.ts` عبر `SiteHeader` في الـ layout. بيحصل في وضع Mock لما كوكيز جلسة تجريبي موجود، لأن `jwtVerify` في `jose` بيقرأ الوقت الحالي للتحقق من تاريخ انتهاء التوكن أثناء محاولة Next prerender القشرة الثابتة.
+- رسالة `NotAllowedError: Failed to execute 'writeText' on 'Clipboard': Write permission denied.` مصدرها زر «Copy prompt» داخل نافذة مطوّر Next نفسها (`next-devtools`) لما المتصفح يمنع إذن الحافظة. مفيش أي كود نسخ حافظة في التطبيق، والرسالة لا تظهر للزائر في النسخة المنشورة.
+
+### الإصلاح
+1. `lib/auth.ts` يستدعي `await connection()` من `next/server` قبل قراءة كوكيز جلسة التطوير والتحقق منها. كده التحقق اللي بيقرأ الوقت بيحصل وقت الطلب فقط، والهيدر/لافتة الشروط بيتيّم بثّه داخل الـ `<Suspense>` الموجود أصلاً في `app/layout.tsx`. الإنتاج اللي بيستخدم Supabase Auth ومافيش فيه جلسة محلية ما اتغيرش فيه حاجة.
+2. `cacheComponents` و`partialPrefetching` لسه مفعّلين، والصفحة لسه Server Component.
+
+### التجربة والتوثيق
+- اختبار رجوع جديد `e2e/session-prerender.spec.ts`: تسجيل دخول تجريبي ثم فتح صفحة الوحدة، التأكد إن الهيدر بيظهر الجلسة وإن رسالة `unstable value new Date()` ما بتظهرش في وحدة التحكم.
+- `npm run test:e2e` بقى **٣٤/٣٤**، `npm run test:recovery` **٣/٣**، و`npx next typegen` / `npm run typecheck` / `npm run lint` / `npm run build` كلهم أخضر (٣٥ صفحة).
+- ما حصلش تغيير في الحجز أو العمولة أو نص الدفع أو البيانات أو الإعدادات الخارجية.
