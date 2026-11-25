@@ -605,3 +605,34 @@
 - `npx next typegen` ✅ · `npm run typecheck` ✅ · `npm run lint` ✅ · `npm run build` ✅ (٣٢ صفحة، و`cacheComponents`/`partialPrefetching` مفعّلان).
 - مفيش اختبارات على الإنتاج، ولا حجوزات حقيقية، ولا أسرار في الملفات أو الشات. الووركفلو هيشتغل تلقائياً مع أول push بعد الـ commit.
 
+## البند ٢١ — Error Boundary ورسائل عربية بدل أي شاشة فاضية
+
+**الحالة: تم ✅**
+
+### التغييرات
+- `components/ErrorFallback.tsx` جديد (`"use client"`): واجهة عربية موحّدة بنفس توكنات قيوالو (كحلي/ذهبي/كريم)، عنوان `حصل خلط بسيط، جرّب تاني 🙏`، شرح غير تقني، زر `إعادة المحاولة`، روابط `الرئيسية` و`ابحث عن إقامة` عبر `next/link`، وروابط الدعم الثابتة (واتساب/تليجرام/`01066094050`). التنسيق inline عمداً عشان يشتغل في `global-error` اللي ما بيحمّلش الـ global CSS. **رسالة الخطأ الخام ما بتعرضش للمستخدم أبداً.**
+- `app/error.tsx` جديد (`"use client"`): error boundary لأي مقطع تحت الـ root layout. بيسجّل `console.error(error)` في `useEffect` للسجلات فقط، وينادي `retry()` من زر إعادة المحاولة.
+- `app/global-error.tsx` جديد (`"use client"`): يستبدل الـ root layout لو هو نفسه سقط. بيعرّف `<html lang="ar" dir="rtl">` و`<body>` بنفسه، ويستخدم `<title>` من React بدل تصدير `metadata` (غير مدعوم في `global-error` حسب Next ١٦).
+- `app/not-found.tsx` جديد: صفحة ٤٠٤ عربية `الصفحة دي مش موجودة (أو اتغيرت)` مع زرين للرئيسية والبحث ورقم `٤٠٤` بخط عربي + الدعم. ما بيجلبش بيانات ولا بيضيف `new Date()`.
+- `e2e/not-found.spec.ts` جديد: فحص دائم لـ ٤٠٤ (حالة HTTP ٤٠٤، النص العربي، الزرين، رابط الدعم داخل `main`، و`dir=rtl`) + فحص موبايل ٣٩٠×٨٤٤ بدون تمرير أفقي.
+- **ملاحظة Next ١٦ مقروءة من `node_modules/next/dist/docs` قبل الكود:** `error`/`global-error` لازم يكونوا Client Components بالبروبس `{ error, retry }`؛ `retry()` يعيد جلب وإعادة تصيير المقطع (أقوى من `reset()`)؛ `global-error` لازم يعرّف `<html>`/`<body>` بنفسه وما يدعمش `metadata`. كمان المجلدات اللي تبدأ بـ `_` عندها Next private فما تتسجّلش كمسار — استخدمنا اسم بدون `_` لصفحة الاختبار المؤقتة.
+- لا قاعدة بيانات ولا APIs ولا حزم جديدة. فكرة «سجّل اهتمامك» لما التواريخ تكون محجوزة لسه مؤجلة لبند منفصل.
+
+### التجربة
+البيئة: Mock محلي على `http://localhost:3130` عبر Playwright، متغيرات فارغة.
+
+| الفحص | النتيجة |
+|---|---|
+| `/هذا-الرابط-غير-موجود` → ٤٠٤ عربية (ديسكتوب) | ✅ |
+| ٤٠٤ على موبايل ٣٩٠×٨٤٤، صفر تمرير أفقي | ✅ |
+| حقن خطأ في صفحة مؤقتة → شاشة الخطأ + زر إعادة المحاولة يرجّع الصفحة | ✅ |
+| عرض `global-error` مباشرة على صفحة مؤقتة → `dir=rtl`، `lang=ar`، زر إعادة المحاولة، `<title>` عربي | ✅ |
+| `npm run test:e2e` (٥ اختبارات: حجز + رفع + تحقق + ٢× ٤٠٤) | ✅ ٥/٥ في ٤٠٫٩ ث |
+
+- صفحتا الاختبار المؤقتتان (`app/error-test-temp` و`app/global-error-preview-temp`) وملفا الـ spec المؤقتان **اتمسحوا قبل الـ commit**؛ اللي اتبقّى بس `e2e/not-found.spec.ts` الدائم.
+- أول محاولة لاختبار `global-error` برمي استثناء داخل `app/layout.tsx` خلّت خادم dev ما يقلعش (الـ webServer بيعمل GET للجذر قبل الاختبار) — رجّعنا الملف بـ `git checkout -- app/layout.tsx` فوراً واختبرنا الواجهة بعرض المكوّن مباشرة بدل كده. الـ layout النهائي مطابق للـ commit السابق تماماً.
+- أُصلح تنبيه ESLint واحد: روابط `/` و`/search` داخل `ErrorFallback` استخدمت `<a>` واتConvert لـ `next/link`.
+- تحذيرات DEV المعروفة (LCP، Unsplash timeout، cache-bypass، والـ ٤٠٤ المتوقّع لرابط Cloudinary الوهمي) ما أثرتش على النتائج.
+- `npx next typegen` ✅ · `npm run typecheck` ✅ · `npm run lint` ✅ · `npm run build` ✅ (٣٢ صفحة، `/_not-found` اتسجّل، و`cacheComponents`/`partialPrefetching` لسه مفعّلين).
+- مفيش تغيير على الإنتاج ولا أي secret في الملفات أو الشات.
+
