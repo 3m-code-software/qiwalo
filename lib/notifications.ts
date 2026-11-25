@@ -1,5 +1,5 @@
 import { CANCEL_POLICIES, SUPPORT_TELEGRAM, SUPPORT_WHATSAPP } from "@/lib/constants";
-import type { Booking, Property, Role } from "@/lib/types";
+import type { Booking, Property } from "@/lib/types";
 
 const ADMIN_WHATSAPP = process.env.ADMIN_WHATSAPP || "201066094050";
 
@@ -291,13 +291,11 @@ export async function sendVerificationNotice(notice: VerificationNotice) {
 export async function sendSignupNotice(notice: {
   name: string;
   phone: string;
-  role: Role;
 }): Promise<void> {
   const text = [
     "تسجيل جديد في قيوالو",
     `الاسم: ${notice.name}`,
     `رقم التليفون: ${notice.phone}`,
-    `النوع: ${notice.role === "OWNER" ? "صاحب وحدة" : "ضيف"}`,
   ].join("\n");
   console.info(`[signup-notice] ${text}`);
   await sendTelegram(text);

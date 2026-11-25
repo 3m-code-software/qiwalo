@@ -939,7 +939,7 @@
 
 ### التنفيذ
 1. **النموذج:** حقل `رقم التليفون` (`#signup-phone`, `type="tel"`, `required`) اتحط في `components/LoginForm.tsx` بعد البريد، للضيف والمالك. السيرفر بيطبّع الرقم (`+20...` → `01...`) ويرفض أي غير `01` + ٩ أرقام، ويحفظه في `User.phone` (في الحالتين: Mock وSupabase Auth metadata).
-2. **إشعار الإدارة:** دالة `sendSignupNotice` في `lib/notifications.ts` تبعت على `TELEGRAM_ADMIN_CHAT_ID` نص فيه الاسم + رقم التليفون + نوع الحساب فقط، بدون بريد أو أي بيانات تانية؛ ومع غياب الإعداد بتسجّل `[signup-notice]` في الـ logs زي باقي الإشعارات.
+2. **إشعار الإدارة:** دالة `sendSignupNotice` في `lib/notifications.ts` تبعت على `TELEGRAM_ADMIN_CHAT_ID` نص فيه **الاسم ورقم التليفون فقط**، بدون بريد أو نوع حساب أو أي بيانات تانية؛ ومع غياب الإعداد بتسجّل `[signup-notice]` في الـ logs زي باقي الإشعارات.
 3. **ترحيب العميل:** بعد التسجيل التطبيق يحولّ لصفحة `/telegram` مع توكن موقّع (`jose`, ٧ أيام, `purpose: telegram-activate`) يشير لرابط `https://t.me/<TELEGRAM_BOT_USERNAME>?start=<token>`. التوكن ما فيهوش رقم التليفون.
 4. **الـ webhook:** مسار جديد `POST /api/telegram/webhook` محمي بـ `TELEGRAM_WEBHOOK_SECRET` (مقارنة `timingSafeEqual`)؛ يستقبل `/start <token>` (و`/start@bot <token>`), يتحقق من التوقيع، ويبعت للـ `chat_id` رسالة ترحيب فيها اسم العميل فقط عبر `sendTelegramToChat`. التوكن المزيّف/المنتهي ياخد رسالة رابط غير صالح. في الإنتاج السر مطلوب، وفي التطوير ثابت محلي للاختبار.
 5. **الربط مرة واحدة:** سكربت `npm run telegram:webhook` (`scripts/set-telegram-webhook.mjs`) يعمل `setWebhook` على الرابط مع إخفاء السر في الطباعة. المتغيرات الجديدة: `TELEGRAM_BOT_USERNAME` (مش سر) و`TELEGRAM_WEBHOOK_SECRET` (سري) في `.env.example`/Vercel.

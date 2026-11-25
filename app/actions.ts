@@ -45,7 +45,7 @@ async function finishSignup(input: {
   phone: string;
   next: FormDataEntryValue | null;
 }): Promise<never> {
-  await sendSignupNotice({ name: input.name, phone: input.phone, role: input.role });
+  await sendSignupNotice({ name: input.name, phone: input.phone });
   const token = await createTelegramActivationToken({ email: input.email, name: input.name });
   const destination = safeNext(input.next) || landingForRole(input.role);
   return redirect(
