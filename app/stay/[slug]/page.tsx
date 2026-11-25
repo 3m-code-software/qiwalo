@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import AvailabilityCalendar from "@/components/AvailabilityCalendar";
 import FavoriteButton from "@/components/FavoriteButton";
 import MapView from "@/components/MapView";
 import PriceBreakdown from "@/components/PriceBreakdown";
@@ -11,7 +12,7 @@ import { CITIES, COMMISSION_RATE, PROPERTY_TYPES, SUPPORT_PHONE, SUPPORT_TELEGRA
 import { dateAr, money, toArabicDigits } from "@/lib/format";
 import { cloudinaryDeliveryUrl, propertyImageAlt, socialImageUrl } from "@/lib/image-assets";
 import { cancelPolicyText } from "@/lib/notifications";
-import { quoteStay } from "@/lib/pricing";
+import { priceForDate, quoteStay } from "@/lib/pricing";
 import { getRepo } from "@/lib/repo";
 
 export const instant = false;
@@ -75,6 +76,11 @@ export default async function StayPage({ params, searchParams }: Props) {
   const checkOut = /^\d{4}-\d{2}-\d{2}$/.test(one(sp.checkOut)) ? one(sp.checkOut) : "";
   const guests = Math.max(1, Number(one(sp.guests)) || 1);
   const quote = checkIn && checkOut ? quoteStay(property, rules, availability, checkIn, checkOut) : null;
+  const calendarDays = availability.map((day) => ({
+    date: day.date,
+    isBlocked: day.isBlocked,
+    price: priceForDate(day.date, property, rules, availability),
+  }));
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -164,6 +170,11 @@ export default async function StayPage({ params, searchParams }: Props) {
             <div className="stat"><p className="text-xl font-extrabold text-navy">{toArabicDigits(property.bathrooms)}</p><p className="mt-1 text-xs font-bold text-muted">حمامات</p></div>
             <div className="stat"><p className="text-xl font-extrabold text-navy">{property.areaSqm ? `${toArabicDigits(property.areaSqm)} م²` : "—"}</p><p className="mt-1 text-xs font-bold text-muted">المساحة</p></div>
             <div className="stat"><p className="text-xl font-extrabold text-navy">{money(property.basePrice)}</p><p className="mt-1 text-xs font-bold text-muted">من الليلة</p></div>
+          </div>
+
+          <div className="mt-10">
+            <SectionHeading>التوافر والأسعار</SectionHeading>
+            <AvailabilityCalendar days={calendarDays} initialCheckIn={checkIn} initialCheckOut={checkOut} />
           </div>
 
           <div className="mt-10">
