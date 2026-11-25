@@ -23,7 +23,7 @@ test("إحصائيات ولوحات الإدارة بالعربية بدون ق�
 
 test("حقل ملاحظة التوثيق ونسبة العمولة بمساحة وصول مناسبة", async ({ page, browser }) => {
   await loginAdmin(page);
-  await page.locator("#verifications summary").click();
+  await page.locator("#verifications > summary").click();
 
   // في التشغيل المنفرد المكتبة تبدأ فاضية؛ في الجولة الكاملة اختبار التوثيق سبق وأنشأ طلباً.
   if (await page.locator('#verifications input[aria-label="ملاحظة قرار التوثيق"]').count() === 0) {
@@ -57,10 +57,11 @@ test("حقل ملاحظة التوثيق ونسبة العمولة بمساحة 
       await ownerContext.close();
     }
     await page.reload();
-    await page.locator("#verifications summary").click();
+    await page.locator("#verifications > summary").click();
   }
 
-  const noteInputs = page.getByLabel("ملاحظة قرار التوثيق");
+  // النسخة الموبايل من البطاقات موجودة في DOM حتى على الديسكتوب؛ نقيس حقل الجدول الظاهر فقط.
+  const noteInputs = page.locator("#verifications table").getByLabel("ملاحظة قرار التوثيق");
   expect(await noteInputs.count()).toBeGreaterThan(0);
   const noteBox = await noteInputs.first().boundingBox();
   expect(noteBox?.height ?? 0).toBeGreaterThanOrEqual(44);

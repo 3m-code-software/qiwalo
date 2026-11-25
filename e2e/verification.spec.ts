@@ -45,7 +45,7 @@ test.describe.serial("توثيق المالك من طرف الإدارة", () =>
       await signInDemo(admin, /مدير تجريبي/);
       await expect(admin).toHaveURL(/\/admin/);
 
-      await admin.locator("#verifications summary").click();
+      await admin.locator("#verifications > summary").click();
       const row = admin.locator("#verifications tr", { hasText: "owner@qiwalo.test" });
       await expect(row).toContainText("بانتظار المستندات");
 

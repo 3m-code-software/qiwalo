@@ -83,7 +83,7 @@ test("التقييم المنشور يرجع لحالة قيد المراجعة"
 test("ملاحظة توثيق واحدة للقرارات الثلاثة مع تأكيد قبل الرفض", async ({ page, browser }) => {
   await loginAdmin(page);
   await ensureVerification(page, browser);
-  await page.locator("#verifications summary").click();
+  await page.locator("#verifications > summary").click();
   const row = page.locator("#verifications tbody tr").filter({ hasText: "owner@qiwalo.test" });
   await expect(row).toBeVisible();
 
@@ -124,4 +124,33 @@ test("إلغاء الحجز لا يحدث إلا بعد تأكيد المستخ�
   page.once("dialog", (dialog) => dialog.accept());
   await row.getByRole("button", { name: "إلغاء" }).click();
   await expect(row).toContainText("ملغية");
+});
+
+test("جدول التوثيق يتحول لبطاقات قابلة للطي على الموبايل بدون تمرير أفقي", async ({ page, browser }) => {
+  await loginAdmin(page);
+  await ensureVerification(page, browser);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator("#verifications > summary").click();
+
+  await expect(page.locator("#verifications table")).toBeHidden();
+  const card = page.locator("#verifications details").filter({ hasText: "owner@qiwalo.test" }).first();
+  await expect(card).toBeVisible();
+  await expect(card.locator("summary")).toContainText("محمد مالك");
+  await expect(card.locator("summary .chip")).toBeVisible();
+  await expect(card.locator("dl")).toBeHidden();
+
+  await card.locator("summary").click();
+  await expect(card.locator("dl")).toBeVisible();
+  await expect(card.getByLabel("ملاحظة قرار التوثيق")).toBeVisible();
+  await expect(card.getByRole("button", { name: "طلب سيلفي" })).toBeVisible();
+  await expect(card.getByRole("button", { name: "رفض", exact: true })).toBeVisible();
+
+  const overflow = await page.evaluate(() =>
+    document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow).toBe(0);
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect(page.locator("#verifications table")).toBeVisible();
+  await expect(card).toBeHidden();
 });

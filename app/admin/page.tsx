@@ -396,7 +396,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         <summary className="mb-4 cursor-pointer list-none text-xl font-extrabold [&::-webkit-details-marker]:hidden">
           طلبات توثيق الملاك <span className="chip">{toArabicDigits(filteredVerifications.length)}/{toArabicDigits(verificationRows.length)}</span>
         </summary>
-        <div className="card table-wrap">
+        <div className="card table-wrap hidden sm:block">
           <table className="w-full text-sm">
             <thead>
               <tr>
@@ -436,6 +436,48 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
               )}
             </tbody>
           </table>
+        </div>
+        <div className="mt-3 grid gap-3 sm:hidden">
+          {filteredVerifications.map(({ verification: v, user }) => {
+            const age = ageFromBirthDate(v.birthDate);
+            const name = user?.name ?? v.userId;
+            return (
+              <details key={v.userId} className="card !p-3">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-sm font-bold [&::-webkit-details-marker]:hidden">
+                  <span className="min-w-0 break-words">{name}</span>
+                  <span className="chip shrink-0">{verificationStatusLabel[v.status] ?? v.status}</span>
+                </summary>
+                <dl className="mt-3 space-y-2 border-t border-[var(--line)] pt-3 text-xs">
+                  <div className="flex flex-wrap items-baseline gap-x-2"><dt className="muted">البريد:</dt><dd dir="ltr" className="min-w-0 break-all">{v.userId}</dd></div>
+                  <div className="flex flex-wrap items-baseline gap-x-2"><dt className="muted">الهاتف:</dt><dd dir="ltr" className="break-all">{user?.phone ?? "—"}</dd></div>
+                  <div className="flex flex-wrap items-baseline gap-x-2"><dt className="muted">البديل:</dt><dd dir="ltr" className="break-all">{v.phoneAlt ?? "—"}</dd></div>
+                  <div className="flex flex-wrap items-baseline gap-x-2"><dt className="muted">العمر:</dt><dd>{age !== null ? toArabicDigits(age) : "—"}</dd></div>
+                  <div className="flex flex-wrap items-baseline gap-x-2">
+                    <dt className="muted">المستندات:</dt>
+                    <dd className="flex flex-wrap gap-3 font-bold text-nile">
+                      <a href={v.idFront} target="_blank" rel="noreferrer">الوجه ↗</a>
+                      <a href={v.idBack} target="_blank" rel="noreferrer">الظهر ↗</a>
+                    </dd>
+                  </div>
+                  <div className="flex flex-wrap items-baseline gap-x-2">
+                    <dt className="muted">السيلفي:</dt>
+                    <dd>
+                      {v.selfie
+                        ? <a href={v.selfie} target="_blank" rel="noreferrer" className="font-bold text-nile">عرض ↗</a>
+                        : <span className="muted">—</span>}
+                    </dd>
+                  </div>
+                  <div className="flex flex-wrap items-baseline gap-x-2"><dt className="muted">الملاحظة:</dt><dd className="min-w-0 break-words">{v.note ?? "—"}</dd></div>
+                </dl>
+                <div className="mt-3 border-t border-[var(--line)] pt-3">
+                  <VerificationActions userId={v.userId} ownerName={name} />
+                </div>
+              </details>
+            );
+          })}
+          {filteredVerifications.length === 0 && (
+            <p className="card p-4 text-center muted">{emptyMessage ?? "لا توجد طلبات تحقق بعد."}</p>
+          )}
         </div>
       </details>
 
