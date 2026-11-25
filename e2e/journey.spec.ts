@@ -78,8 +78,16 @@ test("ملخص الرحلة وبيانات كل مرحلة + صورة لاصقة
 
   const sticky = section.locator('[class*="sticky"]').first();
   expect(await sticky.evaluate((el) => getComputedStyle(el).position)).toBe("sticky");
+  const stickyBox = await sticky.boundingBox();
+  const sectionBox = await section.boundingBox();
+  expect(stickyBox!.width).toBeGreaterThan(sectionBox!.width - 40); // يجب ألا ينكمش العمود على الموبايل
+
   const box = await section.locator('[class*="aspect-"]').first().boundingBox();
   expect(box).not.toBeNull();
   expect(box!.y).toBeGreaterThanOrEqual(0);
   expect(box!.y).toBeLessThan(140);
+
+  const progress = section.getByRole("img", { name: /تقدم الرحلة/ });
+  await expect(progress).toBeVisible();
+  await expect(progress.locator("span")).toHaveCount(8);
 });

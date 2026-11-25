@@ -124,7 +124,7 @@ export default function JourneyStory() {
   const current = STAGES[active];
 
   return (
-    <section className="mx-auto max-w-7xl px-4 py-16 md:py-24" aria-labelledby="journey-title">
+    <section className="mx-auto max-w-7xl px-4 py-12 md:py-24" aria-labelledby="journey-title">
       <div className="mb-10 md:mb-14">
         <span className="eyebrow !text-gold">من اللحظة الأولى للعودة</span>
         <h2 id="journey-title" className="section-title mt-3">رحلتك مع قيوالو</h2>
@@ -169,7 +169,7 @@ export default function JourneyStory() {
         </div>
       ) : (
         <div className="flex flex-col gap-8 md:grid md:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] md:gap-16">
-          <div className="sticky top-16 z-20 self-start bg-ivory pb-2 md:top-24 md:bg-transparent md:pb-0">
+          <div className="sticky top-16 z-20 w-full bg-ivory pb-2 md:top-24 md:w-auto md:self-start md:bg-transparent md:pb-0">
             <div className="relative aspect-[16/10] overflow-hidden rounded-3xl border border-gold/25 bg-navy-soft shadow-2xl shadow-navy/15 md:aspect-[4/3]">
               {STAGES.map((stage, i) => (
                 <div
@@ -190,9 +190,20 @@ export default function JourneyStory() {
               ))}
               <div className="absolute inset-0 bg-gradient-to-t from-navy-deep/95 via-navy-deep/25 to-transparent" />
               <div className="absolute inset-x-0 bottom-0 p-4 md:p-8">
-                <span className="eyebrow !text-gold-bright">
-                  المرحلة {toArabicDigits(active + 1)} من {toArabicDigits(STAGES.length)}
-                </span>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="eyebrow !text-gold-bright">
+                    المرحلة {toArabicDigits(active + 1)} من {toArabicDigits(STAGES.length)}
+                  </span>
+                  <span className="flex shrink-0 gap-1" role="img" aria-label={`تقدم الرحلة: المرحلة ${toArabicDigits(active + 1)} من ${toArabicDigits(STAGES.length)}`}>
+                    {STAGES.map((stage, i) => (
+                      <span
+                        key={stage.id}
+                        aria-hidden
+                        className={`h-1.5 rounded-full transition-all duration-300 ${i === active ? "w-5 bg-gold-bright" : "w-1.5 bg-white/40"}`}
+                      />
+                    ))}
+                  </span>
+                </div>
                 <h3 className="mt-2 text-2xl font-black text-white md:mt-3 md:text-4xl">{current.title}</h3>
                 <p className="mt-1 text-xs font-bold text-white/80 md:text-sm">{current.subtitle}</p>
                 <p className="mt-1 text-[11px] font-bold text-gold-bright md:mt-2 md:text-xs">{current.meta}</p>
@@ -207,7 +218,7 @@ export default function JourneyStory() {
               <li
                 key={stage.id}
                 ref={(node) => { stepRefs.current[i] = node; }}
-                className="relative flex min-h-[48vh] items-center md:min-h-[56vh]"
+                className="relative flex min-h-[36vh] items-center md:min-h-[44vh]"
               >
                 <span className="absolute -right-[calc(1.5rem+7px)] top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border-2 border-gold bg-ivory md:-right-[calc(2rem+7px)]" aria-hidden />
                 <button
@@ -221,7 +232,6 @@ export default function JourneyStory() {
                     {stage.title}
                   </h3>
                   <p className="muted mt-2 text-sm leading-7">{stage.subtitle}</p>
-                  <p className="mt-1 text-xs font-bold text-gold">{stage.meta}</p>
                 </button>
               </li>
             ))}
