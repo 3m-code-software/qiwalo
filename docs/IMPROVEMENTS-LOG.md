@@ -663,3 +663,40 @@
 - مفيش DB ولا إشعارات ولا دفع حقيقي ولا secret في الملفات أو الشات.
 - الخطة المعتمدة: البنود ١٧–٢٢ كلها خلصت.
 
+## إصلاح عاجل — رابط استعادة كلمة المرور كان بيظهر «انتهت الصلاحية» فوراً
+
+**الحالة: تم ✅**
+
+### السبب الجذري
+- `@supabase/ssr@0.12.7` **يفرض `flowType: "pkce"` دائماً** في `createServerClient` و`createBrowserClient` — أي `flowType: "implicit"` في كودنا كان متجاهلاً.
+- رابط الإيميل كان بيوصل بصيغة `?code=...` (PKCE)، والعميل في المتصفح كان بيلتقط الكود تلقائياً (`detectSessionInUrl` الافتراضي `true`) ويستبدله، وبعدين `ResetPasswordForm` كان يستبدل **نفس الكود مرة تانية** من الـ `searchParams`. الاستبدال التاني بيفشل لأن الكود يُستخدم مرة واحدة فقط، فكانت تظهر رسالة «انتهت صلاحية رابط الاستعادة».
+- زر «اطلب رابط جديد» كان مجرد `<a href="/forgot-password">` — بينقل لصفحة تانية وما بيبعتش طلب إرسال جديد، فكان بيبان «ما بيعملش حاجة».
+
+### التغييرات
+- `lib/recovery-link.ts` جديد: محلّل نقي بيغطي ثلاث صيغ روابط Supabase: `?code=...` (PKCE)، `?token_hash=...&type=recovery` (آمن عبر أجهزة مختلفة)، و`#access_token=...&refresh_token=...` (implicit)، زيادة على `error_description` في الكويري أو الـ fragment.
+- `components/ResetPasswordForm.tsx`:
+  - `detectSessionInUrl: false` عشان الكود **يتستبدل مرة واحدة فقط**، مع `useRef` حارس ضد تنفيذ StrictMode للـ effect مرتين في dev.
+  - استقبال موحّد للصيغ الثلاث: `exchangeCodeForSession` / `verifyOtp` / `setSession`، مع رسائل عربية ودودة (`verifier` / منتهي / غير صالح / افتح الرابط من الإيميل) بدل رسالة تقنية.
+  - مسح التوكن من شريط العنوان و الـ history بـ `history.replaceState` بعد النجاح، وتسجيل خروج الجلسة المؤقتة قبل التحويل لـ `/login?reset=1`.
+  - **زر «اطلب رابط جديد» بقى فورم حقيقي** بيستدعي `requestPasswordResetAction` نفسه المستخدم في `forgot-password`، مع حقل بريد ورسالة نجاح/خطأ واضحة (Server Action، مش مجرد رابط).
+  - تحقّق من عدم ضبط Supabase في بيئة Mock بدل ما الكود يرمي استثناء، وأقل طول كلمة مرور ٦ بصيغة عربية.
+- `app/reset-password/page.tsx`: أزالنا قراءة الـ `searchParams`/`code` القديمة — الصفحة بقت ثابتة والعميل بيقرأ الرابط من `window.location.href`.
+- `lib/supabase/server.ts` و`app/actions.ts`: شروحات محدّثة توضّح إن PKCE والـ verifier بيتبعتوا في كوكي من نفس المتصفح. **ما اتغيرش إعداد Supabase ولا قالب الإيميل ولا أي secret.**
+- `playwright.recovery.config.ts` جديد + `npm run test:recovery`: بيئة منفصلة على المنفذ ٣١٣١ بـ Supabase وهمي (`https://mock-supabase.test`)، كل الطلبات متاعترضة في الاختبار. البنية الأساسية `playwright.config.ts` تستبعد هذا الـ spec عشان ما يختلطش ببيئة Mock الفاضية.
+- `e2e/recovery-flow.spec.ts` جديد: ٣ اختبارات — PKCE (يتأكد إن `/token` اتبعت **مرة واحدة**)، و`token_hash` على جهاز مختلف بدون كوكي، وimplicit بالتوكن في الـ fragment. `e2e/recovery.spec.ts` جديد: تحليل الصيغ الثلاث + فورم إعادة الطلب في بيئة Mock الفاضية.
+- `.github/workflows/e2e.yml`: خطوة `npm run test:recovery` مضافة بعد `test:e2e`؛ و`README.md` اتحدّثت للأوامر والعدّادات.
+
+### التجربة
+| الفحص | النتيجة |
+|---|---|
+| رابط PKCE: `/token` مرة واحدة → حفظ كلمة المرور → `/login?reset=1` | ✅ |
+| رابط `token_hash` بدون كوكي PKCE → `/verify` مرة واحدة → حفظ | ✅ |
+| رابط implicit في الـ fragment → `/user` + حفظ بدون `/token` | ✅ |
+| تحليل الروابط + زر إعادة الطلب الفعلي في Mock الفاضية | ✅ |
+| `npm run test:e2e` (١٠ اختبارات) | ✅ ١٠/١٠ في ٥١٫٥ ث |
+| `npm run test:recovery` (٣ اختبارات) | ✅ ٣/٣ في ١٤٫٦ ث |
+| `npx next typegen` · `typecheck` · `lint` · `build` | ✅ كلهم (٣٢ صفحة، `/reset-password` Partial Prerender، والـ cache flags شغالين) |
+
+- ملاحظة للمستخدم: رابط PKCE مرتبط بنفس المتصفح اللي طلب الرابط؛ لو فتحته من جهاز تاني اطلب رابط جديد من نفس الجهاز. الرسالة دي ظاهرة دلوقتي في الواجهة بدل «انتهت الصلاحية» المبهمة.
+- مفيش تغيير على قاعدة البيانات الإنتاجية، ولا إيميلات حقيقية، ولا secret في الملفات أو الشات.
+

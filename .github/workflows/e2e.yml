@@ -51,6 +51,11 @@ jobs:
         env:
           CI: "true"
 
+      - name: E2E (password recovery Mock)
+        run: npm run test:recovery
+        env:
+          CI: "true"
+
       - name: Upload failure artifacts
         if: failure()
         uses: actions/upload-artifact@v4

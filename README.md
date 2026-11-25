@@ -110,7 +110,8 @@ npm run build      # prisma generate + بناء الإنتاج
 npm run typecheck  # فحص TypeScript
 npm run lint       # ESLint
 npx playwright install chromium   # مرة واحدة فقط
-npm run test:e2e   # ٣ اختبارات على Mock محلي (بدون Supabase/Cloudinary/إنتاج)
+npm run test:e2e       # ١٠ اختبارات على Mock محلي (بدون Supabase/Cloudinary/إنتاج)
+npm run test:recovery  # ٣ اختبارات لمسار استعادة كلمة المرور بـ Supabase وهمي
 npm run db:generate
 npm run db:push    # بعد ما تحط DATABASE_URL
 npm run db:seed         # بيانات تجريبية: 3 مستخدمين + 8 وحدات + 3 حجوزات

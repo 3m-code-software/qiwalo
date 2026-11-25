@@ -130,6 +130,7 @@ export async function requestPasswordResetAction(_prev: FormState, form: FormDat
   const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "qiwalo-ygzh.vercel.app";
   const protocol = requestHeaders.get("x-forwarded-proto") ?? "https";
   const supabase = await createSupabaseServerClient();
+  // PKCE: الـ verifier اتبعت في كوكي من نفس المتصفح، فالصفحة تستبدل الكود مرة واحدة.
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${protocol}://${host}/reset-password`,
   });

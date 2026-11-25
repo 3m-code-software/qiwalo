@@ -6,6 +6,8 @@ const isCI = Boolean(process.env.CI);
 
 export default defineConfig({
   testDir: "./e2e",
+  // مسار الاستعادة الناجح له بيئة Supabase وهمية منفصلة (playwright.recovery.config.ts).
+  testIgnore: /recovery-flow\.spec\.ts/,
   // مكتبة Mock في الذاكرة مشتركة بين كل الاختبارات → تشغيل متسلسل.
   fullyParallel: false,
   workers: 1,

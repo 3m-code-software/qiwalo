@@ -17,9 +17,8 @@ export async function createSupabaseServerClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
-      // Recovery links carry tokens in the URL fragment so they work even when
-      // the email is opened on a different browser/device than the request.
-      auth: { flowType: "implicit" },
+      // @supabase/ssr 0.12 يفرض PKCE دائماً؛ كود الاستعادة و_verifier بتاعه
+      // بيتبعوا في كوكي من نفس المتصفح، وصفحة /reset-password تستبدل الكود مرة واحدة.
       cookies: {
         getAll() {
           return cookieStore.getAll();
