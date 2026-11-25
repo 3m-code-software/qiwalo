@@ -207,15 +207,17 @@ export const prismaRepo: Repo = {
     await prisma.property.update({ where: { id }, data: { status: status as any } });
   },
   async listPublishedExperiences(city?: CityKey, category?: ExperienceCategory) {
+    // Flتر الفئة هنا في الذاكرة، مش في استعلام Prisma: قيمة MOTORCYCLE_TOUR لسه
+    // مش موجودة في enum الإنتاج لحد ما يتنفّذ add-motorcycle-tour.sql، وتمريرها
+    // كـ where قد يرفضها Postgres ويوقف كل صفحات الوحدات.
     const rows = await prisma.experience.findMany({
       where: {
         status: "PUBLISHED" as any,
         ...(city ? { city: city as any } : {}),
-        ...(category ? { category: category as any } : {}),
       },
       include: { owner: true }, orderBy: { createdAt: "desc" },
     });
-    return rows.map(mapExperience);
+    return rows.map(mapExperience).filter((experience) => !category || experience.category === category);
   },
   async listAllExperiences() {
     const rows = await prisma.experience.findMany({ include: { owner: true }, orderBy: { createdAt: "desc" } });

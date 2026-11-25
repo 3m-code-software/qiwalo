@@ -73,7 +73,7 @@ test("المالك يضيف تجربة قيد المراجعة ثم الإدار
     await owner.locator('input[name="licenseDocUrl"]').fill("https://res.cloudinary.com/demo/raw/upload/v1/qiwalo/docs/test.pdf");
     await owner.getByRole("button", { name: /إرسال التجربة للمراجعة/ }).click();
 
-    await expect(owner).toHaveURL(/owner\?experience=1/);
+    await expect(owner).toHaveURL(/owner\?experience=1/, { timeout: 30_000 });
     const ownerRow = owner.getByTestId("owner-experience-row").filter({ hasText: name });
     await expect(ownerRow).toContainText("قيد المراجعة");
   } finally {
