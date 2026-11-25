@@ -10,6 +10,7 @@ type Props = {
   checkOut: string;
   guests: number;
   transportId?: string;
+  packageId?: string;
   category?: ExperienceCategory;
 };
 
@@ -21,6 +22,7 @@ export default function ExperienceAddOn({
   checkOut,
   guests,
   transportId,
+  packageId,
   category = "MOUNTAIN_SAFARI",
 }: Props) {
   const visible = experiences.filter((experience) => experience.category === category);
@@ -77,6 +79,7 @@ export default function ExperienceAddOn({
                   <input type="hidden" name="checkOut" value={checkOut} />
                   <input type="hidden" name="guests" value={guests} />
                   {transportId && <input type="hidden" name="transport" value={transportId} />}
+                  {packageId && <input type="hidden" name="package" value={packageId} />}
                   <input type="hidden" name="experience" value={experience.id} />
                   <button type="submit" className="btn-gold !px-4 !py-2 text-sm">{cta}</button>
                 </form>

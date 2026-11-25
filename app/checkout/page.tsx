@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import CheckoutForm from "@/components/CheckoutForm";
 import PriceBreakdown from "@/components/PriceBreakdown";
 import { CITIES, TRANSPORT_TYPES } from "@/lib/constants";
-import { dateAr } from "@/lib/format";
+import { dateAr, money, toArabicDigits } from "@/lib/format";
 import { cloudinaryDeliveryUrl, propertyImageAlt } from "@/lib/image-assets";
 import { quoteStay } from "@/lib/pricing";
 import { getRepo } from "@/lib/repo";
@@ -29,9 +29,11 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
 
   const experienceId = one(sp.experience);
   const transportId = one(sp.transport);
-  const [requestedExperience, requestedTransport] = await Promise.all([
+  const packageId = one(sp.package);
+  const [requestedExperience, requestedTransport, requestedPackage] = await Promise.all([
     experienceId ? repo.getExperienceById(experienceId) : Promise.resolve(null),
     transportId ? repo.getTransportById(transportId) : Promise.resolve(null),
+    packageId ? repo.getPackageById(packageId) : Promise.resolve(null),
   ]);
   const experience = requestedExperience
     && requestedExperience.status === "PUBLISHED"
@@ -50,13 +52,26 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
     : null;
   const transportTotal = transport?.pricePerTrip ?? 0;
   const transportCommission = transport ? Math.round(transportTotal * (transport.commissionRate / 100)) : 0;
+  const pkg = requestedPackage
+    && requestedPackage.status === "PUBLISHED"
+    && requestedPackage.city === property.city
+    && requestedPackage.propertyId === property.id
+    && guests <= requestedPackage.capacity
+    ? requestedPackage
+    : null;
+  const nights = result.ok ? result.quote.nights : 0;
+  const packageTotal = pkg ? pkg.pricePerNight * nights : 0;
+  const packageCommission = pkg ? Math.round(packageTotal * (pkg.commissionRate / 100)) : 0;
   const baseParams = new URLSearchParams({ slug, checkIn, checkOut, guests: String(guests) });
   if (experience) baseParams.set("experience", experience.id);
   if (transport) baseParams.set("transport", transport.id);
+  if (pkg) baseParams.set("package", pkg.id);
   const withoutExperience = new URLSearchParams(baseParams);
   withoutExperience.delete("experience");
   const withoutTransport = new URLSearchParams(baseParams);
   withoutTransport.delete("transport");
+  const withoutPackage = new URLSearchParams(baseParams);
+  withoutPackage.delete("package");
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
@@ -82,6 +97,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
               quote={result.quote}
               experience={experience ? { id: experience.id, name: experience.name, total: experienceTotal } : null}
               transport={transport ? { id: transport.id, name: transport.name, total: transportTotal } : null}
+              package={pkg ? { id: pkg.id, name: pkg.name, total: packageTotal } : null}
             />
           </div>
 
@@ -119,11 +135,30 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
                 <p className="muted mt-2 text-xs">سعر الرحلة للمركبة، وليس للفرد. المشمولات: {transport.includes.join(" · ")}</p>
               </div>
             )}
+            {pkg && (
+              <div className="mt-4 rounded-xl border border-gold/40 bg-gold-soft p-4" data-testid="checkout-package">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-extrabold text-navy">الباقة: وحدة + نقل + جولة</p>
+                  <Link href={`/checkout?${withoutPackage.toString()}`} className="text-xs font-bold text-nile hover:text-gold">إزالة ✕</Link>
+                </div>
+                <p className="text-sm font-bold">{pkg.name}</p>
+                <p className="muted mt-1 text-xs">{pkg.propertyName} · {pkg.transportName} · {pkg.experienceName}</p>
+                <p className="muted mt-2 text-xs">
+                  {money(pkg.pricePerNight)} لكل ليلة × {toArabicDigits(nights)} ليالي = <span className="font-bold text-nile">{money(packageTotal)}</span>
+                </p>
+                <p className="muted mt-2 text-xs">المشمولات: {pkg.includes.join(" · ")} · بعد مراجعة الإدارة للمستندات.</p>
+              </div>
+            )}
             <div className="mt-4 border-t border-line pt-4">
               <PriceBreakdown
                 quote={result.quote}
                 commissionRate={property.commissionRate}
                 addOns={[
+                  ...(pkg ? [{
+                    label: `الباقة (${pkg.name})`,
+                    amount: packageTotal,
+                    commission: packageCommission,
+                  }] : []),
                   ...(experience ? [{
                     label: `${experienceLabel} (${experience.name})`,
                     amount: experienceTotal,

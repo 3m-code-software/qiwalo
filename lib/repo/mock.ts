@@ -1,5 +1,5 @@
 import { addDays, differenceInCalendarDays, format, parseISO, startOfDay } from "date-fns";
-import { EXPERIENCE_CANCEL_POLICY, TRANSPORT_CANCEL_POLICY } from "@/lib/constants";
+import { EXPERIENCE_CANCEL_POLICY, PACKAGE_CANCEL_POLICY, TRANSPORT_CANCEL_POLICY } from "@/lib/constants";
 import { makePropertySlug, slugCandidates } from "@/lib/slug";
 import type { Repo } from "./index";
 import type {
@@ -12,7 +12,9 @@ import type {
   NewActivityInput,
   NewBookingInput,
   NewExperienceInput,
+  NewPackageInput,
   NewPropertyInput,
+  Package,
   NewReviewInput,
   NewTransportInput,
   NewVerificationInput,
@@ -35,6 +37,7 @@ interface MockState {
   props: Property[];
   experiences: Experience[];
   transports: Transport[];
+  packages: Package[];
   availability: Map<string, Availability[]>;
   priceRules: Map<string, PriceRule[]>;
   bookings: Booking[];
@@ -242,6 +245,34 @@ function seedTransports(): Transport[] {
   ];
 }
 
+function seedPackages(): Package[] {
+  const now = new Date().toISOString();
+  return [
+    {
+      id: "pk1", ownerId: "owner@qiwalo.test", ownerName: "محمد مالك", name: "باقة الأقصر: إقامة + سفاري + نقل",
+      city: "LUXOR", propertyId: "p1", propertyName: "دار المدينة بإطلالة على النيل",
+      experienceId: "e1", experienceName: "سفاري جبل السلسلة عند الغروب",
+      transportId: "t1", transportName: "سيارة خاصة لجولات الأقصر",
+      capacity: 4, pricePerNight: 1900,
+      includes: ["إقامة في الوحدة", "سفاري جبل السلسلة", "نقل سيارة خاص", "مرشد مرافق"],
+      cancelPolicy: PACKAGE_CANCEL_POLICY,
+      licenseDocUrl: "https://res.cloudinary.com/demo/raw/upload/v1/qiwalo/docs/luxor-package-review.pdf",
+      status: "PUBLISHED", commissionRate: 12, createdAt: now,
+    },
+    {
+      id: "pk2", ownerId: "owner@qiwalo.test", ownerName: "محمد مالك", name: "باقة موتوسيكلات الأقصر",
+      city: "LUXOR", propertyId: "p1", propertyName: "دار المدينة بإطلالة على النيل",
+      experienceId: "e3", experienceName: "جولة موتوسيكلات غروب الأقصر",
+      transportId: "t1", transportName: "سيارة خاصة لجولات الأقصر",
+      capacity: 4, pricePerNight: 1950,
+      includes: ["إقامة في الوحدة", "جولة موتوسيكلات", "نقل سيارة خاص", "خوذة واقية"],
+      cancelPolicy: PACKAGE_CANCEL_POLICY,
+      licenseDocUrl: "https://res.cloudinary.com/demo/raw/upload/v1/qiwalo/docs/luxor-moto-package-review.pdf",
+      status: "PUBLISHED", commissionRate: 12, createdAt: now,
+    },
+  ];
+}
+
 function createMockState(): MockState {
   const users: StoredUser[] = [
     { id: "guest@qiwalo.test", email: "guest@qiwalo.test", name: "أحمد المسافر", role: "GUEST", phone: null, nationality: "مصري", commissionRate: 12, termsAcceptedAt: null },
@@ -265,21 +296,21 @@ function createMockState(): MockState {
       guestId: "guest@qiwalo.test", guestName: "سارة مسافر", checkIn: dateStr(12), checkOut: dateStr(15), nights: 3, guests: 2,
       subtotal: props[0].basePrice * 3, serviceFee: 0, commission: Math.round(props[0].basePrice * 3 * 0.12), total: props[0].basePrice * 3,
       nationality: "سعودي", paymentMethod: "BANK", paymentNote: null, termsAcceptedAt: new Date().toISOString(), adminNotifiedAt: new Date().toISOString(),
-      status: "CONFIRMED", paymentStatus: "PAID", provider: "MANUAL", experience: null, transport: null, createdAt: new Date().toISOString(),
+      status: "CONFIRMED", paymentStatus: "PAID", provider: "MANUAL", experience: null, transport: null, package: null, createdAt: new Date().toISOString(),
     },
     {
       id: "b2", reference: "QW-SEED-2", propertyId: "p2", propertyName: props[1].name, propertySlug: props[1].slug, city: props[1].city,
       guestId: "guest@qiwalo.test", guestName: "منى عبد العزيز", checkIn: dateStr(26), checkOut: dateStr(30), nights: 4, guests: 2,
       subtotal: props[1].basePrice * 4, serviceFee: 0, commission: Math.round(props[1].basePrice * 4 * 0.12), total: props[1].basePrice * 4,
       nationality: "مصري", paymentMethod: "CASH", paymentNote: null, termsAcceptedAt: new Date().toISOString(), adminNotifiedAt: new Date().toISOString(),
-      status: "CONFIRMED", paymentStatus: "PAID", provider: "MANUAL", experience: null, transport: null, createdAt: new Date().toISOString(),
+      status: "CONFIRMED", paymentStatus: "PAID", provider: "MANUAL", experience: null, transport: null, package: null, createdAt: new Date().toISOString(),
     },
     {
       id: "b3", reference: "QW-SEED-3", propertyId: "p3", propertyName: props[2].name, propertySlug: props[2].slug, city: props[2].city,
       guestId: "guest@qiwalo.test", guestName: "خالد حجز", checkIn: dateStr(-8), checkOut: dateStr(-6), nights: 2, guests: 2,
       subtotal: props[2].basePrice * 2, serviceFee: 0, commission: Math.round(props[2].basePrice * 2 * 0.12), total: props[2].basePrice * 2,
       nationality: "إماراتي", paymentMethod: "BANK", paymentNote: null, termsAcceptedAt: new Date().toISOString(), adminNotifiedAt: new Date().toISOString(),
-      status: "COMPLETED", paymentStatus: "PAID", provider: "MANUAL", experience: null, transport: null, createdAt: new Date().toISOString(),
+      status: "COMPLETED", paymentStatus: "PAID", provider: "MANUAL", experience: null, transport: null, package: null, createdAt: new Date().toISOString(),
     },
   ];
 
@@ -290,14 +321,14 @@ function createMockState(): MockState {
     { id: "r3", propertyId: "p3", guestId: "guest@qiwalo.test", guestName: "خالد حجز", bookingId: "b3", rating: 4, comment: "مسبح وخصوصية ممتازة، والموقع مناسب للضفة الغربية.", ownerReply: null, ownerReplyAt: null, isDemo: true, status: "PUBLISHED", createdAt: now },
   ];
 
-  return { users, props, experiences: seedExperiences(), transports: seedTransports(), availability, priceRules, bookings, reviews, verifications: new Map(), activities: [] };
+  return { users, props, experiences: seedExperiences(), transports: seedTransports(), packages: seedPackages(), availability, priceRules, bookings, reviews, verifications: new Map(), activities: [] };
 }
 
 // Next.js قد يحمّل ملفات الـ route في module graphs مختلفة داخل نفس العملية.
 // تخزين البيانات على globalThis يضمن إن كل الصفحات تشوف نفس وحدات المالك الجديدة.
 const globalStore = globalThis as unknown as { __qiwaloMockState?: MockState };
 const state = (globalStore.__qiwaloMockState ??= createMockState());
-const { users, props, experiences, transports, availability, priceRules, bookings, reviews, verifications, activities } = state;
+const { users, props, experiences, transports, packages, availability, priceRules, bookings, reviews, verifications, activities } = state;
 
 const clone = <T,>(v: T): T => structuredClone(v);
 const toUserRecord = (u: StoredUser): UserRecord => ({
@@ -442,6 +473,41 @@ export const mockRepo: Repo = {
     const t = transports.find((x) => x.id === id);
     if (t) t.status = status;
   },
+  async listPublishedPackages(city?: CityKey, propertyId?: string) {
+    return clone(packages.filter((pkg) => pkg.status === "PUBLISHED"
+      && (!city || pkg.city === city)
+      && (!propertyId || pkg.propertyId === propertyId)));
+  },
+  async listAllPackages() { return clone(packages); },
+  async listPackagesForOwner(ownerId) {
+    return clone(packages.filter((pkg) => pkg.ownerId === ownerId));
+  },
+  async getPackageById(id) {
+    const pkg = packages.find((x) => x.id === id);
+    return pkg ? clone(pkg) : null;
+  },
+  async createPackage(input: NewPackageInput) {
+    const owner = users.find((u) => u.email === input.ownerId);
+    const pkg: Package = {
+      id: `pkg${packages.length + 1}`,
+      ownerId: input.ownerId,
+      ownerName: owner?.name ?? "مالك جديد",
+      name: input.name, city: input.city,
+      propertyId: input.propertyId, propertyName: props.find((p) => p.id === input.propertyId)?.name ?? "",
+      experienceId: input.experienceId, experienceName: experiences.find((e) => e.id === input.experienceId)?.name ?? "",
+      transportId: input.transportId, transportName: transports.find((t) => t.id === input.transportId)?.name ?? "",
+      capacity: input.capacity, pricePerNight: input.pricePerNight, includes: [...input.includes],
+      cancelPolicy: input.cancelPolicy, licenseDocUrl: input.licenseDocUrl,
+      status: "PENDING", commissionRate: owner?.commissionRate ?? 12,
+      createdAt: new Date().toISOString(),
+    };
+    packages.push(pkg);
+    return clone(pkg);
+  },
+  async moderatePackage(id, status) {
+    const pkg = packages.find((x) => x.id === id);
+    if (pkg) pkg.status = status;
+  },
   async getAvailability(propertyId) { return clone(availability.get(propertyId) ?? []); },
   async getPriceRules(propertyId) { return clone(priceRules.get(propertyId) ?? []); },
   async saveAvailability(propertyId, rows) {
@@ -477,6 +543,7 @@ export const mockRepo: Repo = {
       status: "PENDING", paymentStatus: "PENDING", provider: input.provider,
       experience: input.experience ? clone(input.experience) : null,
       transport: input.transport ? clone(input.transport) : null,
+      package: input.package ? clone(input.package) : null,
       createdAt: new Date().toISOString(),
     };
     bookings.unshift(b);

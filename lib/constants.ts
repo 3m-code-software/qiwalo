@@ -58,6 +58,9 @@ export const TRANSPORT_TYPES: Record<TransportType, { ar: string; en: string }> 
 export const TRANSPORT_CANCEL_POLICY =
   "إلغاء مجاني قبل موعد الرحلة بـ 24 ساعة أو أكثر. بعدها تُحتسب رسوم المورد، وفي حال اعتذار المورد يُعاد المبلغ كاملاً ويُبلَّغ الضيف فوراً.";
 
+export const PACKAGE_CANCEL_POLICY =
+  "إلغاء الباقة مجاني قبل الوصول بـ 48 ساعة أو أكثر. بعدها تُحتسب رسوم الوحدة والنقل والتجربة حسب سياسة كل مورّد، ويُبلَّغ الضيف فوراً.";
+
 export const AMENITIES = [
   "واي فاي",
   "مكيف",

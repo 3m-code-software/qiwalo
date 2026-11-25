@@ -33,6 +33,8 @@ export type ActivityAction =
   | "EXPERIENCE_REJECTED"
   | "TRANSPORT_PUBLISHED"
   | "TRANSPORT_REJECTED"
+  | "PACKAGE_PUBLISHED"
+  | "PACKAGE_REJECTED"
   | "COMMISSION_CHANGED"
   | "VERIFICATION_APPROVED"
   | "VERIFICATION_REJECTED"
@@ -128,6 +130,7 @@ export interface Booking {
   provider: PaymentProvider;
   experience: ExperienceBookingDetail | null;
   transport: TransportBookingDetail | null;
+  package: PackageBookingDetail | null;
   createdAt: string;
 }
 
@@ -279,6 +282,61 @@ export interface TransportBookingDetail {
   commission: number;
 }
 
+/** الباقة تجمع وحدة + نقل + تجربة بسعر واحد لكل ليلة، وتُضاف للحجز مع باقي الإضافات. */
+export interface Package {
+  id: string;
+  ownerId: string;
+  ownerName: string;
+  name: string;
+  city: CityKey;
+  propertyId: string;
+  propertyName: string;
+  experienceId: string;
+  experienceName: string;
+  transportId: string;
+  transportName: string;
+  capacity: number;
+  pricePerNight: number;
+  includes: string[];
+  cancelPolicy: string;
+  licenseDocUrl: string;
+  status: ModerationStatus;
+  commissionRate: number;
+  createdAt: string;
+}
+
+export interface NewPackageInput {
+  ownerId: string;
+  name: string;
+  city: CityKey;
+  propertyId: string;
+  experienceId: string;
+  transportId: string;
+  capacity: number;
+  pricePerNight: number;
+  includes: string[];
+  cancelPolicy: string;
+  licenseDocUrl: string;
+}
+
+export interface PackageBookingDetail {
+  packageId: string;
+  packageName: string;
+  city: CityKey;
+  propertyId: string;
+  propertyName: string;
+  experienceId: string;
+  experienceName: string;
+  transportId: string;
+  transportName: string;
+  capacity: number;
+  pricePerNight: number;
+  nights: number;
+  guests: number;
+  total: number;
+  commission: number;
+}
+
 export interface Review {
   id: string;
   propertyId: string;
@@ -359,6 +417,7 @@ export interface NewBookingInput {
   termsAcceptedAt?: string | null;
   experience?: ExperienceBookingDetail | null;
   transport?: TransportBookingDetail | null;
+  package?: PackageBookingDetail | null;
 }
 
 export interface PlatformStats {

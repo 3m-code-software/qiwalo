@@ -15,6 +15,7 @@ export default function CheckoutForm({
   quote,
   experience,
   transport,
+  package: pkg,
 }: {
   property: Property;
   checkIn: string;
@@ -23,6 +24,7 @@ export default function CheckoutForm({
   quote: Quote;
   experience?: { id: string; name: string; total: number } | null;
   transport?: { id: string; name: string; total: number } | null;
+  package?: { id: string; name: string; total: number } | null;
 }) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(confirmBookingAction, {});
 
@@ -34,6 +36,7 @@ export default function CheckoutForm({
       <input type="hidden" name="guests" value={guests} />
       {experience && <input type="hidden" name="experienceId" value={experience.id} />}
       {transport && <input type="hidden" name="transportId" value={transport.id} />}
+      {pkg && <input type="hidden" name="packageId" value={pkg.id} />}
 
       <h2 className="text-lg font-extrabold text-navy">بيانات الضيف</h2>
       <div>
@@ -67,8 +70,13 @@ export default function CheckoutForm({
       <div className="rounded-xl border border-gold/30 bg-ivory p-4 text-sm">
         <div className="flex items-center justify-between gap-3">
           <span className="font-bold text-muted">إجمالي الحجز ({quote.nights} ليالي)</span>
-          <span className="text-lg font-black text-navy">{money(quote.total + (experience?.total ?? 0) + (transport?.total ?? 0))}</span>
+          <span className="text-lg font-black text-navy">{money(quote.total + (pkg?.total ?? 0) + (experience?.total ?? 0) + (transport?.total ?? 0))}</span>
         </div>
+        {pkg && (
+          <p className="muted mt-2 text-xs">
+            شامل {pkg.name}: <span className="font-bold text-nile">{money(pkg.total)}</span>
+          </p>
+        )}
         {experience && (
           <p className="muted mt-2 text-xs">
             شامل {experience.name}: <span className="font-bold text-nile">{money(experience.total)}</span>

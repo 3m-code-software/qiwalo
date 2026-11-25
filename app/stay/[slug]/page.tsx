@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import AvailabilityCalendar from "@/components/AvailabilityCalendar";
 import ExperienceAddOn from "@/components/ExperienceAddOn";
+import PackageAddOn from "@/components/PackageAddOn";
 import TransportAddOn from "@/components/TransportAddOn";
 import FavoriteButton from "@/components/FavoriteButton";
 import PropertyGallery from "@/components/PropertyGallery";
@@ -70,19 +71,21 @@ export default async function StayPage({ params, searchParams }: Props) {
   const property = await repo.getPropertyBySlug(slug);
   if (!property || property.status !== "PUBLISHED") notFound();
 
-  const [rules, availability, reviews, safaris, motorcycleTours, transports] = await Promise.all([
+  const [rules, availability, reviews, safaris, motorcycleTours, transports, packages] = await Promise.all([
     repo.getPriceRules(property.id),
     repo.getAvailability(property.id),
     repo.listReviewsForProperty(property.id),
     repo.listPublishedExperiences(property.city, "MOUNTAIN_SAFARI"),
     repo.listPublishedExperiences(property.city, "MOTORCYCLE_TOUR"),
     repo.listPublishedTransports(property.city),
+    repo.listPublishedPackages(property.city, property.id),
   ]);
   const checkIn = /^\d{4}-\d{2}-\d{2}$/.test(one(sp.checkIn)) ? one(sp.checkIn) : "";
   const checkOut = /^\d{4}-\d{2}-\d{2}$/.test(one(sp.checkOut)) ? one(sp.checkOut) : "";
   const guests = Math.max(1, Number(one(sp.guests)) || 1);
   const experienceId = one(sp.experience);
   const transportId = one(sp.transport);
+  const packageId = one(sp.package);
   const quote = checkIn && checkOut ? quoteStay(property, rules, availability, checkIn, checkOut) : null;
   const calendarDays = availability.map((day) => ({
     date: day.date,
@@ -219,6 +222,7 @@ export default async function StayPage({ params, searchParams }: Props) {
             checkOut={checkOut}
             guests={guests}
             transportId={transportId}
+            packageId={packageId}
             category="MOUNTAIN_SAFARI"
           />
 
@@ -229,6 +233,7 @@ export default async function StayPage({ params, searchParams }: Props) {
             checkOut={checkOut}
             guests={guests}
             transportId={transportId}
+            packageId={packageId}
             category="MOTORCYCLE_TOUR"
           />
 
@@ -239,6 +244,17 @@ export default async function StayPage({ params, searchParams }: Props) {
             checkOut={checkOut}
             guests={guests}
             experienceId={experienceId}
+            packageId={packageId}
+          />
+
+          <PackageAddOn
+            packages={packages}
+            propertySlug={property.slug}
+            checkIn={checkIn}
+            checkOut={checkOut}
+            guests={guests}
+            experienceId={experienceId}
+            transportId={transportId}
           />
         </div>
 

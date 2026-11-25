@@ -104,6 +104,7 @@ model User {
   properties   Property[]
   experiences  Experience[]
   transports   Transport[]
+  packages     Package[]
   bookings     Booking[]
   payouts      Payout[]
   reviews      Review[]
@@ -144,6 +145,7 @@ model Property {
   availability Availability[]
   priceRules   PriceRule[]
   bookings     Booking[]
+  packages     Package[]
   reviews      Review[]
 
   @@index([city, status])
@@ -195,6 +197,8 @@ model Experience {
   commissionRate  Int                 @default(12)
   createdAt       DateTime            @default(now())
 
+  packages        Package[]
+
   @@index([city, status])
   @@index([ownerId, status])
 }
@@ -218,6 +222,33 @@ model Transport {
   status          ModerationStatus @default(PENDING)
   commissionRate  Int           @default(12)
   createdAt       DateTime      @default(now())
+
+  packages        Package[]
+
+  @@index([city, status])
+  @@index([ownerId, status])
+}
+
+model Package {
+  id              String           @id @default(cuid())
+  ownerId         String
+  owner           User             @relation(fields: [ownerId], references: [id])
+  name            String
+  city            City
+  propertyId      String
+  property        Property         @relation(fields: [propertyId], references: [id])
+  experienceId    String
+  experience      Experience       @relation(fields: [experienceId], references: [id])
+  transportId     String
+  transport       Transport        @relation(fields: [transportId], references: [id])
+  capacity        Int
+  pricePerNight   Int
+  includes        Json             @default("[]")
+  cancelPolicy    String
+  licenseDocUrl   String
+  status          ModerationStatus @default(PENDING)
+  commissionRate  Int              @default(12)
+  createdAt       DateTime         @default(now())
 
   @@index([city, status])
   @@index([ownerId, status])
@@ -248,6 +279,7 @@ model Booking {
   provider        PaymentProvider @default(MANUAL)
   experience      Json?
   transport       Json?
+  packageDetail   Json?
   createdAt       DateTime        @default(now())
 
   @@index([guestId, createdAt])

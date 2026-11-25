@@ -9,8 +9,10 @@ import type {
   ModerationStatus,
   NewBookingInput,
   NewExperienceInput,
+  NewPackageInput,
   NewPropertyInput,
   NewTransportInput,
+  Package,
   NewReviewInput,
   NewActivityInput,
   NewVerificationInput,
@@ -49,6 +51,12 @@ export interface Repo {
   getTransportById(id: string): Promise<Transport | null>;
   createTransport(input: NewTransportInput): Promise<Transport>;
   moderateTransport(id: string, status: ModerationStatus): Promise<void>;
+  listPublishedPackages(city?: CityKey, propertyId?: string): Promise<Package[]>;
+  listAllPackages(): Promise<Package[]>;
+  listPackagesForOwner(ownerId: string): Promise<Package[]>;
+  getPackageById(id: string): Promise<Package | null>;
+  createPackage(input: NewPackageInput): Promise<Package>;
+  moderatePackage(id: string, status: ModerationStatus): Promise<void>;
   getAvailability(propertyId: string): Promise<Availability[]>;
   getPriceRules(propertyId: string): Promise<PriceRule[]>;
   saveAvailability(propertyId: string, rows: Availability[]): Promise<void>;

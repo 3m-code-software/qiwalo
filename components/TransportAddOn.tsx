@@ -10,10 +10,11 @@ type Props = {
   checkOut: string;
   guests: number;
   experienceId?: string;
+  packageId?: string;
 };
 
 /** النقل كيان منفصل عن الوحدة والتجربة، ويُضاف لنفس الحجز بعد مراجعة الإدارة. */
-export default function TransportAddOn({ transports, propertySlug, checkIn, checkOut, guests, experienceId }: Props) {
+export default function TransportAddOn({ transports, propertySlug, checkIn, checkOut, guests, experienceId, packageId }: Props) {
   if (transports.length === 0) return null;
   const ready = Boolean(checkIn && checkOut);
 
@@ -57,6 +58,7 @@ export default function TransportAddOn({ transports, propertySlug, checkIn, chec
                   <input type="hidden" name="checkOut" value={checkOut} />
                   <input type="hidden" name="guests" value={guests} />
                   {experienceId && <input type="hidden" name="experience" value={experienceId} />}
+                  {packageId && <input type="hidden" name="package" value={packageId} />}
                   <input type="hidden" name="transport" value={transport.id} />
                   <button type="submit" className="btn-gold !px-4 !py-2 text-sm">أضف النقل وأكمل الحجز ←</button>
                 </form>

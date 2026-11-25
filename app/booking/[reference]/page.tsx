@@ -86,6 +86,12 @@ export default async function BookingPage({ params, searchParams }: Props) {
         <div className="mt-5 space-y-2 border-t border-line pt-4 text-sm">
           <div className="flex justify-between"><span className="muted">{toArabicDigits(booking.nights)} ليالي · {toArabicDigits(booking.guests)} ضيوف</span><span>{money(booking.subtotal)}</span></div>
           <div className="flex justify-between"><span className="muted">رسوم الخدمة</span><span>{money(booking.serviceFee)}</span></div>
+          {booking.package && (
+            <div className="flex justify-between" data-testid="booking-package-line">
+              <span className="muted">الباقة · {toArabicDigits(booking.package.nights)} ليالي × {money(booking.package.pricePerNight)}</span>
+              <span>{money(booking.package.total)}</span>
+            </div>
+          )}
           {booking.experience && (
             <div className="flex justify-between" data-testid="booking-experience-line">
               <span className="muted">{experienceLabel} · {toArabicDigits(booking.experience.guests)} أفراد</span>
@@ -101,6 +107,36 @@ export default async function BookingPage({ params, searchParams }: Props) {
           <div className="flex justify-between text-lg font-black text-nile"><span>الإجمالي</span><span>{money(booking.total)}</span></div>
         </div>
       </div>
+
+      {booking.package && (
+        <div className="soft-card mt-5" data-testid="booking-package">
+          <h2 className="mb-4 text-lg font-extrabold text-navy">الباقة كاملة</h2>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <p className="muted text-xs">الباقة</p>
+              <p className="font-bold">{booking.package.packageName}</p>
+              <p className="muted text-xs">{CITIES[booking.package.city].ar} · سعة {toArabicDigits(booking.package.capacity)}</p>
+            </div>
+            <div>
+              <p className="muted text-xs">الوحدة</p>
+              <p className="font-bold">{booking.package.propertyName}</p>
+            </div>
+            <div>
+              <p className="muted text-xs">التجربة والنقل</p>
+              <p className="font-bold">{booking.package.experienceName}</p>
+              <p className="muted text-xs">{booking.package.transportName}</p>
+            </div>
+            <div>
+              <p className="muted text-xs">السعر</p>
+              <p className="font-bold">{money(booking.package.pricePerNight)} / ليلة × {toArabicDigits(booking.package.nights)} ليالي = {money(booking.package.total)}</p>
+            </div>
+            <div>
+              <p className="muted text-xs">الحالة</p>
+              <p className="font-bold">بعد مراجعة الإدارة للمستندات</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {booking.experience && (
         <div className="soft-card mt-5" data-testid="booking-experience">

@@ -2,8 +2,8 @@ import { prisma } from "@/lib/db";
 import { makePropertySlug, slugCandidates } from "@/lib/slug";
 import type { Repo } from "./index";
 import type {
-  ActivityLog, Availability, Booking, CityKey, Experience, ExperienceCategory, NewActivityInput, NewBookingInput, NewExperienceInput, NewPropertyInput,
-  NewReviewInput, NewTransportInput, NewVerificationInput, OwnerVerification, PlatformStats, PriceRule, Property,
+  ActivityLog, Availability, Booking, CityKey, Experience, ExperienceCategory, NewActivityInput, NewBookingInput, NewExperienceInput, NewPackageInput, NewPropertyInput,
+  NewReviewInput, NewTransportInput, NewVerificationInput, OwnerVerification, Package, PlatformStats, PriceRule, Property,
   Review, SearchFilter, Transport, UserRecord, VerificationStatus,
 } from "@/lib/types";
 
@@ -63,6 +63,25 @@ function mapTransport(t: any): Transport {
   };
 }
 
+function mapPackage(p: any): Package {
+  return {
+    id: p.id, ownerId: p.owner?.email ?? p.ownerId, ownerName: p.owner?.name ?? "مالك",
+    name: p.name, city: p.city,
+    propertyId: p.propertyId, propertyName: p.property?.name ?? "",
+    experienceId: p.experienceId, experienceName: p.experience?.name ?? "",
+    transportId: p.transportId, transportName: p.transport?.name ?? "",
+    capacity: p.capacity, pricePerNight: p.pricePerNight,
+    includes: Array.isArray(p.includes) ? p.includes : [],
+    cancelPolicy: p.cancelPolicy, licenseDocUrl: p.licenseDocUrl, status: p.status,
+    commissionRate: p.commissionRate ?? 12, createdAt: p.createdAt.toISOString(),
+  };
+}
+
+/** الباقات مفعّلة على Mock فقط لحد ما يتنفّذ add-package.sql في الإنتاج. */
+function packageUnavailable(error: unknown): void {
+  console.warn("[packages] جدول الباقات غير مفعّل بعد في قاعدة البيانات؛ الباقات مستترة مؤقتاً.", error);
+}
+
 function mapBooking(b: any): Booking {
   return {
     id: b.id, reference: b.reference, propertyId: b.propertyId,
@@ -77,6 +96,7 @@ function mapBooking(b: any): Booking {
     status: b.status, paymentStatus: b.paymentStatus, provider: b.provider,
     experience: (b.experience as Booking["experience"]) ?? null,
     transport: (b.transport as Booking["transport"]) ?? null,
+    package: (b.packageDetail as Booking["package"]) ?? null,
     createdAt: b.createdAt.toISOString(),
   };
 }
@@ -289,6 +309,77 @@ export const prismaRepo: Repo = {
   async moderateTransport(id, status) {
     await prisma.transport.update({ where: { id }, data: { status: status as any } });
   },
+  async listPublishedPackages(city?: CityKey, propertyId?: string) {
+    try {
+      const rows = await prisma.package.findMany({
+        where: {
+          status: "PUBLISHED" as any,
+          ...(city ? { city: city as any } : {}),
+          ...(propertyId ? { propertyId } : {}),
+        },
+        include: { owner: true, property: true, experience: true, transport: true },
+        orderBy: { createdAt: "desc" },
+      });
+      return rows.map(mapPackage);
+    } catch (error) {
+      packageUnavailable(error);
+      return [];
+    }
+  },
+  async listAllPackages() {
+    try {
+      const rows = await prisma.package.findMany({
+        include: { owner: true, property: true, experience: true, transport: true },
+        orderBy: { createdAt: "desc" },
+      });
+      return rows.map(mapPackage);
+    } catch (error) {
+      packageUnavailable(error);
+      return [];
+    }
+  },
+  async listPackagesForOwner(ownerId) {
+    const id = await resolveUserId(ownerId);
+    try {
+      const rows = await prisma.package.findMany({
+        where: { ownerId: id },
+        include: { owner: true, property: true, experience: true, transport: true },
+        orderBy: { createdAt: "desc" },
+      });
+      return rows.map(mapPackage);
+    } catch (error) {
+      packageUnavailable(error);
+      return [];
+    }
+  },
+  async getPackageById(id) {
+    try {
+      const row = await prisma.package.findUnique({
+        where: { id },
+        include: { owner: true, property: true, experience: true, transport: true },
+      });
+      return row ? mapPackage(row) : null;
+    } catch (error) {
+      packageUnavailable(error);
+      return null;
+    }
+  },
+  async createPackage(input: NewPackageInput) {
+    const ownerId = await resolveUserId(input.ownerId);
+    const row = await prisma.package.create({
+      data: {
+        ownerId, name: input.name, city: input.city as any,
+        propertyId: input.propertyId, experienceId: input.experienceId, transportId: input.transportId,
+        capacity: input.capacity, pricePerNight: input.pricePerNight, includes: input.includes,
+        cancelPolicy: input.cancelPolicy, licenseDocUrl: input.licenseDocUrl,
+      },
+      include: { owner: true, property: true, experience: true, transport: true },
+    });
+    return mapPackage(row);
+  },
+  async moderatePackage(id, status) {
+    await prisma.package.update({ where: { id }, data: { status: status as any } });
+  },
   async getAvailability(propertyId) {
     const rows = await prisma.availability.findMany({ where: { propertyId }, orderBy: { date: "asc" } });
     return rows.map((r): Availability => ({ date: iso(r.date), isBlocked: r.isBlocked, priceOverride: r.priceOverride }));
@@ -320,20 +411,28 @@ export const prismaRepo: Repo = {
   async createBooking(input: NewBookingInput) {
     const nights = Math.max(0, Math.round((new Date(input.checkOut).getTime() - new Date(input.checkIn).getTime()) / 86400000));
     const guestId = await resolveUserId(input.guestId);
-    const row = await prisma.booking.create({
-      data: {
-        reference: `QW-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
-        propertyId: input.propertyId, guestId,
-        checkIn: dbDate(input.checkIn), checkOut: dbDate(input.checkOut),
-        nights, guests: input.guests, subtotal: input.subtotal, serviceFee: input.serviceFee,
-        commission: input.commission, total: input.total, provider: input.provider as any,
-        nationality: input.nationality ?? null, paymentMethod: input.paymentMethod ?? "CASH",
-        paymentNote: input.paymentNote ?? null, termsAcceptedAt: input.termsAcceptedAt ? new Date(input.termsAcceptedAt) : null,
-        experience: (input.experience ?? undefined) as any,
-        transport: (input.transport ?? undefined) as any,
-      },
-      include,
-    });
+    const data: Record<string, unknown> = {
+      reference: `QW-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
+      propertyId: input.propertyId, guestId,
+      checkIn: dbDate(input.checkIn), checkOut: dbDate(input.checkOut),
+      nights, guests: input.guests, subtotal: input.subtotal, serviceFee: input.serviceFee,
+      commission: input.commission, total: input.total, provider: input.provider as any,
+      nationality: input.nationality ?? null, paymentMethod: input.paymentMethod ?? "CASH",
+      paymentNote: input.paymentNote ?? null, termsAcceptedAt: input.termsAcceptedAt ? new Date(input.termsAcceptedAt) : null,
+      experience: (input.experience ?? undefined) as any,
+      transport: (input.transport ?? undefined) as any,
+    };
+    if (input.package) data.packageDetail = input.package;
+    let row;
+    try {
+      row = await prisma.booking.create({ data: data as any, include });
+    } catch (error) {
+      if (!input.package) throw error;
+      // عمود packageDetail لسه مش موجود في الإنتاج قبل add-package.sql؛ الحجز نفسه لازم يتم.
+      packageUnavailable(error);
+      delete data.packageDetail;
+      row = await prisma.booking.create({ data: data as any, include });
+    }
     return mapBooking(row);
   },
   async getBookingByReference(reference) {

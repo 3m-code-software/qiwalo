@@ -31,12 +31,14 @@ export default async function OwnerPage({ searchParams }: { searchParams: Promis
   const created = Array.isArray(sp.created) ? sp.created[0] : sp.created;
   const experienceCreated = Array.isArray(sp.experience) ? sp.experience[0] : sp.experience;
   const transportCreated = Array.isArray(sp.transport) ? sp.transport[0] : sp.transport;
+  const packageCreated = Array.isArray(sp.package) ? sp.package[0] : sp.package;
   const repo = await getRepo();
-  const [properties, bookings, experiences, transports, verification, user] = await Promise.all([
+  const [properties, bookings, experiences, transports, packages, verification, user] = await Promise.all([
     repo.listPropertiesForOwner(session.email),
     repo.listBookingsForOwner(session.email),
     repo.listExperiencesForOwner(session.email),
     repo.listTransportsForOwner(session.email),
+    repo.listPackagesForOwner(session.email),
     repo.getVerification(session.email),
     repo.getUserByEmail(session.email),
   ]);
@@ -64,6 +66,7 @@ export default async function OwnerPage({ searchParams }: { searchParams: Promis
           <Link href="/owner/units/new" className="btn-primary text-sm">+ إضافة وحدة</Link>
           <Link href="/owner/experiences/new" className="btn-ghost text-sm">+ إضافة سفاري</Link>
           <Link href="/owner/transport/new" className="btn-ghost text-sm">+ إضافة نقل</Link>
+          <Link href="/owner/packages/new" className="btn-ghost text-sm">+ إضافة باقة</Link>
         </div>
       </div>
 
@@ -120,6 +123,12 @@ export default async function OwnerPage({ searchParams }: { searchParams: Promis
       {transportCreated === "1" && (
         <p className="mb-5 rounded-xl bg-nile-soft p-4 text-sm font-bold text-nile-dark" role="status">
           ✅ تم إرسال خدمة النقل للمراجعة. هتظهر للضيوف بعد موافقة الإدارة.
+        </p>
+      )}
+
+      {packageCreated === "1" && (
+        <p className="mb-5 rounded-xl bg-nile-soft p-4 text-sm font-bold text-nile-dark" role="status">
+          ✅ تم إرسال الباقة للمراجعة. هتظهر للضيوف بعد موافقة الإدارة.
         </p>
       )}
 
@@ -224,6 +233,34 @@ export default async function OwnerPage({ searchParams }: { searchParams: Promis
                 <h3 className="font-extrabold">{transport.name}</h3>
                 <p className="muted mt-1 text-xs">{CITIES[transport.city].ar} · {transport.routeFrom} ← {transport.routeTo} · {toArabicDigits(transport.durationHours)} ساعات</p>
                 <p className="mt-3 font-bold text-nile">{money(transport.pricePerTrip)} / رحلة · سعة {toArabicDigits(transport.capacity)}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="mt-10" data-testid="owner-packages">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-xl font-extrabold">الباقات</h2>
+          <Link href="/owner/packages/new" className="btn-ghost text-sm">+ إضافة باقة</Link>
+        </div>
+        {packages.length === 0 ? (
+          <div className="soft-card text-center">
+            <p className="muted">لسه مضفتش أي باقة.</p>
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2">
+            {packages.map((pkg) => (
+              <div key={pkg.id} data-testid="owner-package-row" className="soft-card">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <span className={`chip !bg-transparent ${statusLabel[pkg.status]?.cls ?? ""}`}>
+                    {statusLabel[pkg.status]?.ar ?? pkg.status}
+                  </span>
+                  <span className="muted text-xs">{CITIES[pkg.city].ar}</span>
+                </div>
+                <h3 className="font-extrabold">{pkg.name}</h3>
+                <p className="muted mt-1 text-xs">{pkg.propertyName} · {pkg.experienceName} · {pkg.transportName}</p>
+                <p className="mt-3 font-bold text-nile">{money(pkg.pricePerNight)} / ليلة · سعة {toArabicDigits(pkg.capacity)}</p>
               </div>
             ))}
           </div>

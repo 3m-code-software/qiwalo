@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { eachDayOfInterval, format, parseISO } from "date-fns";
-import { DEFAULT_COMMISSION_RATE, EXPERIENCE_CANCEL_POLICY, TRANSPORT_CANCEL_POLICY } from "@/lib/constants";
+import { DEFAULT_COMMISSION_RATE, EXPERIENCE_CANCEL_POLICY, PACKAGE_CANCEL_POLICY, TRANSPORT_CANCEL_POLICY } from "@/lib/constants";
 import { toArabicDigits } from "@/lib/format";
 import { clearSession, createSession, getSession, requireRole, type Session } from "@/lib/auth";
 import { sendBookingNotifications, sendReviewNotice, sendSignupNotice, sendVerificationNotice } from "@/lib/notifications";
@@ -14,7 +14,7 @@ import { createTelegramActivationToken } from "@/lib/telegram";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import type {
   BookingStatus, CityKey, ExperienceBookingDetail, ExperienceCategory, ExperienceDifficulty, ModerationStatus,
-  PaymentMethod, PropertyType, PropertyUpdateInput, ReviewStatus, Role, TransportBookingDetail,
+  PackageBookingDetail, PaymentMethod, PropertyType, PropertyUpdateInput, ReviewStatus, Role, TransportBookingDetail,
   TransportType, VerificationStatus,
 } from "@/lib/types";
 
@@ -495,6 +495,79 @@ export async function moderateTransportAction(_prev: FormState, form: FormData):
   return { ok: status === "PUBLISHED" ? "تم نشر خدمة النقل ✅" : "تم تحديث النقل ✅" };
 }
 
+// ===== الباقات: وحدة + نقل + تجربة بسعر واحد للليلة =====
+
+export async function createPackageAction(_prev: FormState, form: FormData): Promise<FormState> {
+  const session = await requireRole("OWNER");
+  const name = String(form.get("name") ?? "").trim();
+  const propertyId = String(form.get("propertyId") ?? "").trim();
+  const experienceId = String(form.get("experienceId") ?? "").trim();
+  const transportId = String(form.get("transportId") ?? "").trim();
+  const capacity = Number(form.get("capacity"));
+  const pricePerNight = Number(form.get("pricePerNight"));
+  const licenseDocUrl = String(form.get("licenseDocUrl") ?? "").trim();
+  const includes = [...new Set(
+    form.getAll("includes").flatMap((value) => String(value).split(/[\n,]+/)).map((s) => s.trim()).filter(Boolean),
+  )].slice(0, 8);
+
+  if (name.length < 3) return { error: "اكتب اسم للباقة (٣ حروف على الأقل)." };
+  if (includes.length === 0) return { error: "اكتب على الأقل مشمول واحد للباقة." };
+  if (!licenseDocUrl.startsWith("https://")) return { error: "لازم رابط مستند المراجعة يبدأ بـ https://." };
+  if (!Number.isFinite(capacity) || capacity < 1 || capacity > 100) return { error: "السعة غير صحيحة." };
+  if (!Number.isFinite(pricePerNight) || pricePerNight < 100) return { error: "أدخل سعر صحيحاً للليلة." };
+
+  const repo = await getRepo();
+  const [property, experience, transport] = await Promise.all([
+    repo.getPropertyById(propertyId), repo.getExperienceById(experienceId), repo.getTransportById(transportId),
+  ]);
+  if (!property || property.ownerId !== session.email || property.status !== "PUBLISHED") {
+    return { error: "اختر وحدة منشورة تخصك أنت." };
+  }
+  if (!experience || experience.status !== "PUBLISHED" || experience.city !== property.city) {
+    return { error: "التجربة المختارة غير متاحة لنفس مدينة الوحدة." };
+  }
+  if (!transport || transport.status !== "PUBLISHED" || transport.city !== property.city) {
+    return { error: "خدمة النقل المختارة غير متاحة لنفس مدينة الوحدة." };
+  }
+  if (capacity > Math.min(property.maxGuests, experience.capacity, transport.capacity)) {
+    return { error: "سعة الباقة أكبر من سعة الوحدة أو التجربة أو النقل المختارة." };
+  }
+
+  await repo.createPackage({
+    ownerId: session.email, name, city: property.city, propertyId, experienceId, transportId,
+    capacity, pricePerNight, includes, licenseDocUrl,
+    cancelPolicy: String(form.get("cancelPolicy") ?? "").trim() || PACKAGE_CANCEL_POLICY,
+  });
+  revalidatePath("/owner");
+  revalidatePath("/admin");
+  redirect("/owner?package=1");
+}
+
+export async function moderatePackageAction(_prev: FormState, form: FormData): Promise<FormState> {
+  const session = await requireRole("ADMIN");
+  const id = String(form.get("id") ?? "");
+  const status = String(form.get("status") ?? "") as ModerationStatus;
+  if (!id || !["PUBLISHED", "REJECTED", "DRAFT", "PENDING"].includes(status)) {
+    return { error: "تعذّر تحديث الباقة. حاول مرة أخرى." };
+  }
+  const repo = await getRepo();
+  const pkg = await repo.getPackageById(id);
+  await repo.moderatePackage(id, status);
+  await repo.logActivity({
+    actorEmail: session.email,
+    actorName: session.name,
+    action: status === "PUBLISHED" ? "PACKAGE_PUBLISHED" : "PACKAGE_REJECTED",
+    target: id,
+    detail: pkg?.name ?? id,
+  });
+  revalidatePath("/admin");
+  revalidatePath("/admin/packages");
+  revalidatePath("/owner");
+  revalidatePath("/search");
+  revalidatePath("/");
+  return { ok: status === "PUBLISHED" ? "تم نشر الباقة ✅" : "تم تحديث الباقة ✅" };
+}
+
 // ===== Availability & price rules =====
 
 export async function saveAvailabilityAction(form: FormData): Promise<void> {
@@ -562,6 +635,28 @@ export async function confirmBookingAction(_prev: FormState, form: FormData): Pr
   const result = quoteStay(property, rules, availability, checkIn, checkOut);
   if (!result.ok) return { error: "التواريخ غير متاحة. اختار مواعيد تانية." };
 
+  const packageId = String(form.get("packageId") ?? "").trim();
+  let packageDetail: PackageBookingDetail | null = null;
+  if (packageId) {
+    const pkg = await repo.getPackageById(packageId);
+    if (!pkg || pkg.status !== "PUBLISHED" || pkg.city !== property.city || pkg.propertyId !== property.id) {
+      return { error: "الباقة غير متاحة لهذه الوحدة." };
+    }
+    if (guests > pkg.capacity) {
+      return { error: `عدد الضيوف أكبر من سعة الباقة (${toArabicDigits(pkg.capacity)}).` };
+    }
+    const packageTotal = pkg.pricePerNight * result.quote.nights;
+    packageDetail = {
+      packageId: pkg.id, packageName: pkg.name, city: pkg.city,
+      propertyId: pkg.propertyId, propertyName: pkg.propertyName,
+      experienceId: pkg.experienceId, experienceName: pkg.experienceName,
+      transportId: pkg.transportId, transportName: pkg.transportName,
+      capacity: pkg.capacity, pricePerNight: pkg.pricePerNight, nights: result.quote.nights,
+      guests, total: packageTotal,
+      commission: Math.round(packageTotal * (pkg.commissionRate / 100)),
+    };
+  }
+
   const experienceId = String(form.get("experienceId") ?? "").trim();
   let experienceDetail: ExperienceBookingDetail | null = null;
   if (experienceId) {
@@ -617,9 +712,10 @@ export async function confirmBookingAction(_prev: FormState, form: FormData): Pr
     propertyId: property.id, guestId: guestEmail, guestName: fullName,
     checkIn, checkOut, guests,
     subtotal: result.quote.subtotal, serviceFee: result.quote.serviceFee,
-    commission: result.quote.commission + (experienceDetail?.commission ?? 0) + (transportDetail?.commission ?? 0),
-    total: result.quote.total + (experienceDetail?.total ?? 0) + (transportDetail?.total ?? 0), provider: "MANUAL",
+    commission: result.quote.commission + (packageDetail?.commission ?? 0) + (experienceDetail?.commission ?? 0) + (transportDetail?.commission ?? 0),
+    total: result.quote.total + (packageDetail?.total ?? 0) + (experienceDetail?.total ?? 0) + (transportDetail?.total ?? 0), provider: "MANUAL",
     nationality, paymentMethod, termsAcceptedAt, experience: experienceDetail, transport: transportDetail,
+    package: packageDetail,
   });
   await repo.updateBooking(booking.reference, { status: "CONFIRMED", paymentStatus: "PENDING" });
 

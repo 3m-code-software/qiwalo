@@ -36,6 +36,10 @@ const activityLabel: Record<string, string> = {
   PROPERTY_PENDING: "إعادة وحدة للمراجعة",
   EXPERIENCE_PUBLISHED: "نشر تجربة سفاري",
   EXPERIENCE_REJECTED: "رفض تجربة سفاري",
+  TRANSPORT_PUBLISHED: "نشر خدمة نقل",
+  TRANSPORT_REJECTED: "رفض خدمة نقل",
+  PACKAGE_PUBLISHED: "نشر باقة",
+  PACKAGE_REJECTED: "رفض باقة",
   COMMISSION_CHANGED: "تغيير عمولة",
   VERIFICATION_APPROVED: "موافقة على توثيق مالك",
   VERIFICATION_REJECTED: "رفض توثيق مالك",
@@ -214,6 +218,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         <div className="flex flex-wrap gap-2">
           <Link href="/admin/experiences" className="btn-ghost !py-2 text-sm">مراجعة التجارب والجولات ↗</Link>
           <Link href="/admin/transport" className="btn-ghost !py-2 text-sm">مراجعة النقل ↗</Link>
+          <Link href="/admin/packages" className="btn-ghost !py-2 text-sm">مراجعة الباقات ↗</Link>
           <Link href="/owner" className="btn-ghost !py-2 text-sm">لوحة المالك ↗</Link>
         </div>
       </div>
