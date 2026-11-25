@@ -37,6 +37,15 @@ export default function SiteFooter() {
         </div>
         <div>
           <h3 className="mb-4 text-sm font-extrabold text-gold-bright">الدعم</h3>
+          <Link
+            href="/download"
+            className="mb-4 inline-flex min-h-11 items-center gap-2 rounded-lg border border-gold/40 bg-gold-soft px-3 text-sm font-extrabold text-navy transition hover:border-gold"
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 3v12m0 0 4-4m-4 4-4-4M4 19h16" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            تحميل تطبيق أندرويد
+          </Link>
           <SupportLinks />
           <p className="mt-3 text-sm text-white/65">
             اتصل بنا:{" "}

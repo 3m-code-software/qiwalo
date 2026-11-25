@@ -18,6 +18,8 @@ const PUBLIC_PAGES: { path: string; frequency: MetadataRoute.Sitemap[number]["ch
   { path: "/favorites", frequency: "monthly", priority: 0.3 },
 ];
 
+// صفحة /download مخصصة للتحميل فقط ومخفية بروبوتس + noindex، فما بتدخلش الـ sitemap.
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // يمنع قراءة قاعدة البيانات أثناء الـ build؛ الـ sitemap يُولَّد عند الطلب.
   await connection();

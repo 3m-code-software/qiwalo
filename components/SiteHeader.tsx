@@ -64,6 +64,9 @@ export default async function SiteHeader() {
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2">
           <SupportLinks compact />
           <FavoritesNavLink compact />
+          <Link href="/download" className="shrink-0 text-xs font-bold text-gold-bright transition hover:text-white">
+            تحميل
+          </Link>
           <Link href="/terms" className="shrink-0 text-xs font-bold text-white/70 transition hover:text-gold-bright">
             الشروط
           </Link>
