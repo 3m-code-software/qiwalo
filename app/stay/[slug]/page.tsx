@@ -6,6 +6,7 @@ import AvailabilityCalendar from "@/components/AvailabilityCalendar";
 import FavoriteButton from "@/components/FavoriteButton";
 import PropertyGallery from "@/components/PropertyGallery";
 import MapView from "@/components/MapView";
+import MobileBookingBar from "@/components/MobileBookingBar";
 import PriceBreakdown from "@/components/PriceBreakdown";
 import ReviewsTab from "@/components/ReviewsTab";
 import { CITIES, COMMISSION_RATE, PROPERTY_TYPES, SUPPORT_PHONE, SUPPORT_TELEGRAM, SUPPORT_WHATSAPP } from "@/lib/constants";
@@ -109,7 +110,7 @@ export default async function StayPage({ params, searchParams }: Props) {
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
+    <div className="mx-auto max-w-7xl px-4 pb-28 pt-8 lg:pb-8">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
@@ -268,6 +269,8 @@ export default async function StayPage({ params, searchParams }: Props) {
           </div>
         </aside>
       </div>
+
+      <MobileBookingBar price={money(property.basePrice)} />
     </div>
   );
 }
