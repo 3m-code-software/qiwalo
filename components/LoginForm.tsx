@@ -83,6 +83,21 @@ export default function LoginForm({
             <input id="signup-email" name="email" type="email" autoComplete="email" className="input" placeholder="name@example.com" required />
           </div>
           <div>
+            <label className="label" htmlFor="signup-phone">رقم التليفون</label>
+            <input
+              id="signup-phone"
+              name="phone"
+              type="tel"
+              inputMode="numeric"
+              autoComplete="tel"
+              className="input"
+              dir="ltr"
+              placeholder="01xxxxxxxxx"
+              title="رقم مصري يبدأ بـ ٠١ ويتكون من ١١ رقماً"
+              required
+            />
+          </div>
+          <div>
             <label className="label" htmlFor="signup-password">كلمة المرور</label>
             <input id="signup-password" name="password" type="password" autoComplete="new-password" className="input" placeholder="6 أحرف على الأقل" required minLength={6} />
           </div>

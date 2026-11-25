@@ -7,9 +7,10 @@ import { eachDayOfInterval, format, parseISO } from "date-fns";
 import { DEFAULT_COMMISSION_RATE } from "@/lib/constants";
 import { toArabicDigits } from "@/lib/format";
 import { clearSession, createSession, getSession, requireRole, type Session } from "@/lib/auth";
-import { sendBookingNotifications, sendReviewNotice, sendVerificationNotice } from "@/lib/notifications";
+import { sendBookingNotifications, sendReviewNotice, sendSignupNotice, sendVerificationNotice } from "@/lib/notifications";
 import { quoteStay } from "@/lib/pricing";
 import { getRepo } from "@/lib/repo";
+import { createTelegramActivationToken } from "@/lib/telegram";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import type {
   BookingStatus, CityKey, ModerationStatus, PaymentMethod, PropertyType,
@@ -28,8 +29,28 @@ function safeNext(value: FormDataEntryValue | null): string {
   return path.startsWith("/") && !path.startsWith("//") ? path : "";
 }
 
+function landingForRole(role: Role): string {
+  return role === "ADMIN" ? "/admin" : role === "OWNER" ? "/owner" : "/";
+}
+
 function redirectForRole(next: string, role: Role): never {
-  redirect(next || (role === "ADMIN" ? "/admin" : role === "OWNER" ? "/owner" : "/"));
+  redirect(next || landingForRole(role));
+}
+
+/** بعد التسجيل: إشعار للأدمن + رابط تفعيل تليجرام للعميل، ثم دخوله للواجهة المناسبة. */
+async function finishSignup(input: {
+  email: string;
+  name: string;
+  role: Role;
+  phone: string;
+  next: FormDataEntryValue | null;
+}): Promise<never> {
+  await sendSignupNotice({ name: input.name, phone: input.phone, role: input.role });
+  const token = await createTelegramActivationToken({ email: input.email, name: input.name });
+  const destination = safeNext(input.next) || landingForRole(input.role);
+  return redirect(
+    `/telegram?token=${encodeURIComponent(token)}&next=${encodeURIComponent(destination)}`,
+  );
 }
 
 function authError(message: string): FormState {
@@ -84,14 +105,22 @@ export async function signInAction(_prev: FormState, form: FormData): Promise<Fo
   redirectForRole(safeNext(form.get("next")), user.role);
 }
 
+function normalizePhone(value: FormDataEntryValue | null): string {
+  const digits = String(value ?? "").replace(/\D/g, "");
+  if (digits.length === 12 && digits.startsWith("20")) return `0${digits.slice(2)}`;
+  return digits;
+}
+
 export async function signUpAction(_prev: FormState, form: FormData): Promise<FormState> {
   const email = String(form.get("email") ?? "").trim().toLowerCase();
   const password = String(form.get("password") ?? "");
   const name = String(form.get("name") ?? "").trim();
+  const phone = normalizePhone(form.get("phone"));
   const requested = String(form.get("role") ?? "GUEST");
   const accepted = String(form.get("terms") ?? "") === "on";
   if (!/^\S+@\S+\.\S+$/.test(email)) return { error: "أدخل بريداً إلكترونياً صحيحاً." };
   if (name.length < 2) return { error: "أدخل اسمك الكامل." };
+  if (!/^01\d{9}$/.test(phone)) return { error: "أدخل رقم تليفون مصري صحيح يبدأ بـ ٠١." };
   if (password.length < 6) return { error: "كلمة المرور يجب ألا تقل عن 6 أحرف." };
   if (!accepted) return { error: "لازم توافق على شروط الاستخدام." };
 
@@ -100,9 +129,9 @@ export async function signUpAction(_prev: FormState, form: FormData): Promise<Fo
   const repo = await getRepo();
 
   if (!isSupabaseConfigured()) {
-    await repo.upsertUser({ email, name, role, termsAcceptedAt });
+    await repo.upsertUser({ email, name, role, phone, termsAcceptedAt });
     await createSession({ email, name, role });
-    redirectForRole(safeNext(form.get("next")), role);
+    return finishSignup({ email, name, role, phone, next: form.get("next") });
   }
 
   if (await repo.getUserByEmail(email)) {
@@ -113,12 +142,12 @@ export async function signUpAction(_prev: FormState, form: FormData): Promise<Fo
   const { error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { name, role } },
+    options: { data: { name, role, phone } },
   });
   if (error) return authError(error.message);
 
-  await repo.upsertUser({ email, name, role, termsAcceptedAt });
-  redirectForRole(safeNext(form.get("next")), role);
+  await repo.upsertUser({ email, name, role, phone, termsAcceptedAt });
+  return finishSignup({ email, name, role, phone, next: form.get("next") });
 }
 
 export async function requestPasswordResetAction(_prev: FormState, form: FormData): Promise<FormState> {

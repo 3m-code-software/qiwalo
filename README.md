@@ -79,6 +79,13 @@ npm run db:seed:admin
 الباسورد يتحط في المتغيرات البيئية فقط — **أبداً** في `.env.example` أو في الشات. السكربت ينشئ مستخدم Supabase Auth ويرقّيه لـ `ADMIN` في جدول `User`.
 
 > ملاحظة أمنية: بما إن تأكيد الإيميل متوقف في الـ MVP، سجّل الدخول بحساباتك الحقيقية فقط. الدور بيُحدد عند أول creation ولا يتغيّر بتسجيل جديد بنفس البريد.
+
+### إشعارات التسجيل وترحيب تليجرام
+
+1. نموذج إنشاء الحساب فيه **رقم تليفون إلزامي** للضيف والمالك. بعد نجاح التسجيل، البوت يبعت لك (`TELEGRAM_ADMIN_CHAT_ID`) رسالة فيها **الاسم ورقم التليفون ونوع الحساب فقط**.
+2. العميل يتحوّل لصفحة `/telegram` فيها رابط `https://t.me/<TELEGRAM_BOT_USERNAME>?start=<توكن موقّع>`؛ يضغطه ثم **Start** في البوت، فيوصله ترحيب **باسمه فقط**. الرابط اختياري والـ `next` محفوظ بعد التخطي.
+3. عشان الـ webhook يشتغل، اضبط مرة واحدة بعد النشر: `TELEGRAM_BOT_USERNAME=qiwalo_notify_bot` و`TELEGRAM_WEBHOOK_SECRET=<قيمة عشوائية طويلة>` في Vercel، ثم شغّل `npm run telegram:webhook` محلياً بعد ما `.env.local` فيه `NEXT_PUBLIC_SITE_URL` والبوت والسر. السكربت يعمل `setWebhook` وما بيطبعش السر.
+4. الـ webhook على `POST /api/telegram/webhook?secret=...` محمي بمقارنة ثابتة-الزمن؛ ما بيقبلش إلا التوكن الموقّع من السيرفر (صلاحية ٧ أيام) وما بيخزّنش رقم التليفون.
 | `PAYMOB_SECRET_KEY` | مطلوب للـ webhook | مفتاح HMAC في لوحة Paymob |
 | `CRON_SECRET` | لاحقاً | حماية مهام cron |
 | `MCP_API_TOKEN` | مطلوب لتفعيل MCP | Bearer/API key لسيرفر القراءة فقط — Vercel Secrets فقط، ليس في الشات |
@@ -89,6 +96,7 @@ npm run db:seed:admin
 | `RESEND_API_KEY` / `RESEND_FROM_EMAIL` / `ADMIN_EMAIL` | اختياري | إشعارات الإيميل |
 | `WHATSAPP_TOKEN` / `WHATSAPP_PHONE_ID` / `ADMIN_WHATSAPP` | اختياري | إشعارات واتساب Cloud |
 | `TELEGRAM_BOT_TOKEN` / `TELEGRAM_ADMIN_CHAT_ID` | موصى به | إشعارات تليجرام مجانية — تُحط في Vercel Secrets، مش في الشات |
+| `TELEGRAM_BOT_USERNAME` / `TELEGRAM_WEBHOOK_SECRET` | مطلوب للترحيب | اسم البوت في رابط التفعيل (مش سر) + سر الـ webhook (Vercel Secrets فقط) |
 | `BANK_NAME` / `BANK_ACCOUNT` / `BANK_IBAN` | اختياري | تفاصيل التحويل البنكي المعروضة للضيف |
 
 ## الحسابات
@@ -110,7 +118,7 @@ npm run build      # prisma generate + بناء الإنتاج
 npm run typecheck  # فحص TypeScript
 npm run lint       # ESLint
 npx playwright install chromium   # مرة واحدة فقط
-npm run test:e2e       # ٢٤ اختبار على Mock محلي (بدون Supabase/Cloudinary/إنتاج)
+npm run test:e2e       # ٢٧ اختبار على Mock محلي (بدون Supabase/Cloudinary/إنتاج)
 npm run test:recovery  # ٣ اختبارات لمسار استعادة كلمة المرور بـ Supabase وهمي
 npm run qa:tour     # جولة تصويرية: ٢٢ خطوة × ديسكتوب/أندرويد (سيرفر Mock على 3140)
 npm run db:generate
@@ -122,8 +130,9 @@ npm run db:seed:admin   # حساب الأدمن الحقيقي (ADMIN_EMAIL/PASS
 
 ## التوثيق والجولة التفقدية
 
-- سجل التطوير الكامل (البنود ١–٣٠ والإصلاحات): [`docs/IMPROVEMENTS-LOG.md`](docs/IMPROVEMENTS-LOG.md).
+- سجل التطوير الكامل (البنود ١–٣١ والإصلاحات): [`docs/IMPROVEMENTS-LOG.md`](docs/IMPROVEMENTS-LOG.md).
 - صفحة تحميل أندرويد المستقلة (تظهر بعد الضغط على «تحميل تطبيق أندرويد» في الفوتر أو «تحميل» في الهيدر): `/download` — فيها ملف `qiwalo.apk` وأربع خطوات تثبيت مصوّرة، ومخفية من محركات البحث.
+- صفحة تفعيل تليجرام بعد التسجيل: `/telegram` — رابط البوت مع توكن موقّع، وترحيب للعميل باسمه فقط؛ انظر [إشعارات التسجيل](#إشعارات-التسجيل-وترحيب-تليجرام).
 - تقرير التجربة الشاملة مع **٤٤ لقطة شاشة** لكل خطوة على الديسكتوب والأندرويد، والقياسات وملاحظات UX: [`docs/QA-REPORT.md`](docs/QA-REPORT.md). الصور في `docs/qa/screenshots/` والنتائج الخام في `docs/qa/qa-results.json`.
 - لإعادة الجولة: شغّل سيرفر Mock على المنفذ ٣١٤٠ مع تفريغ `DATABASE_URL` ومتغيرات Supabase/Telegram/Cloudinary/Resend/WhatsApp/البنك (زي ما في `playwright.config.ts`)، ثم `npm run qa:tour`. لا تتصل الجولة بالإنتاج ولا تستخدم أسراراً.
 

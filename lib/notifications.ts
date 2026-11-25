@@ -1,5 +1,5 @@
 import { CANCEL_POLICIES, SUPPORT_TELEGRAM, SUPPORT_WHATSAPP } from "@/lib/constants";
-import type { Booking, Property } from "@/lib/types";
+import type { Booking, Property, Role } from "@/lib/types";
 
 const ADMIN_WHATSAPP = process.env.ADMIN_WHATSAPP || "201066094050";
 
@@ -77,9 +77,9 @@ async function sendWhatsApp(to: string, text: string): Promise<boolean> {
   }
 }
 
-async function sendTelegram(text: string): Promise<boolean> {
+/** إرسال نص لأي chat_id — بيستخدمه الترحيب بعد تفعيل البوت وكمان إشعارات الأدمن. */
+export async function sendTelegramToChat(chatId: string | number, text: string): Promise<boolean> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
   if (!token || !chatId) return false;
   try {
     const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
@@ -104,6 +104,12 @@ async function sendTelegram(text: string): Promise<boolean> {
     console.warn("[notify] Telegram unavailable", error);
     return false;
   }
+}
+
+export async function sendTelegram(text: string): Promise<boolean> {
+  const chatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+  if (!chatId) return false;
+  return sendTelegramToChat(chatId, text);
 }
 
 async function sendTelegramPhoto(photoUrl: string, caption: string): Promise<boolean> {
@@ -279,4 +285,20 @@ export async function sendVerificationNotice(notice: VerificationNotice) {
   for (const photo of photos) {
     await sendTelegramPhoto(photo.url!, `${label} — ${photo.caption}\n${notice.name || notice.email}`);
   }
+}
+
+/** إشعار التسجيل للأدمن: الاسم ورقم التليفون فقط، من غير بريد أو أي بيانات تانية. */
+export async function sendSignupNotice(notice: {
+  name: string;
+  phone: string;
+  role: Role;
+}): Promise<void> {
+  const text = [
+    "تسجيل جديد في قيوالو",
+    `الاسم: ${notice.name}`,
+    `رقم التليفون: ${notice.phone}`,
+    `النوع: ${notice.role === "OWNER" ? "صاحب وحدة" : "ضيف"}`,
+  ].join("\n");
+  console.info(`[signup-notice] ${text}`);
+  await sendTelegram(text);
 }
