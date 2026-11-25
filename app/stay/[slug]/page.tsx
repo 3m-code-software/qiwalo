@@ -1,16 +1,16 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import AvailabilityCalendar from "@/components/AvailabilityCalendar";
 import FavoriteButton from "@/components/FavoriteButton";
+import PropertyGallery from "@/components/PropertyGallery";
 import MapView from "@/components/MapView";
 import PriceBreakdown from "@/components/PriceBreakdown";
 import ReviewsTab from "@/components/ReviewsTab";
 import { CITIES, COMMISSION_RATE, PROPERTY_TYPES, SUPPORT_PHONE, SUPPORT_TELEGRAM, SUPPORT_WHATSAPP } from "@/lib/constants";
 import { dateAr, money, toArabicDigits } from "@/lib/format";
-import { cloudinaryDeliveryUrl, propertyImageAlt, socialImageUrl } from "@/lib/image-assets";
+import { propertyImageAlt, socialImageUrl } from "@/lib/image-assets";
 import { cancelPolicyText } from "@/lib/notifications";
 import { priceForDate, quoteStay } from "@/lib/pricing";
 import { getRepo } from "@/lib/repo";
@@ -81,6 +81,7 @@ export default async function StayPage({ params, searchParams }: Props) {
     isBlocked: day.isBlocked,
     price: priceForDate(day.date, property, rules, availability),
   }));
+  const galleryImages = property.images.map((src, i) => ({ src, alt: propertyImageAlt(property, i) }));
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -123,27 +124,7 @@ export default async function StayPage({ params, searchParams }: Props) {
       </div>
 
       {/* ===== Gallery ===== */}
-      <div className="mb-8 grid gap-3 sm:grid-cols-4">
-        <div className="relative h-[300px] overflow-hidden rounded-2xl bg-navy-soft sm:col-span-2 sm:row-span-2 sm:h-full sm:min-h-[460px]">
-          {property.images[0] && (
-            <Image src={cloudinaryDeliveryUrl(property.images[0], 1400)} alt={propertyImageAlt(property)} fill sizes="(max-width: 640px) 100vw, 50vw" className="object-cover" preload />
-          )}
-          <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-navy-deep/45 to-transparent" />
-        </div>
-        {property.images.slice(1, 5).map((src, i) => (
-          <div key={src + i} className="relative h-[140px] overflow-hidden rounded-2xl bg-navy-soft sm:h-full sm:min-h-[220px]">
-            <Image
-              src={cloudinaryDeliveryUrl(src, 600)}
-              alt={propertyImageAlt(property, i + 1)}
-              fill
-              sizes="(max-width: 640px) 50vw, 25vw"
-              loading="lazy"
-              decoding="async"
-              className="object-cover"
-            />
-          </div>
-        ))}
-      </div>
+      <PropertyGallery images={galleryImages} />
 
       <div className="grid gap-10 lg:grid-cols-[1fr_380px]">
         {/* ===== Details ===== */}
