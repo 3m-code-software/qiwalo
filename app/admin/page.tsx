@@ -50,6 +50,10 @@ const bookingStatusLabel: Record<string, string> = {
   PENDING: "قيد الانتظار", CONFIRMED: "مؤكدة", COMPLETED: "مكتملة", CANCELLED: "ملغية",
 };
 
+const paymentStatusLabel: Record<string, string> = {
+  PENDING: "بانتظار الدفع", PAID: "مدفوع", FAILED: "فشل", REFUNDED: "مسترد",
+};
+
 type AdminSP = Record<string, string | string[] | undefined>;
 
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
@@ -107,7 +111,7 @@ function VerificationActions({ userId }: { userId: string }) {
         <form key={option.status} action={moderateVerificationAction} className="flex items-center gap-1">
           <input type="hidden" name="userId" value={userId} />
           <input type="hidden" name="status" value={option.status} />
-          <input name="note" className="input !w-20 !px-2 !py-1 text-xs" placeholder="ملاحظة" />
+          <input name="note" aria-label="ملاحظة قرار التوثيق" className="input min-h-11 !w-32 !px-2 text-xs md:!w-40" placeholder="ملاحظة" />
           <button type="submit" className={option.primary ? "btn-primary !px-2 !py-1 text-xs" : "btn-ghost !px-2 !py-1 text-xs"}>
             {option.label}
           </button>
@@ -205,13 +209,13 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       </div>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="soft-card"><p className="muted text-xs">الوحدات</p><p className="mt-1 text-2xl font-black">{stats.properties}</p><p className="muted text-xs">{stats.published} منشورة · {stats.pending} بانتظار المراجعة</p></div>
-        <div className="soft-card"><p className="muted text-xs">الحجوزات</p><p className="mt-1 text-2xl font-black">{stats.bookings}</p><p className="muted text-xs">{stats.confirmed} مؤكدة</p></div>
+        <div className="soft-card"><p className="muted text-xs">الوحدات</p><p className="mt-1 text-2xl font-black">{toArabicDigits(stats.properties)}</p><p className="muted text-xs">{toArabicDigits(stats.published)} منشورة · {toArabicDigits(stats.pending)} بانتظار المراجعة</p></div>
+        <div className="soft-card"><p className="muted text-xs">الحجوزات</p><p className="mt-1 text-2xl font-black">{toArabicDigits(stats.bookings)}</p><p className="muted text-xs">{toArabicDigits(stats.confirmed)} مؤكدة</p></div>
         <div className="soft-card"><p className="muted text-xs">إجمالي الحجوزات</p><p className="mt-1 text-2xl font-black text-nile">{money(stats.revenue)}</p></div>
-        <div className="soft-card"><p className="muted text-xs">عمولة المنصة</p><p className="mt-1 text-2xl font-black text-nile">{money(stats.commission)}</p><p className="muted text-xs">{stats.guests} ضيوف</p></div>
+        <div className="soft-card"><p className="muted text-xs">عمولة المنصة</p><p className="mt-1 text-2xl font-black text-nile">{money(stats.commission)}</p><p className="muted text-xs">{toArabicDigits(stats.guests)} ضيوف</p></div>
       </div>
 
-      <section className="soft-card sticky top-[68px] z-30 mt-6 !p-3" aria-label="بحث وتصفية لوحة الإدارة">
+      <section className="soft-card sticky top-16 z-30 mt-6 !p-3 md:top-[68px]" aria-label="بحث وتصفية لوحة الإدارة">
         <div className="mb-3 flex flex-wrap items-center gap-2 border-b border-[var(--line)] pb-3">
           <span className="muted text-xs">انتقال سريع:</span>
           {[
@@ -268,7 +272,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         </form>
       </section>
 
-      <details id="properties" className="mt-6 scroll-mt-[290px]" open={openSection("properties")}>
+      <details id="properties" className="mt-6 scroll-mt-[240px] md:scroll-mt-[290px]" open={openSection("properties")}>
         <summary className="mb-4 cursor-pointer list-none text-xl font-extrabold [&::-webkit-details-marker]:hidden">
           مراجعة الوحدات <span className="chip">{toArabicDigits(filteredProperties.length)}/{toArabicDigits(properties.length)}</span>
         </summary>
@@ -313,7 +317,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         </div>
       </details>
 
-      <details id="bookings" className="mt-6 scroll-mt-[290px]" open={openSection("bookings")}>
+      <details id="bookings" className="mt-6 scroll-mt-[240px] md:scroll-mt-[290px]" open={openSection("bookings")}>
         <summary className="mb-4 cursor-pointer list-none text-xl font-extrabold [&::-webkit-details-marker]:hidden">
           أحدث الحجوزات <span className="chip">{toArabicDigits(filteredBookings.length)}/{toArabicDigits(bookings.length)}</span>
         </summary>
@@ -329,11 +333,11 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
                   <td>{dateAr(b.checkIn)}</td>
                   <td>{money(b.total)}</td>
                   <td>{money(b.commission)}</td>
-                  <td>{b.status}</td>
-                  <td>{b.paymentStatus}</td>
+                  <td>{bookingStatusLabel[b.status] ?? b.status}</td>
+                  <td>{paymentStatusLabel[b.paymentStatus] ?? b.paymentStatus}</td>
                   <td>
                     <div className="flex flex-wrap gap-2">
-                      {b.status !== "COMPLETED" && (
+                      {(b.status === "PENDING" || b.status === "CONFIRMED") && (
                         <form action={updateBookingStatusAction}>
                           <input type="hidden" name="reference" value={b.reference} />
                           <input type="hidden" name="status" value="COMPLETED" />
@@ -355,10 +359,13 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
             </tbody>
           </table>
         </div>
-        <p className="muted mt-2 text-xs">يمكن للضيف تقييم إقامته بعد تحويل الحجز إلى حالة «مكتمل».</p>
+        <p className="muted mt-2 text-xs">
+          عرض {toArabicDigits(Math.min(filteredBookings.length, 20))} من {toArabicDigits(filteredBookings.length)} حجز مطابق.
+          يمكن للضيف تقييم إقامته بعد تحويل الحجز إلى حالة «مكتمل».
+        </p>
       </details>
 
-      <details id="verifications" className="mt-6 scroll-mt-[290px]" open={openSection("verifications")}>
+      <details id="verifications" className="mt-6 scroll-mt-[240px] md:scroll-mt-[290px]" open={openSection("verifications")}>
         <summary className="mb-4 cursor-pointer list-none text-xl font-extrabold [&::-webkit-details-marker]:hidden">
           طلبات توثيق الملاك <span className="chip">{toArabicDigits(filteredVerifications.length)}/{toArabicDigits(verificationRows.length)}</span>
         </summary>
@@ -405,7 +412,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         </div>
       </details>
 
-      <details id="reviews" className="mt-6 scroll-mt-[290px]" open={openSection("reviews")}>
+      <details id="reviews" className="mt-6 scroll-mt-[240px] md:scroll-mt-[290px]" open={openSection("reviews")}>
         <summary className="mb-4 cursor-pointer list-none text-xl font-extrabold [&::-webkit-details-marker]:hidden">
           مراجعة التقييمات <span className="chip">{toArabicDigits(filteredReviews.length)}/{toArabicDigits(reviews.length)}</span>
         </summary>
@@ -430,7 +437,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         </div>
       </details>
 
-      <details id="commissions" className="mt-6 scroll-mt-[290px]" open={openSection("commissions")}>
+      <details id="commissions" className="mt-6 scroll-mt-[240px] md:scroll-mt-[290px]" open={openSection("commissions")}>
         <summary className="mb-4 cursor-pointer list-none text-xl font-extrabold [&::-webkit-details-marker]:hidden">
           نسب العمولة <span className="chip">{toArabicDigits(filteredOwners.length)}/{toArabicDigits(ownerRows.length)}</span>
         </summary>
@@ -442,11 +449,12 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
                 <tr key={owner.email}>
                   <td className="font-bold">{owner.name}</td>
                   <td dir="ltr" className="text-xs">{owner.email}</td>
-                  <td>{owner.rate}%</td>
+                  <td>{toArabicDigits(owner.rate)}٪</td>
                   <td>
                     <form action={setCommissionRateAction} className="flex flex-wrap items-center gap-2">
                       <input type="hidden" name="email" value={owner.email} />
-                      <input name="rate" type="number" min={0} max={100} step={1} defaultValue={owner.rate} className="input !w-20 !py-1 text-sm" />
+                      <input name="rate" type="number" min={0} max={100} step={1} defaultValue={owner.rate} aria-label={`نسبة عمولة ${owner.name}`} className="input !w-20 !py-1 text-sm" />
+                      <span className="muted text-xs" aria-hidden>٪</span>
                       <button type="submit" className="btn-ghost !px-3 !py-1.5 text-xs">حفظ</button>
                     </form>
                   </td>
@@ -458,7 +466,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         </div>
       </details>
 
-      <details id="activity" className="mt-6 scroll-mt-[290px]" open={openSection("activity")}>
+      <details id="activity" className="mt-6 scroll-mt-[240px] md:scroll-mt-[290px]" open={openSection("activity")}>
         <summary className="mb-1 cursor-pointer list-none text-xl font-extrabold [&::-webkit-details-marker]:hidden">
           سجل العمليات <span className="chip">{toArabicDigits(filteredActivities.length)}/{toArabicDigits(activities.length)}</span>
         </summary>
