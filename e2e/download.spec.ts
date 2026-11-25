@@ -1,4 +1,6 @@
+import { stat } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
+import { signInDemo } from "./helpers";
 
 test("صفحة التحميل تظهر بعد الضغط على رابط التحميل فقط", async ({ page }) => {
   // تسخين المسار في سيرفر التطوير حتى لا يتجاوز التنقل مهلة الاختبار أثناء التجميع الأول.
@@ -27,6 +29,32 @@ test("صفحة التحميل تظهر بعد الضغط على رابط الت�
 
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(1);
+});
+
+test("دخول ضيف ثم تحميل APK فعلي من صفحة التحميل", async ({ page }) => {
+  await page.goto("/login?next=/search");
+  await signInDemo(page, /ضيف تجريبي/);
+  // لازم نتحقق من path مش من الرابط كله، لأن `/login?next=/search` فيه `/search` في الـ query.
+  await page.waitForURL((url) => url.pathname === "/search", { timeout: 30_000 });
+  await expect(page.getByRole("button", { name: "خروج" })).toBeVisible({ timeout: 15_000 });
+
+  await page.getByRole("contentinfo").getByRole("link", { name: "تحميل تطبيق أندرويد" }).click();
+  await expect(page).toHaveURL(/\/download$/);
+
+  const downloadLink = page.getByRole("link", { name: /تحميل ملف قيوالو للاندرويد/ });
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    downloadLink.click(),
+  ]);
+
+  expect(download.suggestedFilename()).toBe("qiwalo.apk");
+  const filePath = await download.path();
+  expect(filePath).not.toBeNull();
+  const { size } = await stat(filePath!);
+  expect(size).toBeGreaterThan(8_000_000);
+
+  // زر التحميل بيستخدم download attribute، فالصفحة ما تتنقلش وتفضل ثابتة.
+  await expect(page).toHaveURL(/\/download$/);
 });
 
 test("ملف APK متاح للتحميل والصفحة مخفية عن محركات البحث", async ({ page }) => {
