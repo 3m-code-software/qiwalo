@@ -1,0 +1,62 @@
+name: E2E + build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      # كل المتغيرات فاضية عمداً: الاختبارات تعمل على Mock محلي، بدون Supabase أو Cloudinary أو إنتاج.
+      DATABASE_URL: ""
+      NEXT_PUBLIC_SUPABASE_URL: ""
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ""
+      TELEGRAM_BOT_TOKEN: ""
+      TELEGRAM_ADMIN_CHAT_ID: ""
+      RESEND_API_KEY: ""
+      WHATSAPP_TOKEN: ""
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Generate Next types
+        run: npx next typegen
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: E2E (Mock)
+        run: npm run test:e2e
+        env:
+          CI: "true"
+
+      - name: Upload failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-failure-${{ github.run_attempt }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

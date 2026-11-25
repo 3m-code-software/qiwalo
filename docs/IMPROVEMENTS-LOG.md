@@ -576,3 +576,32 @@
 - تحذيرات DEV المعروفة (`new Date()` في `lib/auth.ts:44`، hydration، Unsplash timeout) ما اتغيرتش.
 - مفيش أي تغيير على الإنتاج؛ الاختبار كله على Mock محلي.
 
+## البند ٢٠ — اختبار تلقائي Playwright للحجز/الرفع/التحقق على GitHub Actions
+
+**الحالة: تم ✅ (الكود والاختبار)**
+
+### التغييرات
+- `@playwright/test` كـ devDependency + سكربت `test:e2e` في `package.json`، وتحديث `README.md` و`.gitignore` (تجاهل `playwright-report/` و`test-results/`).
+- `playwright.config.ts` جديد: Chromium فقط، `workers: 1` و`fullyParallel: false` لأن مكتبة Mock في الذاكرة مشتركة، `baseURL` من `PLAYWRIGHT_BASE_URL` أو `http://localhost:3130`، `reuseExistingServer: !CI`، لقطات وتتبّع عند الفشل فقط. الـ `webServer` يشغّل `npx next dev -p 3130` مع متغيرات فاضية عمداً (`DATABASE_URL`، Supabase، Telegram، Resend، WhatsApp) عشان مفيش اتصال خارجي أو بيانات حية.
+- **ملاحظة تقنية مهمة:** استخدمنا `localhost` مش `127.0.0.1` لأن Next 16 يمنع `/_next/hmr` من `127.0.0.1`، وده كان بيمنع الـ hydration ويخلي أزرار الرفع معطّلة في الاختبار.
+- ثلاثة اختبارات في `e2e/`:
+  - `booking.spec.ts`: ضيف تجريبي → `/search` بالتواريخ والضيوف → بطاقة «دار المدينة» → `/checkout` → تأكيد → `/booking/QW-...`. بيفحص نص الدفع الحرفي `تحويل بنكي أو كاش عند الوصول`، و`dir=rtl`، واتجاه `ltr` للرقم المرجعي، وإن كل `alt` في بطاقات البحث غير فارغ.
+  - `upload.spec.ts`: مالك تجريبي → نموذج وحدة جديدة → صورة PNG صغيرة تُضغط في المتصفح → **اعتراض `**/api/upload`** وإرجاع `{ url, publicId }` وهمي → عدّاد `1 / 8 صور` ورسالة الضغط وصورة معاينة بوصف عربي (`loading="lazy"`)، وكل ده بدون أي تغيير في كود التطبيق.
+  - `verification.spec.ts` (`serial`): مالك يرفع وجه/ظهر البطاقة بنفس الاعتراض → إرسال → «المستندات قيد المراجعة» → مدير يطلب سيلفي → «مطلوب سيلفي» + حدث «طلب سيلفي من مالك» في سجل العمليات → المالك يشوف نموذج السيلفي → مدير يوافق → «موثّق» + حدث «موافقة على توثيق مالك» → المالك يشوف «تم توثيق حسابك بالكامل». سياقان منفصلان للمالك والمدير لأن الجلسات ملفات تعريف منفصلة.
+- `.github/workflows/e2e.yml` جديد: على `push`/`pull_request` → `checkout@v4` → `setup-node@v4` (Node 20 + cache npm) → `npm ci` → `npx playwright install --with-deps chromium` → `npx next typegen` → `typecheck` → `lint` → **`build`** → `test:e2e` → `upload-artifact@v4` للقطات والـ trace عند الفشل. `next typegen` مضاف لأن `next-env.d.ts` في `.gitignore` ومحتاج يتولّد قبل `tsc` في checkout نظيف.
+
+### التجربة
+البيئة: خادم Mock محلي يديره Playwright على `http://localhost:3130`، بدون أي متغيرات حقيقية.
+
+| الاختبار | النتيجة | الزمن |
+|---|---|---|
+| `booking.spec.ts` | ✅ | ٨٫٩ ث |
+| `upload.spec.ts` | ✅ | ١٠٫٩ ث |
+| `verification.spec.ts` | ✅ | ١٩٫٧ ث |
+
+- `npm run test:e2e` → **٣/٣ ناجحون** (١ worker، متسلسل).
+- أُصلحت ثلاث مشاكل ظهرت أثناء التجربة: إزالة الغموض من نص الدفع المكرر (٣ نسخ في الصفحة)، استخدام نموذج `/checkout` المقيّد بالـ selector بدل `#checkIn` العام المخفي من حالة البحث المحفوظة، وإطالة انتظار أول توجيه لـ `/booking/[reference]` لأن dev بيجمّع الصفحة أول مرة.
+- تحذيرات DEV المعروفة (Unsplash timeout، LCP، cache-bypass) ما أثرتش على النتائج؛ صور البديل الوهمية في اختبار الرفع أعطت ٤٠٤ متوقّع من Cloudinary لأنها روابط اختبار مش حقيقية.
+- `npx next typegen` ✅ · `npm run typecheck` ✅ · `npm run lint` ✅ · `npm run build` ✅ (٣٢ صفحة، و`cacheComponents`/`partialPrefetching` مفعّلان).
+- مفيش اختبارات على الإنتاج، ولا حجوزات حقيقية، ولا أسرار في الملفات أو الشات. الووركفلو هيشتغل تلقائياً مع أول push بعد الـ commit.
+
