@@ -14,6 +14,7 @@ export default function CheckoutForm({
   guests,
   quote,
   experience,
+  transport,
 }: {
   property: Property;
   checkIn: string;
@@ -21,6 +22,7 @@ export default function CheckoutForm({
   guests: number;
   quote: Quote;
   experience?: { id: string; name: string; total: number } | null;
+  transport?: { id: string; name: string; total: number } | null;
 }) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(confirmBookingAction, {});
 
@@ -31,6 +33,7 @@ export default function CheckoutForm({
       <input type="hidden" name="checkOut" value={checkOut} />
       <input type="hidden" name="guests" value={guests} />
       {experience && <input type="hidden" name="experienceId" value={experience.id} />}
+      {transport && <input type="hidden" name="transportId" value={transport.id} />}
 
       <h2 className="text-lg font-extrabold text-navy">بيانات الضيف</h2>
       <div>
@@ -44,7 +47,7 @@ export default function CheckoutForm({
         </div>
         <div>
           <label className="label" htmlFor="phone">رقم الهاتف</label>
-          <input id="phone" name="phone" type="tel" className="input" placeholder="01xxxxxxxxx" autoComplete="tel" />
+          <input id="phone" name="phone" type="tel" className="input" required placeholder="01xxxxxxxxx" autoComplete="tel" />
         </div>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
@@ -64,11 +67,16 @@ export default function CheckoutForm({
       <div className="rounded-xl border border-gold/30 bg-ivory p-4 text-sm">
         <div className="flex items-center justify-between gap-3">
           <span className="font-bold text-muted">إجمالي الحجز ({quote.nights} ليالي)</span>
-          <span className="text-lg font-black text-navy">{money(quote.total + (experience?.total ?? 0))}</span>
+          <span className="text-lg font-black text-navy">{money(quote.total + (experience?.total ?? 0) + (transport?.total ?? 0))}</span>
         </div>
         {experience && (
           <p className="muted mt-2 text-xs">
             شامل {experience.name}: <span className="font-bold text-nile">{money(experience.total)}</span>
+          </p>
+        )}
+        {transport && (
+          <p className="muted mt-2 text-xs">
+            شامل {transport.name}: <span className="font-bold text-nile">{money(transport.total)}</span>
           </p>
         )}
         <p className="mt-2 text-xs font-bold text-muted">تحويل بنكي أو كاش عند الوصول</p>

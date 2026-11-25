@@ -82,6 +82,13 @@ enum ExperienceDifficulty {
   HARD
 }
 
+enum TransportType {
+  CAR
+  COASTER
+  BUS
+  MOTORCYCLE
+}
+
 model User {
   id              String    @id @default(cuid())
   name            String
@@ -95,6 +102,7 @@ model User {
 
   properties   Property[]
   experiences  Experience[]
+  transports   Transport[]
   bookings     Booking[]
   payouts      Payout[]
   reviews      Review[]
@@ -190,6 +198,30 @@ model Experience {
   @@index([ownerId, status])
 }
 
+model Transport {
+  id              String        @id @default(cuid())
+  ownerId         String
+  owner           User          @relation(fields: [ownerId], references: [id])
+  name            String
+  type            TransportType @default(CAR)
+  city            City
+  routeFrom       String
+  routeTo         String
+  meetingPoint    String
+  durationHours   Int
+  capacity        Int
+  pricePerTrip    Int
+  includes        Json          @default("[]")
+  cancelPolicy    String
+  licenseDocUrl   String
+  status          ModerationStatus @default(PENDING)
+  commissionRate  Int           @default(12)
+  createdAt       DateTime      @default(now())
+
+  @@index([city, status])
+  @@index([ownerId, status])
+}
+
 model Booking {
   id              String          @id @default(cuid())
   reference       String          @unique
@@ -214,6 +246,7 @@ model Booking {
   paymentStatus   PaymentStatus   @default(PENDING)
   provider        PaymentProvider @default(MANUAL)
   experience      Json?
+  transport       Json?
   createdAt       DateTime        @default(now())
 
   @@index([guestId, createdAt])

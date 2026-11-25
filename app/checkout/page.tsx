@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import CheckoutForm from "@/components/CheckoutForm";
 import PriceBreakdown from "@/components/PriceBreakdown";
-import { CITIES } from "@/lib/constants";
+import { CITIES, TRANSPORT_TYPES } from "@/lib/constants";
 import { dateAr } from "@/lib/format";
 import { cloudinaryDeliveryUrl, propertyImageAlt } from "@/lib/image-assets";
 import { quoteStay } from "@/lib/pricing";
@@ -28,7 +28,11 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
   const result = quoteStay(property, rules, availability, checkIn, checkOut);
 
   const experienceId = one(sp.experience);
-  const requestedExperience = experienceId ? await repo.getExperienceById(experienceId) : null;
+  const transportId = one(sp.transport);
+  const [requestedExperience, requestedTransport] = await Promise.all([
+    experienceId ? repo.getExperienceById(experienceId) : Promise.resolve(null),
+    transportId ? repo.getTransportById(transportId) : Promise.resolve(null),
+  ]);
   const experience = requestedExperience
     && requestedExperience.status === "PUBLISHED"
     && requestedExperience.city === property.city
@@ -37,7 +41,21 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
     : null;
   const experienceTotal = experience ? experience.pricePerPerson * guests : 0;
   const experienceCommission = experience ? Math.round(experienceTotal * (experience.commissionRate / 100)) : 0;
+  const transport = requestedTransport
+    && requestedTransport.status === "PUBLISHED"
+    && requestedTransport.city === property.city
+    && guests <= requestedTransport.capacity
+    ? requestedTransport
+    : null;
+  const transportTotal = transport?.pricePerTrip ?? 0;
+  const transportCommission = transport ? Math.round(transportTotal * (transport.commissionRate / 100)) : 0;
   const baseParams = new URLSearchParams({ slug, checkIn, checkOut, guests: String(guests) });
+  if (experience) baseParams.set("experience", experience.id);
+  if (transport) baseParams.set("transport", transport.id);
+  const withoutExperience = new URLSearchParams(baseParams);
+  withoutExperience.delete("experience");
+  const withoutTransport = new URLSearchParams(baseParams);
+  withoutTransport.delete("transport");
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
@@ -62,6 +80,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
               guests={guests}
               quote={result.quote}
               experience={experience ? { id: experience.id, name: experience.name, total: experienceTotal } : null}
+              transport={transport ? { id: transport.id, name: transport.name, total: transportTotal } : null}
             />
           </div>
 
@@ -81,23 +100,40 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
               <div className="mt-4 rounded-xl border border-gold/40 bg-gold-soft p-4" data-testid="checkout-experience">
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                   <p className="font-extrabold text-navy">سفاري الجبال</p>
-                  <Link href={`/checkout?${baseParams.toString()}`} className="text-xs font-bold text-nile hover:text-gold">إزالة ✕</Link>
+                  <Link href={`/checkout?${withoutExperience.toString()}`} className="text-xs font-bold text-nile hover:text-gold">إزالة ✕</Link>
                 </div>
                 <p className="text-sm font-bold">{experience.name}</p>
                 <p className="muted mt-1 text-xs">{experience.mountain} · {experience.durationHours} ساعات · نقطة اللقاء: {experience.meetingPoint}</p>
                 <p className="muted mt-2 text-xs">بعد مراجعة الإدارة للمستندات. المشمولات: {experience.includes.join(" · ")}</p>
               </div>
             )}
+            {transport && (
+              <div className="mt-4 rounded-xl border border-gold/40 bg-gold-soft p-4" data-testid="checkout-transport">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-extrabold text-navy">النقل السياحي · {TRANSPORT_TYPES[transport.type].ar}</p>
+                  <Link href={`/checkout?${withoutTransport.toString()}`} className="text-xs font-bold text-nile hover:text-gold">إزالة ✕</Link>
+                </div>
+                <p className="text-sm font-bold">{transport.name}</p>
+                <p className="muted mt-1 text-xs">{transport.routeFrom} ← {transport.routeTo} · {transport.durationHours} ساعات · نقطة اللقاء: {transport.meetingPoint}</p>
+                <p className="muted mt-2 text-xs">سعر الرحلة للمركبة، وليس للفرد. المشمولات: {transport.includes.join(" · ")}</p>
+              </div>
+            )}
             <div className="mt-4 border-t border-line pt-4">
               <PriceBreakdown
                 quote={result.quote}
                 commissionRate={property.commissionRate}
-                addOn={experience ? {
-                  label: `سفاري الجبال (${experience.name})`,
-                  amount: experienceTotal,
-                  total: result.quote.total + experienceTotal,
-                  commission: result.quote.commission + experienceCommission,
-                } : undefined}
+                addOns={[
+                  ...(experience ? [{
+                    label: `سفاري الجبال (${experience.name})`,
+                    amount: experienceTotal,
+                    commission: experienceCommission,
+                  }] : []),
+                  ...(transport ? [{
+                    label: `النقل (${transport.name})`,
+                    amount: transportTotal,
+                    commission: transportCommission,
+                  }] : []),
+                ]}
               />
             </div>
             <p className="mt-4 border-t border-line pt-4 text-xs font-bold leading-6 text-muted">تحويل بنكي أو كاش عند الوصول</p>

@@ -213,6 +213,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href="/admin/experiences" className="btn-ghost !py-2 text-sm">مراجعة سفاري الجبال ↗</Link>
+          <Link href="/admin/transport" className="btn-ghost !py-2 text-sm">مراجعة النقل ↗</Link>
           <Link href="/owner" className="btn-ghost !py-2 text-sm">لوحة المالك ↗</Link>
         </div>
       </div>

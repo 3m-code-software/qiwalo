@@ -3,7 +3,7 @@ import { duplicatePropertyAction } from "@/app/actions";
 import OwnerReviewReplyForm from "@/components/OwnerReviewReplyForm";
 import OwnerStats from "@/components/OwnerStats";
 import { requireRole } from "@/lib/auth";
-import { CITIES, DEFAULT_COMMISSION_RATE, EXPERIENCE_DIFFICULTIES, PROPERTY_TYPES } from "@/lib/constants";
+import { CITIES, DEFAULT_COMMISSION_RATE, EXPERIENCE_DIFFICULTIES, PROPERTY_TYPES, TRANSPORT_TYPES } from "@/lib/constants";
 import { dateAr, money, toArabicDigits } from "@/lib/format";
 import { buildOwnerStats } from "@/lib/owner-stats";
 import { getRepo } from "@/lib/repo";
@@ -30,11 +30,13 @@ export default async function OwnerPage({ searchParams }: { searchParams: Promis
   const sp = await searchParams;
   const created = Array.isArray(sp.created) ? sp.created[0] : sp.created;
   const experienceCreated = Array.isArray(sp.experience) ? sp.experience[0] : sp.experience;
+  const transportCreated = Array.isArray(sp.transport) ? sp.transport[0] : sp.transport;
   const repo = await getRepo();
-  const [properties, bookings, experiences, verification, user] = await Promise.all([
+  const [properties, bookings, experiences, transports, verification, user] = await Promise.all([
     repo.listPropertiesForOwner(session.email),
     repo.listBookingsForOwner(session.email),
     repo.listExperiencesForOwner(session.email),
+    repo.listTransportsForOwner(session.email),
     repo.getVerification(session.email),
     repo.getUserByEmail(session.email),
   ]);
@@ -61,6 +63,7 @@ export default async function OwnerPage({ searchParams }: { searchParams: Promis
           <Link href="/owner/calendar" className="btn-ghost text-sm">تقويم التواريخ والأسعار</Link>
           <Link href="/owner/units/new" className="btn-primary text-sm">+ إضافة وحدة</Link>
           <Link href="/owner/experiences/new" className="btn-ghost text-sm">+ إضافة سفاري</Link>
+          <Link href="/owner/transport/new" className="btn-ghost text-sm">+ إضافة نقل</Link>
         </div>
       </div>
 
@@ -111,6 +114,12 @@ export default async function OwnerPage({ searchParams }: { searchParams: Promis
       {experienceCreated === "1" && (
         <p className="mb-5 rounded-xl bg-nile-soft p-4 text-sm font-bold text-nile-dark" role="status">
           ✅ تم إرسال تجربة سفاري الجبال للمراجعة. هتظهر للضيوف بعد موافقة الإدارة.
+        </p>
+      )}
+
+      {transportCreated === "1" && (
+        <p className="mb-5 rounded-xl bg-nile-soft p-4 text-sm font-bold text-nile-dark" role="status">
+          ✅ تم إرسال خدمة النقل للمراجعة. هتظهر للضيوف بعد موافقة الإدارة.
         </p>
       )}
 
@@ -185,6 +194,34 @@ export default async function OwnerPage({ searchParams }: { searchParams: Promis
                 <h3 className="font-extrabold">{experience.name}</h3>
                 <p className="muted mt-1 text-xs">{CITIES[experience.city].ar} · {experience.mountain} · {toArabicDigits(experience.durationHours)} ساعات</p>
                 <p className="mt-3 font-bold text-nile">{money(experience.pricePerPerson)} / فرد</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="mt-10" data-testid="owner-transports">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-xl font-extrabold">خدمات النقل السياحي</h2>
+          <Link href="/owner/transport/new" className="btn-ghost text-sm">+ إضافة نقل</Link>
+        </div>
+        {transports.length === 0 ? (
+          <div className="soft-card text-center">
+            <p className="muted">لسه مضفتش أي خدمة نقل.</p>
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2">
+            {transports.map((transport) => (
+              <div key={transport.id} data-testid="owner-transport-row" className="soft-card">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <span className={`chip !bg-transparent ${statusLabel[transport.status]?.cls ?? ""}`}>
+                    {statusLabel[transport.status]?.ar ?? transport.status}
+                  </span>
+                  <span className="muted text-xs">{TRANSPORT_TYPES[transport.type].ar}</span>
+                </div>
+                <h3 className="font-extrabold">{transport.name}</h3>
+                <p className="muted mt-1 text-xs">{CITIES[transport.city].ar} · {transport.routeFrom} ← {transport.routeTo} · {toArabicDigits(transport.durationHours)} ساعات</p>
+                <p className="mt-3 font-bold text-nile">{money(transport.pricePerTrip)} / رحلة · سعة {toArabicDigits(transport.capacity)}</p>
               </div>
             ))}
           </div>

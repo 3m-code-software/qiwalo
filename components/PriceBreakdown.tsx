@@ -7,14 +7,16 @@ export default function PriceBreakdown({
   commissionRate,
   openNights = false,
   className = "",
-  addOn,
+  addOns = [],
 }: {
   quote: Quote;
   commissionRate?: number;
   openNights?: boolean;
   className?: string;
-  addOn?: { label: string; amount: number; total: number; commission: number };
+  addOns?: { label: string; amount: number; commission: number }[];
 }) {
+  const extrasTotal = addOns.reduce((sum, item) => sum + item.amount, 0);
+  const extrasCommission = addOns.reduce((sum, item) => sum + item.commission, 0);
   return (
     <div className={`space-y-2 text-sm ${className}`}>
       {quote.nightly.length > 0 && (
@@ -42,19 +44,19 @@ export default function PriceBreakdown({
         <span className="muted">رسوم الخدمة</span>
         <span className="font-bold">{money(quote.serviceFee)}</span>
       </div>
-      {addOn && (
-        <div className="flex justify-between gap-3" data-testid="price-addon">
+      {addOns.map((addOn) => (
+        <div key={addOn.label} className="flex justify-between gap-3" data-testid="price-addon">
           <span className="muted">{addOn.label}</span>
           <span className="font-bold">{money(addOn.amount)}</span>
         </div>
-      )}
+      ))}
       <div className="flex justify-between gap-3 text-lg font-black text-nile">
         <span>الإجمالي</span>
-        <span>{money(addOn?.total ?? quote.total)}</span>
+        <span>{money(quote.total + extrasTotal)}</span>
       </div>
       {commissionRate !== undefined && (
         <p className="muted border-t border-line pt-2 text-xs leading-6">
-          عمولة المنصة ({toArabicDigits(commissionRate)}٪ = {money(addOn?.commission ?? quote.commission)}) تُقتطع من المالك بعد التأكيد، وهي غير مضافة لما يدفعه الضيف.
+          عمولة المنصة ({toArabicDigits(commissionRate)}٪ = {money(quote.commission + extrasCommission)}) تُقتطع من المالك بعد التأكيد، وهي غير مضافة لما يدفعه الضيف.
         </p>
       )}
     </div>

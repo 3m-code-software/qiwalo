@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import GuestAccountForm from "@/components/GuestAccountForm";
 import ReviewForm from "@/components/ReviewForm";
 import { getSession } from "@/lib/auth";
-import { CITIES, SUPPORT_PHONE, SUPPORT_TELEGRAM, SUPPORT_WHATSAPP } from "@/lib/constants";
+import { CITIES, SUPPORT_PHONE, SUPPORT_TELEGRAM, SUPPORT_WHATSAPP, TRANSPORT_TYPES } from "@/lib/constants";
 import { dateAr, money, toArabicDigits } from "@/lib/format";
 import { paymentDetailsText, paymentMethodLabel } from "@/lib/notifications";
 import { getRepo } from "@/lib/repo";
@@ -88,6 +88,12 @@ export default async function BookingPage({ params, searchParams }: Props) {
               <span>{money(booking.experience.total)}</span>
             </div>
           )}
+          {booking.transport && (
+            <div className="flex justify-between" data-testid="booking-transport-line">
+              <span className="muted">النقل · {TRANSPORT_TYPES[booking.transport.type].ar}</span>
+              <span>{money(booking.transport.total)}</span>
+            </div>
+          )}
           <div className="flex justify-between text-lg font-black text-nile"><span>الإجمالي</span><span>{money(booking.total)}</span></div>
         </div>
       </div>
@@ -110,6 +116,39 @@ export default async function BookingPage({ params, searchParams }: Props) {
               <p className="font-bold">
                 {toArabicDigits(booking.experience.durationHours)} ساعات · {money(booking.experience.pricePerPerson)} / فرد
               </p>
+            </div>
+            <div>
+              <p className="muted text-xs">الحالة</p>
+              <p className="font-bold">بعد مراجعة الإدارة للمستندات</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {booking.transport && (
+        <div className="soft-card mt-5" data-testid="booking-transport">
+          <h2 className="mb-4 text-lg font-extrabold text-navy">النقل السياحي</h2>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <p className="muted text-xs">الخدمة</p>
+              <p className="font-bold">{booking.transport.transportName}</p>
+              <p className="muted text-xs">{TRANSPORT_TYPES[booking.transport.type].ar} · {CITIES[booking.transport.city].ar}</p>
+            </div>
+            <div>
+              <p className="muted text-xs">المسار</p>
+              <p className="font-bold">{booking.transport.routeFrom} ← {booking.transport.routeTo}</p>
+            </div>
+            <div>
+              <p className="muted text-xs">نقطة اللقاء</p>
+              <p className="font-bold">{booking.transport.meetingPoint}</p>
+            </div>
+            <div>
+              <p className="muted text-xs">المدة والسعر</p>
+              <p className="font-bold">{toArabicDigits(booking.transport.durationHours)} ساعات · {money(booking.transport.pricePerTrip)} / رحلة</p>
+            </div>
+            <div>
+              <p className="muted text-xs">السعة</p>
+              <p className="font-bold">{toArabicDigits(booking.transport.capacity)} · الحجز الحالي {toArabicDigits(booking.transport.guests)}</p>
             </div>
             <div>
               <p className="muted text-xs">الحالة</p>

@@ -1,4 +1,4 @@
-import type { CityKey, ExperienceCategory, ExperienceDifficulty, PropertyType } from "./types";
+import type { CityKey, ExperienceCategory, ExperienceDifficulty, PropertyType, TransportType } from "./types";
 
 export const SITE_NAME = "Qiwalo";
 export const SITE_NAME_AR = "قيوالو";
@@ -39,6 +39,16 @@ export const EXPERIENCE_DIFFICULTIES: Record<ExperienceDifficulty, { ar: string 
 };
 
 export const EXPERIENCE_CANCEL_POLICY =
+  "إلغاء مجاني قبل موعد الرحلة بـ 24 ساعة أو أكثر. بعدها تُحتسب رسوم المورد، وفي حال اعتذار المورد يُعاد المبلغ كاملاً ويُبلَّغ الضيف فوراً.";
+
+export const TRANSPORT_TYPES: Record<TransportType, { ar: string; en: string }> = {
+  CAR: { ar: "سيارة خاصة", en: "Private car" },
+  COASTER: { ar: "كوستر", en: "Coaster" },
+  BUS: { ar: "باص", en: "Bus" },
+  MOTORCYCLE: { ar: "موتوسيكل", en: "Motorcycle" },
+};
+
+export const TRANSPORT_CANCEL_POLICY =
   "إلغاء مجاني قبل موعد الرحلة بـ 24 ساعة أو أكثر. بعدها تُحتسب رسوم المورد، وفي حال اعتذار المورد يُعاد المبلغ كاملاً ويُبلَّغ الضيف فوراً.";
 
 export const AMENITIES = [

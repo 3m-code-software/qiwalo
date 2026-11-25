@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { eachDayOfInterval, format, parseISO } from "date-fns";
-import { DEFAULT_COMMISSION_RATE, EXPERIENCE_CANCEL_POLICY } from "@/lib/constants";
+import { DEFAULT_COMMISSION_RATE, EXPERIENCE_CANCEL_POLICY, TRANSPORT_CANCEL_POLICY } from "@/lib/constants";
 import { toArabicDigits } from "@/lib/format";
 import { clearSession, createSession, getSession, requireRole, type Session } from "@/lib/auth";
 import { sendBookingNotifications, sendReviewNotice, sendSignupNotice, sendVerificationNotice } from "@/lib/notifications";
@@ -14,7 +14,8 @@ import { createTelegramActivationToken } from "@/lib/telegram";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import type {
   BookingStatus, CityKey, ExperienceBookingDetail, ExperienceDifficulty, ModerationStatus,
-  PaymentMethod, PropertyType, PropertyUpdateInput, ReviewStatus, Role, VerificationStatus,
+  PaymentMethod, PropertyType, PropertyUpdateInput, ReviewStatus, Role, TransportBookingDetail,
+  TransportType, VerificationStatus,
 } from "@/lib/types";
 
 export interface FormState { error?: string; ok?: string }
@@ -422,6 +423,73 @@ export async function moderateExperienceAction(_prev: FormState, form: FormData)
   return { ok: status === "PUBLISHED" ? "تم نشر تجربة سفاري الجبال ✅" : "تم تحديث التجربة ✅" };
 }
 
+// ===== Transport =====
+
+export async function createTransportAction(_prev: FormState, form: FormData): Promise<FormState> {
+  const session = await requireRole("OWNER");
+  const name = String(form.get("name") ?? "").trim();
+  const type = String(form.get("type") ?? "") as TransportType;
+  const city = String(form.get("city") ?? "") as CityKey;
+  const routeFrom = String(form.get("routeFrom") ?? "").trim();
+  const routeTo = String(form.get("routeTo") ?? "").trim();
+  const meetingPoint = String(form.get("meetingPoint") ?? "").trim();
+  const durationHours = Number(form.get("durationHours"));
+  const capacity = Number(form.get("capacity"));
+  const pricePerTrip = Number(form.get("pricePerTrip"));
+  const licenseDocUrl = String(form.get("licenseDocUrl") ?? "").trim();
+  const includes = [...new Set(
+    form.getAll("includes").flatMap((value) => String(value).split(/[\n,]+/)).map((s) => s.trim()).filter(Boolean),
+  )].slice(0, 8);
+
+  if (name.length < 3 || !routeFrom || !routeTo || !meetingPoint) {
+    return { error: "اسم الخدمة ونقطة الانطلاق والوصول ونقطة اللقاء مطلوبة." };
+  }
+  if (city !== "LUXOR" && city !== "ASWAN") return { error: "اختر مدينة صحيحة." };
+  if (!["CAR", "COASTER", "BUS", "MOTORCYCLE"].includes(type)) return { error: "نوع النقل غير صحيح." };
+  if (!Number.isFinite(durationHours) || durationHours < 1 || durationHours > 24) {
+    return { error: "مدة الرحلة لازم تكون بين ١ و٢٤ ساعة." };
+  }
+  if (!Number.isFinite(capacity) || capacity < 1 || capacity > 100) return { error: "السعة غير صحيحة." };
+  if (!Number.isFinite(pricePerTrip) || pricePerTrip < 50) return { error: "أدخل سعر صحيحاً للرحلة." };
+  if (!licenseDocUrl.startsWith("https://")) return { error: "لازم رابط مستند المراجعة يبدأ بـ https://." };
+  if (includes.length === 0) return { error: "اكتب على الأقل مشمول واحد للرحلة." };
+
+  const repo = await getRepo();
+  await repo.createTransport({
+    ownerId: session.email, name, type, city, routeFrom, routeTo, meetingPoint,
+    durationHours, capacity, pricePerTrip, includes, licenseDocUrl,
+    cancelPolicy: String(form.get("cancelPolicy") ?? "").trim() || TRANSPORT_CANCEL_POLICY,
+  });
+  revalidatePath("/owner");
+  revalidatePath("/admin");
+  redirect("/owner?transport=1");
+}
+
+export async function moderateTransportAction(_prev: FormState, form: FormData): Promise<FormState> {
+  const session = await requireRole("ADMIN");
+  const id = String(form.get("id") ?? "");
+  const status = String(form.get("status") ?? "") as ModerationStatus;
+  if (!id || !["PUBLISHED", "REJECTED", "DRAFT", "PENDING"].includes(status)) {
+    return { error: "تعذّر تحديث النقل. حاول مرة أخرى." };
+  }
+  const repo = await getRepo();
+  const transport = await repo.getTransportById(id);
+  await repo.moderateTransport(id, status);
+  await repo.logActivity({
+    actorEmail: session.email,
+    actorName: session.name,
+    action: status === "PUBLISHED" ? "TRANSPORT_PUBLISHED" : "TRANSPORT_REJECTED",
+    target: id,
+    detail: transport?.name ?? id,
+  });
+  revalidatePath("/admin");
+  revalidatePath("/admin/transport");
+  revalidatePath("/owner");
+  revalidatePath("/search");
+  revalidatePath("/");
+  return { ok: status === "PUBLISHED" ? "تم نشر خدمة النقل ✅" : "تم تحديث النقل ✅" };
+}
+
 // ===== Availability & price rules =====
 
 export async function saveAvailabilityAction(form: FormData): Promise<void> {
@@ -478,6 +546,7 @@ export async function confirmBookingAction(_prev: FormState, form: FormData): Pr
   const paymentMethod: PaymentMethod = String(form.get("paymentMethod") ?? "CASH") === "BANK" ? "BANK" : "CASH";
   const accepted = String(form.get("terms") ?? "") === "on";
   if (!fullName || !/^\S+@\S+\.\S+$/.test(email)) return { error: "الاسم والبريد الإلكتروني مطلوبان." };
+  if (!/^01\d{9}$/.test(phone.replace(/[\s-]/g, ""))) return { error: "أدخل رقم هاتف صحيحاً." };
   if (!nationality) return { error: "أدخل الجنسية." };
   if (!accepted) return { error: "لازم توافق على شروط الضيوف قبل الحجز." };
 
@@ -508,6 +577,26 @@ export async function confirmBookingAction(_prev: FormState, form: FormData): Pr
     };
   }
 
+  const transportId = String(form.get("transportId") ?? "").trim();
+  let transportDetail: TransportBookingDetail | null = null;
+  if (transportId) {
+    const transport = await repo.getTransportById(transportId);
+    if (!transport || transport.status !== "PUBLISHED" || transport.city !== property.city) {
+      return { error: "خدمة النقل غير متاحة لهذه الوحدة." };
+    }
+    if (guests > transport.capacity) {
+      return { error: `عدد الضيوف أكبر من سعة النقل (${toArabicDigits(transport.capacity)}).` };
+    }
+    transportDetail = {
+      transportId: transport.id, transportName: transport.name, type: transport.type,
+      city: transport.city, routeFrom: transport.routeFrom, routeTo: transport.routeTo,
+      meetingPoint: transport.meetingPoint, durationHours: transport.durationHours,
+      capacity: transport.capacity, pricePerTrip: transport.pricePerTrip, guests,
+      total: transport.pricePerTrip,
+      commission: Math.round(transport.pricePerTrip * (transport.commissionRate / 100)),
+    };
+  }
+
   const session = await getSession();
   const guestEmail = session?.email ?? email;
   const termsAcceptedAt = new Date().toISOString();
@@ -523,9 +612,9 @@ export async function confirmBookingAction(_prev: FormState, form: FormData): Pr
     propertyId: property.id, guestId: guestEmail, guestName: fullName,
     checkIn, checkOut, guests,
     subtotal: result.quote.subtotal, serviceFee: result.quote.serviceFee,
-    commission: result.quote.commission + (experienceDetail?.commission ?? 0),
-    total: result.quote.total + (experienceDetail?.total ?? 0), provider: "MANUAL",
-    nationality, paymentMethod, termsAcceptedAt, experience: experienceDetail,
+    commission: result.quote.commission + (experienceDetail?.commission ?? 0) + (transportDetail?.commission ?? 0),
+    total: result.quote.total + (experienceDetail?.total ?? 0) + (transportDetail?.total ?? 0), provider: "MANUAL",
+    nationality, paymentMethod, termsAcceptedAt, experience: experienceDetail, transport: transportDetail,
   });
   await repo.updateBooking(booking.reference, { status: "CONFIRMED", paymentStatus: "PENDING" });
 

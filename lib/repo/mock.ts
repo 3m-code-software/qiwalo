@@ -1,5 +1,5 @@
 import { addDays, differenceInCalendarDays, format, parseISO, startOfDay } from "date-fns";
-import { EXPERIENCE_CANCEL_POLICY } from "@/lib/constants";
+import { EXPERIENCE_CANCEL_POLICY, TRANSPORT_CANCEL_POLICY } from "@/lib/constants";
 import { makePropertySlug, slugCandidates } from "@/lib/slug";
 import type { Repo } from "./index";
 import type {
@@ -12,6 +12,7 @@ import type {
   NewExperienceInput,
   NewPropertyInput,
   NewReviewInput,
+  NewTransportInput,
   NewVerificationInput,
   OwnerVerification,
   PlatformStats,
@@ -19,6 +20,7 @@ import type {
   Property,
   Review,
   SearchFilter,
+  Transport,
   UserRecord,
 } from "@/lib/types";
 
@@ -30,6 +32,7 @@ interface MockState {
   users: StoredUser[];
   props: Property[];
   experiences: Experience[];
+  transports: Transport[];
   availability: Map<string, Availability[]>;
   priceRules: Map<string, PriceRule[]>;
   bookings: Booking[];
@@ -195,6 +198,30 @@ function seedExperiences(): Experience[] {
   ];
 }
 
+function seedTransports(): Transport[] {
+  const now = new Date().toISOString();
+  return [
+    {
+      id: "t1", ownerId: "owner@qiwalo.test", ownerName: "محمد مالك", name: "سيارة خاصة لجولات الأقصر",
+      type: "CAR", city: "LUXOR", routeFrom: "الأقصر الشرقية", routeTo: "وادي الملوك",
+      meetingPoint: "استقبال الفندق — الكورنيش", durationHours: 5, capacity: 4, pricePerTrip: 600,
+      includes: ["سائق مرافق", "مياه معدنية", "العودة لنقطة اللقاء"],
+      cancelPolicy: TRANSPORT_CANCEL_POLICY,
+      licenseDocUrl: "https://res.cloudinary.com/demo/raw/upload/v1/qiwalo/docs/luxor-car-review.pdf",
+      status: "PUBLISHED", commissionRate: 12, createdAt: now,
+    },
+    {
+      id: "t2", ownerId: "owner@qiwalo.test", ownerName: "محمد مالك", name: "كوستر أسوان السياحي",
+      type: "COASTER", city: "ASWAN", routeFrom: "مينا أسوان", routeTo: "السد العالي",
+      meetingPoint: "بوابة مينا أسوان السياحي", durationHours: 4, capacity: 14, pricePerTrip: 900,
+      includes: ["سائق", "تكييف", "مرشد محلي", "العودة للمينا"],
+      cancelPolicy: TRANSPORT_CANCEL_POLICY,
+      licenseDocUrl: "https://res.cloudinary.com/demo/raw/upload/v1/qiwalo/docs/aswan-coaster-review.pdf",
+      status: "PUBLISHED", commissionRate: 12, createdAt: now,
+    },
+  ];
+}
+
 function createMockState(): MockState {
   const users: StoredUser[] = [
     { id: "guest@qiwalo.test", email: "guest@qiwalo.test", name: "أحمد المسافر", role: "GUEST", phone: null, nationality: "مصري", commissionRate: 12, termsAcceptedAt: null },
@@ -218,21 +245,21 @@ function createMockState(): MockState {
       guestId: "guest@qiwalo.test", guestName: "سارة مسافر", checkIn: dateStr(12), checkOut: dateStr(15), nights: 3, guests: 2,
       subtotal: props[0].basePrice * 3, serviceFee: 0, commission: Math.round(props[0].basePrice * 3 * 0.12), total: props[0].basePrice * 3,
       nationality: "سعودي", paymentMethod: "BANK", paymentNote: null, termsAcceptedAt: new Date().toISOString(), adminNotifiedAt: new Date().toISOString(),
-      status: "CONFIRMED", paymentStatus: "PAID", provider: "MANUAL", experience: null, createdAt: new Date().toISOString(),
+      status: "CONFIRMED", paymentStatus: "PAID", provider: "MANUAL", experience: null, transport: null, createdAt: new Date().toISOString(),
     },
     {
       id: "b2", reference: "QW-SEED-2", propertyId: "p2", propertyName: props[1].name, propertySlug: props[1].slug, city: props[1].city,
       guestId: "guest@qiwalo.test", guestName: "منى عبد العزيز", checkIn: dateStr(26), checkOut: dateStr(30), nights: 4, guests: 2,
       subtotal: props[1].basePrice * 4, serviceFee: 0, commission: Math.round(props[1].basePrice * 4 * 0.12), total: props[1].basePrice * 4,
       nationality: "مصري", paymentMethod: "CASH", paymentNote: null, termsAcceptedAt: new Date().toISOString(), adminNotifiedAt: new Date().toISOString(),
-      status: "CONFIRMED", paymentStatus: "PAID", provider: "MANUAL", experience: null, createdAt: new Date().toISOString(),
+      status: "CONFIRMED", paymentStatus: "PAID", provider: "MANUAL", experience: null, transport: null, createdAt: new Date().toISOString(),
     },
     {
       id: "b3", reference: "QW-SEED-3", propertyId: "p3", propertyName: props[2].name, propertySlug: props[2].slug, city: props[2].city,
       guestId: "guest@qiwalo.test", guestName: "خالد حجز", checkIn: dateStr(-8), checkOut: dateStr(-6), nights: 2, guests: 2,
       subtotal: props[2].basePrice * 2, serviceFee: 0, commission: Math.round(props[2].basePrice * 2 * 0.12), total: props[2].basePrice * 2,
       nationality: "إماراتي", paymentMethod: "BANK", paymentNote: null, termsAcceptedAt: new Date().toISOString(), adminNotifiedAt: new Date().toISOString(),
-      status: "COMPLETED", paymentStatus: "PAID", provider: "MANUAL", experience: null, createdAt: new Date().toISOString(),
+      status: "COMPLETED", paymentStatus: "PAID", provider: "MANUAL", experience: null, transport: null, createdAt: new Date().toISOString(),
     },
   ];
 
@@ -243,14 +270,14 @@ function createMockState(): MockState {
     { id: "r3", propertyId: "p3", guestId: "guest@qiwalo.test", guestName: "خالد حجز", bookingId: "b3", rating: 4, comment: "مسبح وخصوصية ممتازة، والموقع مناسب للضفة الغربية.", ownerReply: null, ownerReplyAt: null, isDemo: true, status: "PUBLISHED", createdAt: now },
   ];
 
-  return { users, props, experiences: seedExperiences(), availability, priceRules, bookings, reviews, verifications: new Map(), activities: [] };
+  return { users, props, experiences: seedExperiences(), transports: seedTransports(), availability, priceRules, bookings, reviews, verifications: new Map(), activities: [] };
 }
 
 // Next.js قد يحمّل ملفات الـ route في module graphs مختلفة داخل نفس العملية.
 // تخزين البيانات على globalThis يضمن إن كل الصفحات تشوف نفس وحدات المالك الجديدة.
 const globalStore = globalThis as unknown as { __qiwaloMockState?: MockState };
 const state = (globalStore.__qiwaloMockState ??= createMockState());
-const { users, props, experiences, availability, priceRules, bookings, reviews, verifications, activities } = state;
+const { users, props, experiences, transports, availability, priceRules, bookings, reviews, verifications, activities } = state;
 
 const clone = <T,>(v: T): T => structuredClone(v);
 const toUserRecord = (u: StoredUser): UserRecord => ({
@@ -363,6 +390,36 @@ export const mockRepo: Repo = {
     const e = experiences.find((x) => x.id === id);
     if (e) e.status = status;
   },
+  async listPublishedTransports(city) {
+    return clone(transports.filter((t) => t.status === "PUBLISHED" && (!city || t.city === city)));
+  },
+  async listAllTransports() { return clone(transports); },
+  async listTransportsForOwner(ownerId) {
+    return clone(transports.filter((t) => t.ownerId === ownerId));
+  },
+  async getTransportById(id) {
+    const t = transports.find((x) => x.id === id);
+    return t ? clone(t) : null;
+  },
+  async createTransport(input: NewTransportInput) {
+    const t: Transport = {
+      id: `t${transports.length + 1}`,
+      ownerId: input.ownerId,
+      ownerName: users.find((u) => u.email === input.ownerId)?.name ?? "مالك جديد",
+      name: input.name, type: input.type, city: input.city, routeFrom: input.routeFrom, routeTo: input.routeTo,
+      meetingPoint: input.meetingPoint, durationHours: input.durationHours, capacity: input.capacity,
+      pricePerTrip: input.pricePerTrip, includes: [...input.includes], cancelPolicy: input.cancelPolicy,
+      licenseDocUrl: input.licenseDocUrl, status: "PENDING",
+      commissionRate: users.find((u) => u.email === input.ownerId)?.commissionRate ?? 12,
+      createdAt: new Date().toISOString(),
+    };
+    transports.push(t);
+    return clone(t);
+  },
+  async moderateTransport(id, status) {
+    const t = transports.find((x) => x.id === id);
+    if (t) t.status = status;
+  },
   async getAvailability(propertyId) { return clone(availability.get(propertyId) ?? []); },
   async getPriceRules(propertyId) { return clone(priceRules.get(propertyId) ?? []); },
   async saveAvailability(propertyId, rows) {
@@ -397,6 +454,7 @@ export const mockRepo: Repo = {
       termsAcceptedAt: input.termsAcceptedAt ?? null, adminNotifiedAt: null,
       status: "PENDING", paymentStatus: "PENDING", provider: input.provider,
       experience: input.experience ? clone(input.experience) : null,
+      transport: input.transport ? clone(input.transport) : null,
       createdAt: new Date().toISOString(),
     };
     bookings.unshift(b);

@@ -21,6 +21,9 @@ export type VerificationStatus = "PENDING" | "SELFIE_REQUIRED" | "SELFIE_PENDING
 export type ExperienceCategory = "MOUNTAIN_SAFARI";
 export type ExperienceDifficulty = "EASY" | "MODERATE" | "HARD";
 
+/** النقل كيان مستقل عن الوحدات والتجارب: سيارة، كوستر، باص أو موتوسيكل. */
+export type TransportType = "CAR" | "COASTER" | "BUS" | "MOTORCYCLE";
+
 export type ActivityAction =
   | "PROPERTY_PUBLISHED"
   | "PROPERTY_REJECTED"
@@ -28,6 +31,8 @@ export type ActivityAction =
   | "PROPERTY_PENDING"
   | "EXPERIENCE_PUBLISHED"
   | "EXPERIENCE_REJECTED"
+  | "TRANSPORT_PUBLISHED"
+  | "TRANSPORT_REJECTED"
   | "COMMISSION_CHANGED"
   | "VERIFICATION_APPROVED"
   | "VERIFICATION_REJECTED"
@@ -122,6 +127,7 @@ export interface Booking {
   paymentStatus: PaymentStatus;
   provider: PaymentProvider;
   experience: ExperienceBookingDetail | null;
+  transport: TransportBookingDetail | null;
   createdAt: string;
 }
 
@@ -217,6 +223,60 @@ export interface ExperienceBookingDetail {
   commission: number;
 }
 
+export interface Transport {
+  id: string;
+  ownerId: string;
+  ownerName: string;
+  name: string;
+  type: TransportType;
+  city: CityKey;
+  routeFrom: string;
+  routeTo: string;
+  meetingPoint: string;
+  durationHours: number;
+  capacity: number;
+  pricePerTrip: number;
+  includes: string[];
+  cancelPolicy: string;
+  licenseDocUrl: string;
+  status: ModerationStatus;
+  commissionRate: number;
+  createdAt: string;
+}
+
+export interface NewTransportInput {
+  ownerId: string;
+  name: string;
+  type: TransportType;
+  city: CityKey;
+  routeFrom: string;
+  routeTo: string;
+  meetingPoint: string;
+  durationHours: number;
+  capacity: number;
+  pricePerTrip: number;
+  includes: string[];
+  cancelPolicy: string;
+  licenseDocUrl: string;
+}
+
+/** السعر للمركبة/الرحلة مش للفرد; عدد الضيوف بيُستخدم للتحقق من السعة فقط. */
+export interface TransportBookingDetail {
+  transportId: string;
+  transportName: string;
+  type: TransportType;
+  city: CityKey;
+  routeFrom: string;
+  routeTo: string;
+  meetingPoint: string;
+  durationHours: number;
+  capacity: number;
+  pricePerTrip: number;
+  guests: number;
+  total: number;
+  commission: number;
+}
+
 export interface Review {
   id: string;
   propertyId: string;
@@ -296,6 +356,7 @@ export interface NewBookingInput {
   paymentNote?: string | null;
   termsAcceptedAt?: string | null;
   experience?: ExperienceBookingDetail | null;
+  transport?: TransportBookingDetail | null;
 }
 
 export interface PlatformStats {

@@ -9,10 +9,11 @@ type Props = {
   checkIn: string;
   checkOut: string;
   guests: number;
+  transportId?: string;
 };
 
 /** كروت سفاري الجبال المرتبطة بنفس الوحدة ونفس تواريخ الإقامة. */
-export default function ExperienceAddOn({ experiences, propertySlug, checkIn, checkOut, guests }: Props) {
+export default function ExperienceAddOn({ experiences, propertySlug, checkIn, checkOut, guests, transportId }: Props) {
   if (experiences.length === 0) return null;
   const ready = Boolean(checkIn && checkOut);
 
@@ -57,6 +58,7 @@ export default function ExperienceAddOn({ experiences, propertySlug, checkIn, ch
                   <input type="hidden" name="checkIn" value={checkIn} />
                   <input type="hidden" name="checkOut" value={checkOut} />
                   <input type="hidden" name="guests" value={guests} />
+                  {transportId && <input type="hidden" name="transport" value={transportId} />}
                   <input type="hidden" name="experience" value={experience.id} />
                   <button type="submit" className="btn-gold !px-4 !py-2 text-sm">أضفها وأكمل الحجز ←</button>
                 </form>

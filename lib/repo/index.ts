@@ -9,6 +9,7 @@ import type {
   NewBookingInput,
   NewExperienceInput,
   NewPropertyInput,
+  NewTransportInput,
   NewReviewInput,
   NewActivityInput,
   NewVerificationInput,
@@ -21,6 +22,7 @@ import type {
   Property,
   Review,
   ReviewStatus,
+  Transport,
   SearchFilter,
   UserRecord,
   VerificationStatus,
@@ -40,6 +42,12 @@ export interface Repo {
   getExperienceById(id: string): Promise<Experience | null>;
   createExperience(input: NewExperienceInput): Promise<Experience>;
   moderateExperience(id: string, status: ModerationStatus): Promise<void>;
+  listPublishedTransports(city?: CityKey): Promise<Transport[]>;
+  listAllTransports(): Promise<Transport[]>;
+  listTransportsForOwner(ownerId: string): Promise<Transport[]>;
+  getTransportById(id: string): Promise<Transport | null>;
+  createTransport(input: NewTransportInput): Promise<Transport>;
+  moderateTransport(id: string, status: ModerationStatus): Promise<void>;
   getAvailability(propertyId: string): Promise<Availability[]>;
   getPriceRules(propertyId: string): Promise<PriceRule[]>;
   saveAvailability(propertyId: string, rows: Availability[]): Promise<void>;

@@ -3,8 +3,8 @@ import { makePropertySlug, slugCandidates } from "@/lib/slug";
 import type { Repo } from "./index";
 import type {
   ActivityLog, Availability, Booking, Experience, NewActivityInput, NewBookingInput, NewExperienceInput, NewPropertyInput,
-  NewReviewInput, NewVerificationInput, OwnerVerification, PlatformStats, PriceRule, Property,
-  Review, SearchFilter, UserRecord, VerificationStatus,
+  NewReviewInput, NewTransportInput, NewVerificationInput, OwnerVerification, PlatformStats, PriceRule, Property,
+  Review, SearchFilter, Transport, UserRecord, VerificationStatus,
 } from "@/lib/types";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -52,6 +52,17 @@ function mapExperience(e: any): Experience {
   };
 }
 
+function mapTransport(t: any): Transport {
+  return {
+    id: t.id, ownerId: t.owner?.email ?? t.ownerId, ownerName: t.owner?.name ?? "مالك",
+    name: t.name, type: t.type, city: t.city, routeFrom: t.routeFrom, routeTo: t.routeTo,
+    meetingPoint: t.meetingPoint, durationHours: t.durationHours, capacity: t.capacity,
+    pricePerTrip: t.pricePerTrip, includes: Array.isArray(t.includes) ? t.includes : [],
+    cancelPolicy: t.cancelPolicy, licenseDocUrl: t.licenseDocUrl, status: t.status,
+    commissionRate: t.commissionRate ?? 12, createdAt: t.createdAt.toISOString(),
+  };
+}
+
 function mapBooking(b: any): Booking {
   return {
     id: b.id, reference: b.reference, propertyId: b.propertyId,
@@ -65,6 +76,7 @@ function mapBooking(b: any): Booking {
     adminNotifiedAt: b.adminNotifiedAt ? b.adminNotifiedAt.toISOString() : null,
     status: b.status, paymentStatus: b.paymentStatus, provider: b.provider,
     experience: (b.experience as Booking["experience"]) ?? null,
+    transport: (b.transport as Booking["transport"]) ?? null,
     createdAt: b.createdAt.toISOString(),
   };
 }
@@ -233,6 +245,44 @@ export const prismaRepo: Repo = {
   async moderateExperience(id, status) {
     await prisma.experience.update({ where: { id }, data: { status: status as any } });
   },
+  async listPublishedTransports(city) {
+    const rows = await prisma.transport.findMany({
+      where: { status: "PUBLISHED" as any, ...(city ? { city: city as any } : {}) },
+      include: { owner: true }, orderBy: { createdAt: "desc" },
+    });
+    return rows.map(mapTransport);
+  },
+  async listAllTransports() {
+    const rows = await prisma.transport.findMany({ include: { owner: true }, orderBy: { createdAt: "desc" } });
+    return rows.map(mapTransport);
+  },
+  async listTransportsForOwner(ownerId) {
+    const id = await resolveUserId(ownerId);
+    const rows = await prisma.transport.findMany({
+      where: { ownerId: id }, include: { owner: true }, orderBy: { createdAt: "desc" },
+    });
+    return rows.map(mapTransport);
+  },
+  async getTransportById(id) {
+    const row = await prisma.transport.findUnique({ where: { id }, include: { owner: true } });
+    return row ? mapTransport(row) : null;
+  },
+  async createTransport(input: NewTransportInput) {
+    const ownerId = await resolveUserId(input.ownerId);
+    const row = await prisma.transport.create({
+      data: {
+        ownerId, name: input.name, type: input.type as any, city: input.city as any,
+        routeFrom: input.routeFrom, routeTo: input.routeTo, meetingPoint: input.meetingPoint,
+        durationHours: input.durationHours, capacity: input.capacity, pricePerTrip: input.pricePerTrip,
+        includes: input.includes, cancelPolicy: input.cancelPolicy, licenseDocUrl: input.licenseDocUrl,
+      },
+      include: { owner: true },
+    });
+    return mapTransport(row);
+  },
+  async moderateTransport(id, status) {
+    await prisma.transport.update({ where: { id }, data: { status: status as any } });
+  },
   async getAvailability(propertyId) {
     const rows = await prisma.availability.findMany({ where: { propertyId }, orderBy: { date: "asc" } });
     return rows.map((r): Availability => ({ date: iso(r.date), isBlocked: r.isBlocked, priceOverride: r.priceOverride }));
@@ -274,6 +324,7 @@ export const prismaRepo: Repo = {
         nationality: input.nationality ?? null, paymentMethod: input.paymentMethod ?? "CASH",
         paymentNote: input.paymentNote ?? null, termsAcceptedAt: input.termsAcceptedAt ? new Date(input.termsAcceptedAt) : null,
         experience: (input.experience ?? undefined) as any,
+        transport: (input.transport ?? undefined) as any,
       },
       include,
     });
