@@ -60,3 +60,26 @@ test("تقليل الحركة يعرض كل المراحل ثابتة بدون �
   expect(alts).toHaveLength(8);
   await expect(section.getByRole("heading", { level: 3, name: "معالم أسوان" })).toBeVisible();
 });
+
+test("ملخص الرحلة وبيانات كل مرحلة + صورة لاصقة على الموبايل", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  const section = journey(page);
+
+  await expect(section.getByText("٨ مراحل")).toBeVisible();
+  await expect(section.getByText("الأقصر وأسوان")).toBeVisible();
+  await expect(section.getByText("من الطيارة للتقييم")).toBeVisible();
+
+  await section.locator("ol > li").nth(3).evaluate((node) =>
+    node.scrollIntoView({ block: "center", behavior: "instant" }),
+  );
+  await expect(section.locator("h3").first()).toHaveText("معالم أسوان", { timeout: 10_000 });
+  await expect(section.getByText("٣ معالم · فيلة · أبو سمبل · النيل").first()).toBeVisible();
+
+  const sticky = section.locator('[class*="sticky"]').first();
+  expect(await sticky.evaluate((el) => getComputedStyle(el).position)).toBe("sticky");
+  const box = await section.locator('[class*="aspect-"]').first().boundingBox();
+  expect(box).not.toBeNull();
+  expect(box!.y).toBeGreaterThanOrEqual(0);
+  expect(box!.y).toBeLessThan(140);
+});

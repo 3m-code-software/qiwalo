@@ -9,6 +9,7 @@ type Stage = {
   id: string;
   title: string;
   subtitle: string;
+  meta: string;
   description: string;
   image: string;
   alt: string;
@@ -20,6 +21,7 @@ const STAGES: Stage[] = [
     id: "arrival",
     title: "الوصول",
     subtitle: "مطار الأقصر أو أسوان",
+    meta: "استقبال · مطار الأقصر أو أسوان",
     description: "طيارة، وخلاص وصلت. أول خطوة في رحلتك تبدأ من هنا.",
     image: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=1200&q=80",
     alt: "طائرة في السماء في طريقها إلى الأقصر أو أسوان",
@@ -28,6 +30,7 @@ const STAGES: Stage[] = [
     id: "transfer",
     title: "النقل",
     subtitle: "عربية أو أتوبيس من المطار",
+    meta: "١٥–٤٥ دقيقة · سائق محلي",
     description: "من المطار لقلب المدينة، مع سائق بيعرف الطريق.",
     image: "https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=1200&q=80",
     alt: "سيارة نقل تنتظر في الشارع بجوار المطار",
@@ -36,6 +39,7 @@ const STAGES: Stage[] = [
     id: "stay",
     title: "الإقامة",
     subtitle: "شقة · فيلا · فندق",
+    meta: "٣ خيارات · شقة · فيلا · فندق",
     description: "اختار المكان اللي يناسبك: شقة، فيلا، أو فندق صغير.",
     image: "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=80",
     alt: "غرفة إقامة مريحة في فندق صغير بالأقصر",
@@ -44,6 +48,7 @@ const STAGES: Stage[] = [
     id: "landmarks",
     title: "معالم أسوان",
     subtitle: "فيلة · أبو سمبل · النيل",
+    meta: "٣ معالم · فيلة · أبو سمبل · النيل",
     description: "جزيرة فيلة، معبد أبو سمبل، والنيل اللي ما بيملّيش من الجمال.",
     image: "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=1200&q=80",
     alt: "إطلالة على النيل ومعالم أسوان التاريخية",
@@ -52,6 +57,7 @@ const STAGES: Stage[] = [
     id: "breakfast",
     title: "الفطار",
     subtitle: "بداية يوم على النيل",
+    meta: "٧ صباحاً · شاي وفطار بلدي",
     description: "فطار هادي مع شاي، وبعدها تبدأ الحكاية.",
     image: "https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?auto=format&fit=crop&w=1200&q=80",
     alt: "طاولة فطار صباحية مع قهوة وشاي",
@@ -60,6 +66,7 @@ const STAGES: Stage[] = [
     id: "explore",
     title: "جولة النيل",
     subtitle: "استكشاف واكتشاف",
+    meta: "نصف يوم · دليل محلي",
     description: "جولة في النيل أو بين الشوارع القديمة مع دليل محلي.",
     image: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=1200&q=80",
     alt: "جولة استكشافية على ضفاف النيل",
@@ -68,6 +75,7 @@ const STAGES: Stage[] = [
     id: "dinner",
     title: "العشاء",
     subtitle: "نكهات الصعيد",
+    meta: "بعد الغروب · نكهات الصعيد",
     description: "عشاء تحت النجوم، وأكل بلدي من قلب الصعيد.",
     image: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80",
     alt: "طاولة عشاء مضاءة في مطعم بالقرب من النيل",
@@ -76,6 +84,7 @@ const STAGES: Stage[] = [
     id: "return",
     title: "الرجوع والتقييم",
     subtitle: "ذكرى تحب تتكرر",
+    meta: "٢ دقيقة · تقييمك يساعد غيرك",
     description: "ترجع بذكرى حلوة، وتقييمك يساعد ضيوف تانيين يختاروا.",
     image: "https://images.unsplash.com/photo-1523906834658-6e24ef2386f9?auto=format&fit=crop&w=1200&q=80",
     alt: "ذكريات رحلة في الأقصر وأسوان",
@@ -120,6 +129,17 @@ export default function JourneyStory() {
         <span className="eyebrow !text-gold">من اللحظة الأولى للعودة</span>
         <h2 id="journey-title" className="section-title mt-3">رحلتك مع قيوالو</h2>
         <p className="section-sub">ثماني خطوات بسيطة، من الطيارة لحد التقييم.</p>
+        <div className="mt-5 flex flex-wrap gap-2" aria-label="ملخص الرحلة">
+          <span className="rounded-full border border-gold/25 bg-navy-soft/40 px-3 py-1 text-xs font-bold text-navy/70">
+            {toArabicDigits(STAGES.length)} مراحل
+          </span>
+          <span className="rounded-full border border-gold/25 bg-navy-soft/40 px-3 py-1 text-xs font-bold text-navy/70">
+            الأقصر وأسوان
+          </span>
+          <span className="rounded-full border border-gold/25 bg-navy-soft/40 px-3 py-1 text-xs font-bold text-navy/70">
+            من الطيارة للتقييم
+          </span>
+        </div>
       </div>
 
       {reducedMotion ? (
@@ -142,14 +162,15 @@ export default function JourneyStory() {
                 <p className="text-xs font-bold text-gold">{toArabicDigits(i + 1)}</p>
                 <h3 className="mt-1 text-lg font-black text-navy">{stage.title}</h3>
                 <p className="muted mt-1 text-sm leading-6">{stage.subtitle}</p>
+                <p className="mt-2 text-xs font-bold text-gold">{stage.meta}</p>
               </div>
             </article>
           ))}
         </div>
       ) : (
-        <div className="grid gap-10 md:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] md:gap-16">
-          <div className="md:sticky md:top-24 md:self-start">
-            <div className="relative aspect-[4/3] overflow-hidden rounded-3xl border border-gold/25 bg-navy-soft shadow-2xl shadow-navy/15">
+        <div className="flex flex-col gap-8 md:grid md:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] md:gap-16">
+          <div className="sticky top-16 z-20 self-start bg-ivory pb-2 md:top-24 md:bg-transparent md:pb-0">
+            <div className="relative aspect-[16/10] overflow-hidden rounded-3xl border border-gold/25 bg-navy-soft shadow-2xl shadow-navy/15 md:aspect-[4/3]">
               {STAGES.map((stage, i) => (
                 <div
                   key={stage.id}
@@ -168,15 +189,16 @@ export default function JourneyStory() {
                 </div>
               ))}
               <div className="absolute inset-0 bg-gradient-to-t from-navy-deep/95 via-navy-deep/25 to-transparent" />
-              <div className="absolute inset-x-0 bottom-0 p-6 md:p-8">
+              <div className="absolute inset-x-0 bottom-0 p-4 md:p-8">
                 <span className="eyebrow !text-gold-bright">
                   المرحلة {toArabicDigits(active + 1)} من {toArabicDigits(STAGES.length)}
                 </span>
-                <h3 className="mt-3 text-3xl font-black text-white md:text-4xl">{current.title}</h3>
-                <p className="mt-1 text-sm font-bold text-white/80">{current.subtitle}</p>
+                <h3 className="mt-2 text-2xl font-black text-white md:mt-3 md:text-4xl">{current.title}</h3>
+                <p className="mt-1 text-xs font-bold text-white/80 md:text-sm">{current.subtitle}</p>
+                <p className="mt-1 text-[11px] font-bold text-gold-bright md:mt-2 md:text-xs">{current.meta}</p>
               </div>
             </div>
-            <p className="muted mt-5 min-h-14 text-sm leading-7">{current.description}</p>
+            <p className="muted mt-3 text-xs leading-6 md:mt-5 md:min-h-14 md:text-sm md:leading-7">{current.description}</p>
             <Link href="/search" className="btn-gold mt-2 text-sm">ابحث عن إقامة ←</Link>
           </div>
 
@@ -199,6 +221,7 @@ export default function JourneyStory() {
                     {stage.title}
                   </h3>
                   <p className="muted mt-2 text-sm leading-7">{stage.subtitle}</p>
+                  <p className="mt-1 text-xs font-bold text-gold">{stage.meta}</p>
                 </button>
               </li>
             ))}
