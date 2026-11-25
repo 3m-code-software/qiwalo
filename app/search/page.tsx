@@ -230,8 +230,8 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 
         {/* ===== Results ===== */}
         <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {properties.map((p) => (
-            <PropertyCard key={p.id} property={p} filter={filter} price={pricing.get(p.id)} />
+          {properties.map((p, i) => (
+            <PropertyCard key={p.id} property={p} filter={filter} price={pricing.get(p.id)} eager={i === 0} />
           ))}
         </div>
         {properties.length === 0 && (

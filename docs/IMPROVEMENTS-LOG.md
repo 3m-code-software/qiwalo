@@ -508,3 +508,36 @@
 - `npm run typecheck` ✅ · `npm run lint` ✅ · `npm run build` ✅
 - مفيش أي تغيير على الإنتاج؛ الاختبار كله على Mock محلي.
 
+## البند ١٨ — ضغط الصور (WebP) + تحميل كسول + وصف عربي لكل صورة
+
+**الحالة: تم ✅ (الكود والاختبار)**
+
+### التغييرات
+- ملف جديد `lib/image-assets.ts` فيه ثلاث دوال نقية (بدون أي بيانات أو وقت تصيير):
+  - `propertyImageAlt(property, index)` — وصف عربي تلقائي: الغلاف `صورة لوحدة «الاسم» في المدينة`، والباقي `صورة رقم ٢/٣ ...` بالأرقام العربية. لا يتطلب حقولاً جديدة في DB.
+  - `imageOrderAlt(index)` — وصف عربي لصور محرر الترتيب.
+  - `cloudinaryDeliveryUrl(src, width)` — تُدخل `f_auto,q_auto,w_<width>` بعد `/image/upload/` لروابط `res.cloudinary.com` فقط، و**idempotent** (ما تضيفش تحويلين)، وترجع أي رابط آخر كما هو. WebP/AVIF تُقدَّم تلقائياً حسب المتصفح، و`next/image` يكمل `srcset` والضغط.
+- مانيفست بشري جديد `docs/IMAGE-ASSETS.md` يوثّق مصادر صور الوحدات المنشورة وأوصافها العربية (لا تُقرأ منه القاعدة). صور التوثيق مستبعدة لخصوصيتها.
+- طُبِّق الوصف والتحويل على: `components/PropertyCard.tsx`، معرض `app/stay/[slug]/page.tsx`، لوحة الدفع `app/checkout/page.tsx`، معاينة المالك `app/owner/units/[id]/preview/page.tsx`، و`components/ImageOrderEditor.tsx`.
+- صورة واحدة فقط في كل شبكة (`/` و`/search`) تظل `eager`؛ الباقي `loading="lazy"` و`decoding="async"`. غلاف صفحة الوحدة يظل محمّلاً مقدماً (`preload`) لأنه LCP، وصور المعرض/Lookaside/المعاينة/Mحرر الترتيب كسولة.
+- صورة مدينة «وجهاتنا» بقت `alt="صورة لمدينة الأقصر/أسوان"` + lazy. صور الهوية في `DocumentUpload` و`owner/profile` تركت كما هي بأوسمتها العربية المخصصة.
+- لم يتغير سقف الرفع (٤MB) ولا ضغط العميل (١٦٠٠px JPEG ٨٢٪) ولا إعدادات `next.config.ts`؛ WebP على جانب التسليم فقط. نص الدفع و`cacheComponents`/`partialPrefetching` كما هما.
+
+### التجربة
+البيئة: خادم Mock على `http://localhost:3130`، فحص فعلي للـ DOM عبر المتصفح.
+
+| الصفحة | عدد الصور | `alt` فارغ | `alt` عربي | lazy / eager |
+|---|---|---|---|---|
+| `/search` | ٦ | ٠ | ٦ | ٥ lazy / ١ eager |
+| `/stay/nile-view-dar-al-madina` | ١١ | ٨ (كلها بلاط خريطة Leaflet زخرفية) | ٣ (صور الوحدة) | ٢ lazy + الغلاف preload |
+| `/checkout?...` | ١ | ٠ | ١ | ١ lazy |
+
+- فحص دالة التحويل عبر صفحة اختبار مؤقتة حُذفت قبل الـ commit:
+  - `https://res.cloudinary.com/demo/image/upload/v123/...` ← `https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_800/v123/...`
+  - تمرير الناتج مرة تانية → **نفس الرابط** (idempotent).
+  - رابط Unsplash → **بدون تغيير**.
+  - الأوصاف: `صورة لوحدة «دار المدينة» في الأقصر` / `صورة رقم ٢ لوحدة «دار المدينة» في أسوان` / `صورة رقم ١ للوحدة`.
+- تحذيرات DEV المعروفة زي ما هي: `new Date()` في `lib/auth.ts:44`، وتحذيرات hydration، وtimeout لصور Unsplash؛ لا علاقة لها بالبند.
+- `npm run typecheck` ✅ · `npm run lint` ✅ · `npm run build` ✅ (٣٠ صفحة prerender، و`cacheComponents`/`partialPrefetching` مفعّلان).
+- مفيش أي تغيير على الإنتاج؛ الاختبار كله على Mock محلي.
+

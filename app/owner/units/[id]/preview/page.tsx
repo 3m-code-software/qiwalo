@@ -6,6 +6,7 @@ import MapView from "@/components/MapView";
 import { getSession } from "@/lib/auth";
 import { CANCEL_POLICIES, CITIES, PROPERTY_TYPES } from "@/lib/constants";
 import { dateAr, money, toArabicDigits } from "@/lib/format";
+import { cloudinaryDeliveryUrl, propertyImageAlt } from "@/lib/image-assets";
 import { getRepo } from "@/lib/repo";
 
 export const instant = false;
@@ -89,12 +90,20 @@ export default async function PropertyPreviewPage({
       <div className="mb-8 grid gap-2 sm:grid-cols-4">
         <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-navy-soft sm:col-span-2 sm:row-span-2">
           {property.images[0] && (
-            <Image src={property.images[0]} alt={property.name} fill sizes="(max-width: 640px) 100vw, 50vw" className="object-cover" />
+            <Image src={cloudinaryDeliveryUrl(property.images[0], 1400)} alt={propertyImageAlt(property)} fill sizes="(max-width: 640px) 100vw, 50vw" loading="lazy" decoding="async" className="object-cover" />
           )}
         </div>
         {property.images.slice(1, 5).map((src, i) => (
           <div key={src + i} className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-navy-soft">
-            <Image src={src} alt={`${property.name} ${i + 2}`} fill sizes="(max-width: 640px) 50vw, 25vw" className="object-cover" />
+            <Image
+              src={cloudinaryDeliveryUrl(src, 600)}
+              alt={propertyImageAlt(property, i + 1)}
+              fill
+              sizes="(max-width: 640px) 50vw, 25vw"
+              loading="lazy"
+              decoding="async"
+              className="object-cover"
+            />
           </div>
         ))}
       </div>

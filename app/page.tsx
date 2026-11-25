@@ -71,9 +71,11 @@ export default async function HomePage() {
             <Link key={key} href={`/search?city=${key}`} className="card group relative min-h-64 overflow-hidden sm:min-h-80">
               <Image
                 src={DESTINATION_IMAGES[key]}
-                alt={CITIES[key].ar}
+                alt={`صورة لمدينة ${CITIES[key].ar}`}
                 fill
                 sizes="(max-width: 640px) 100vw, 50vw"
+                loading="lazy"
+                decoding="async"
                 className="object-cover transition duration-700 group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-navy-deep/90 via-navy-deep/20 to-transparent" />
@@ -98,7 +100,7 @@ export default async function HomePage() {
           <Link href="/search" className="btn-ghost text-sm">عرض كل الوحدات ←</Link>
         </div>
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {featured.map((p) => <PropertyCard key={p.id} property={p} />)}
+          {featured.map((p, i) => <PropertyCard key={p.id} property={p} eager={i === 0} />)}
         </div>
         {featured.length === 0 && (
           <div className="soft-card text-center muted">لا توجد وحدات منشورة بعد.</div>

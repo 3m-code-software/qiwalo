@@ -9,6 +9,7 @@ import PriceBreakdown from "@/components/PriceBreakdown";
 import ReviewsTab from "@/components/ReviewsTab";
 import { CITIES, COMMISSION_RATE, PROPERTY_TYPES, SUPPORT_PHONE, SUPPORT_TELEGRAM, SUPPORT_WHATSAPP } from "@/lib/constants";
 import { dateAr, money, toArabicDigits } from "@/lib/format";
+import { cloudinaryDeliveryUrl, propertyImageAlt } from "@/lib/image-assets";
 import { cancelPolicyText } from "@/lib/notifications";
 import { quoteStay } from "@/lib/pricing";
 import { getRepo } from "@/lib/repo";
@@ -65,13 +66,21 @@ export default async function StayPage({ params, searchParams }: Props) {
       <div className="mb-8 grid gap-3 sm:grid-cols-4">
         <div className="relative h-[300px] overflow-hidden rounded-2xl bg-navy-soft sm:col-span-2 sm:row-span-2 sm:h-full sm:min-h-[460px]">
           {property.images[0] && (
-            <Image src={property.images[0]} alt={property.name} fill sizes="(max-width: 640px) 100vw, 50vw" className="object-cover" preload />
+            <Image src={cloudinaryDeliveryUrl(property.images[0], 1400)} alt={propertyImageAlt(property)} fill sizes="(max-width: 640px) 100vw, 50vw" className="object-cover" preload />
           )}
           <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-navy-deep/45 to-transparent" />
         </div>
         {property.images.slice(1, 5).map((src, i) => (
           <div key={src + i} className="relative h-[140px] overflow-hidden rounded-2xl bg-navy-soft sm:h-full sm:min-h-[220px]">
-            <Image src={src} alt={`${property.name} ${i + 2}`} fill sizes="(max-width: 640px) 50vw, 25vw" className="object-cover" />
+            <Image
+              src={cloudinaryDeliveryUrl(src, 600)}
+              alt={propertyImageAlt(property, i + 1)}
+              fill
+              sizes="(max-width: 640px) 50vw, 25vw"
+              loading="lazy"
+              decoding="async"
+              className="object-cover"
+            />
           </div>
         ))}
       </div>

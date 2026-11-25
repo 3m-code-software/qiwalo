@@ -5,6 +5,7 @@ import CheckoutForm from "@/components/CheckoutForm";
 import PriceBreakdown from "@/components/PriceBreakdown";
 import { CITIES } from "@/lib/constants";
 import { dateAr } from "@/lib/format";
+import { cloudinaryDeliveryUrl, propertyImageAlt } from "@/lib/image-assets";
 import { quoteStay } from "@/lib/pricing";
 import { getRepo } from "@/lib/repo";
 
@@ -53,7 +54,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
 
           <aside className="soft-card h-fit">
             <div className="relative mb-4 aspect-[4/3] overflow-hidden rounded-xl">
-              {property.images[0] && <Image src={property.images[0]} alt={property.name} fill sizes="340px" className="object-cover" />}
+              {property.images[0] && <Image src={cloudinaryDeliveryUrl(property.images[0], 700)} alt={propertyImageAlt(property)} fill sizes="340px" loading="lazy" decoding="async" className="object-cover" />}
             </div>
             <h2 className="font-extrabold text-navy">{property.name}</h2>
             <p className="muted text-xs">{CITIES[property.city].ar} · {property.address}</p>

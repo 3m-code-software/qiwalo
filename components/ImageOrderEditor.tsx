@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useState, type DragEvent } from "react";
 import { toArabicDigits } from "@/lib/format";
+import { cloudinaryDeliveryUrl, imageOrderAlt } from "@/lib/image-assets";
 
 export type EditableImage = {
   url: string;
@@ -52,7 +53,7 @@ export default function ImageOrderEditor({
           }`}
           title="اسحب لتغيير الترتيب"
         >
-          <Image src={image.url} alt="صورة الوحدة" fill sizes="160px" className="object-cover" />
+          <Image src={cloudinaryDeliveryUrl(image.url, 320)} alt={imageOrderAlt(index)} fill sizes="160px" loading="lazy" decoding="async" className="object-cover" />
 
           <span className="absolute right-1 top-1 rounded-full bg-black/60 px-2 py-0.5 text-xs font-bold text-white">
             {toArabicDigits(index + 1)}

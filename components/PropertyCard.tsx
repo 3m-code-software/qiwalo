@@ -3,12 +3,15 @@ import Link from "next/link";
 import FavoriteButton from "@/components/FavoriteButton";
 import { CITIES, PROPERTY_TYPES } from "@/lib/constants";
 import { money, toArabicDigits } from "@/lib/format";
+import { cloudinaryDeliveryUrl, propertyImageAlt } from "@/lib/image-assets";
 import type { Property, SearchFilter } from "@/lib/types";
 
-export default function PropertyCard({ property, filter = {}, price }: {
+export default function PropertyCard({ property, filter = {}, price, eager = false }: {
   property: Property;
   filter?: SearchFilter;
   price?: number;
+  /** أول بطاقة في الشبكة فقط تُحمَّل فوراً؛ الباقي كسول. */
+  eager?: boolean;
 }) {
   const params = new URLSearchParams();
   if (filter.checkIn) params.set("checkIn", filter.checkIn);
@@ -22,10 +25,12 @@ export default function PropertyCard({ property, filter = {}, price }: {
         <div className="relative aspect-[4/3] overflow-hidden bg-navy-soft">
           {property.images[0] && (
             <Image
-              src={property.images[0]}
-              alt={property.name}
+              src={cloudinaryDeliveryUrl(property.images[0], 900)}
+              alt={propertyImageAlt(property)}
               fill
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              loading={eager ? "eager" : "lazy"}
+              decoding="async"
               className="object-cover transition duration-700 group-hover:scale-105"
             />
           )}
