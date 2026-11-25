@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test",
     "test:recovery": "playwright test --config=playwright.recovery.config.ts",
+    "qa:tour": "node scripts/qa-tour.mjs",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:seed": "node prisma/seed.js",

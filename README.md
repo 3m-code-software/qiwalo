@@ -112,12 +112,19 @@ npm run lint       # ESLint
 npx playwright install chromium   # مرة واحدة فقط
 npm run test:e2e       # ١٢ اختبار على Mock محلي (بدون Supabase/Cloudinary/إنتاج)
 npm run test:recovery  # ٣ اختبارات لمسار استعادة كلمة المرور بـ Supabase وهمي
+npm run qa:tour     # جولة تصويرية: ٢٢ خطوة × ديسكتوب/أندرويد (سيرفر Mock على 3140)
 npm run db:generate
 npm run db:push    # بعد ما تحط DATABASE_URL
 npm run db:seed         # بيانات تجريبية: 3 مستخدمين + 8 وحدات + 3 حجوزات
 npm run db:seed:demo    # ٤٠ وحدة عرض + ١٠ مالكين + ٩٤ تقييم عرض
 npm run db:seed:admin   # حساب الأدمن الحقيقي (ADMIN_EMAIL/PASSWORD/NAME من البيئة)
 ```
+
+## التوثيق والجولة التفقدية
+
+- سجل التطوير الكامل (البنود ١–٢٥ والإصلاحات): [`docs/IMPROVEMENTS-LOG.md`](docs/IMPROVEMENTS-LOG.md).
+- تقرير التجربة الشاملة مع **٤٤ لقطة شاشة** لكل خطوة على الديسكتوب والأندرويد، والقياسات وملاحظات UX: [`docs/QA-REPORT.md`](docs/QA-REPORT.md). الصور في `docs/qa/screenshots/` والنتائج الخام في `docs/qa/qa-results.json`.
+- لإعادة الجولة: شغّل سيرفر Mock على المنفذ ٣١٤٠ مع تفريغ `DATABASE_URL` ومتغيرات Supabase/Telegram/Cloudinary/Resend/WhatsApp/البنك (زي ما في `playwright.config.ts`)، ثم `npm run qa:tour`. لا تتصل الجولة بالإنتاج ولا تستخدم أسراراً.
 
 ## Cloudinary (مُدمج ✅)
 
