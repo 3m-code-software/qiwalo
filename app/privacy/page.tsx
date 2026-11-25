@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import SupportLinks from "@/components/SupportLinks";
+import LegalStamp from "@/components/LegalStamp";
 import { SITE_NAME_AR, SUPPORT_PHONE } from "@/lib/constants";
 
 export const metadata: Metadata = {
@@ -24,7 +25,7 @@ export default function PrivacyPage() {
       <div className="soft-card">
         <div className="flex flex-wrap items-center gap-3">
           <span className="chip">سياسة الخصوصية</span>
-          <span className="chip chip-gold">نسخة معتمدة</span>
+          <LegalStamp />
         </div>
         <h1 className="mt-5 text-3xl font-black text-navy">سياسة خصوصية {SITE_NAME_AR}</h1>
         <div className="gold-rule my-5" />

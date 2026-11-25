@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import SupportLinks from "@/components/SupportLinks";
+import LegalStamp from "@/components/LegalStamp";
 import {
   CANCEL_POLICIES,
   DEFAULT_COMMISSION_RATE,
@@ -48,7 +49,7 @@ export default function TermsIndexPage() {
         <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-l from-gold via-gold-bright to-transparent" />
         <div className="flex flex-wrap items-center gap-3">
           <span className="chip">شروط {SITE_NAME_AR}</span>
-          <span className="chip chip-gold">نسخة معتمدة</span>
+          <LegalStamp />
         </div>
         <h1 className="mt-5 text-3xl font-black text-navy">الشروط والسياسات</h1>
         <div className="gold-rule my-5" />

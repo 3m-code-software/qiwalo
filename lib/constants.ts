@@ -6,6 +6,10 @@ export const COMMISSION_RATE = 0.12;
 export const DEFAULT_COMMISSION_RATE = 12;
 export const GUEST_SERVICE_FEE_RATE = 0;
 
+// تاريخ النسخة القانونية المعتمدة — يُغيَّر من مكان واحد عند أي تحديث لاحق.
+export const LEGAL_VERSION_DATE = "2026-11-25";
+export const LEGAL_VERSION_DATE_AR = "٢٥ نوفمبر ٢٠٢٦";
+
 export const SUPPORT_PHONE = "01066094050";
 export const SUPPORT_WHATSAPP = "https://wa.me/201066094050";
 export const SUPPORT_TELEGRAM = "https://t.me/+201066094050";

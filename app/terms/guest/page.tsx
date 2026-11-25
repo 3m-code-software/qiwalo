@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import SupportLinks from "@/components/SupportLinks";
+import LegalStamp from "@/components/LegalStamp";
 import { CANCEL_POLICIES, SITE_NAME_AR, SUPPORT_PHONE } from "@/lib/constants";
 
 export const metadata: Metadata = {
@@ -24,7 +25,7 @@ export default function GuestTermsPage() {
       <div className="soft-card">
         <div className="flex flex-wrap items-center gap-3">
           <span className="chip">شروط الضيوف</span>
-          <span className="chip chip-gold">نسخة معتمدة</span>
+          <LegalStamp />
         </div>
         <h1 className="mt-5 text-3xl font-black text-navy">شروط استخدام {SITE_NAME_AR} للضيوف</h1>
         <div className="gold-rule my-5" />
