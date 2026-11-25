@@ -13,12 +13,14 @@ export default function CheckoutForm({
   checkOut,
   guests,
   quote,
+  experience,
 }: {
   property: Property;
   checkIn: string;
   checkOut: string;
   guests: number;
   quote: Quote;
+  experience?: { id: string; name: string; total: number } | null;
 }) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(confirmBookingAction, {});
 
@@ -28,6 +30,7 @@ export default function CheckoutForm({
       <input type="hidden" name="checkIn" value={checkIn} />
       <input type="hidden" name="checkOut" value={checkOut} />
       <input type="hidden" name="guests" value={guests} />
+      {experience && <input type="hidden" name="experienceId" value={experience.id} />}
 
       <h2 className="text-lg font-extrabold text-navy">بيانات الضيف</h2>
       <div>
@@ -61,8 +64,13 @@ export default function CheckoutForm({
       <div className="rounded-xl border border-gold/30 bg-ivory p-4 text-sm">
         <div className="flex items-center justify-between gap-3">
           <span className="font-bold text-muted">إجمالي الحجز ({quote.nights} ليالي)</span>
-          <span className="text-lg font-black text-navy">{money(quote.total)}</span>
+          <span className="text-lg font-black text-navy">{money(quote.total + (experience?.total ?? 0))}</span>
         </div>
+        {experience && (
+          <p className="muted mt-2 text-xs">
+            شامل {experience.name}: <span className="font-bold text-nile">{money(experience.total)}</span>
+          </p>
+        )}
         <p className="mt-2 text-xs font-bold text-muted">تحويل بنكي أو كاش عند الوصول</p>
       </div>
 

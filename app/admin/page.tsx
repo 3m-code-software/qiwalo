@@ -34,6 +34,8 @@ const activityLabel: Record<string, string> = {
   PROPERTY_REJECTED: "رفض وحدة",
   PROPERTY_DRAFT: "إرجاع وحدة لمسودة",
   PROPERTY_PENDING: "إعادة وحدة للمراجعة",
+  EXPERIENCE_PUBLISHED: "نشر تجربة سفاري",
+  EXPERIENCE_REJECTED: "رفض تجربة سفاري",
   COMMISSION_CHANGED: "تغيير عمولة",
   VERIFICATION_APPROVED: "موافقة على توثيق مالك",
   VERIFICATION_REJECTED: "رفض توثيق مالك",
@@ -209,7 +211,10 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           <h1 className="mt-3 text-3xl font-black">نظرة عامة</h1>
           <p className="muted mt-1 text-sm">بيانات المنصة والتحكم في نشر الوحدات والتحقق والتقييمات.</p>
         </div>
-        <Link href="/owner" className="btn-ghost !py-2 text-sm">لوحة المالك ↗</Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/admin/experiences" className="btn-ghost !py-2 text-sm">مراجعة سفاري الجبال ↗</Link>
+          <Link href="/owner" className="btn-ghost !py-2 text-sm">لوحة المالك ↗</Link>
+        </div>
       </div>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

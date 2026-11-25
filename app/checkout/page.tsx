@@ -27,6 +27,18 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
   const [rules, availability] = await Promise.all([repo.getPriceRules(property.id), repo.getAvailability(property.id)]);
   const result = quoteStay(property, rules, availability, checkIn, checkOut);
 
+  const experienceId = one(sp.experience);
+  const requestedExperience = experienceId ? await repo.getExperienceById(experienceId) : null;
+  const experience = requestedExperience
+    && requestedExperience.status === "PUBLISHED"
+    && requestedExperience.city === property.city
+    && guests <= requestedExperience.capacity
+    ? requestedExperience
+    : null;
+  const experienceTotal = experience ? experience.pricePerPerson * guests : 0;
+  const experienceCommission = experience ? Math.round(experienceTotal * (experience.commissionRate / 100)) : 0;
+  const baseParams = new URLSearchParams({ slug, checkIn, checkOut, guests: String(guests) });
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
       <div className="mb-6">
@@ -49,6 +61,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
               checkOut={checkOut}
               guests={guests}
               quote={result.quote}
+              experience={experience ? { id: experience.id, name: experience.name, total: experienceTotal } : null}
             />
           </div>
 
@@ -64,8 +77,28 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
               <div className="flex justify-between"><span className="muted">الليالي</span><span className="font-bold">{result.quote.nights}</span></div>
               <div className="flex justify-between"><span className="muted">الضيوف</span><span className="font-bold">{guests}</span></div>
             </div>
+            {experience && (
+              <div className="mt-4 rounded-xl border border-gold/40 bg-gold-soft p-4" data-testid="checkout-experience">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-extrabold text-navy">سفاري الجبال</p>
+                  <Link href={`/checkout?${baseParams.toString()}`} className="text-xs font-bold text-nile hover:text-gold">إزالة ✕</Link>
+                </div>
+                <p className="text-sm font-bold">{experience.name}</p>
+                <p className="muted mt-1 text-xs">{experience.mountain} · {experience.durationHours} ساعات · نقطة اللقاء: {experience.meetingPoint}</p>
+                <p className="muted mt-2 text-xs">بعد مراجعة الإدارة للمستندات. المشمولات: {experience.includes.join(" · ")}</p>
+              </div>
+            )}
             <div className="mt-4 border-t border-line pt-4">
-              <PriceBreakdown quote={result.quote} commissionRate={property.commissionRate} />
+              <PriceBreakdown
+                quote={result.quote}
+                commissionRate={property.commissionRate}
+                addOn={experience ? {
+                  label: `سفاري الجبال (${experience.name})`,
+                  amount: experienceTotal,
+                  total: result.quote.total + experienceTotal,
+                  commission: result.quote.commission + experienceCommission,
+                } : undefined}
+              />
             </div>
             <p className="mt-4 border-t border-line pt-4 text-xs font-bold leading-6 text-muted">تحويل بنكي أو كاش عند الوصول</p>
           </aside>

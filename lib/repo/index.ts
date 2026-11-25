@@ -3,8 +3,11 @@ import type {
   Availability,
   Booking,
   BookingStatus,
+  CityKey,
+  Experience,
   ModerationStatus,
   NewBookingInput,
+  NewExperienceInput,
   NewPropertyInput,
   NewReviewInput,
   NewActivityInput,
@@ -31,6 +34,12 @@ export interface Repo {
   createProperty(input: NewPropertyInput): Promise<Property>;
   updateProperty(id: string, patch: PropertyUpdateInput): Promise<Property | null>;
   moderateProperty(id: string, status: ModerationStatus): Promise<void>;
+  listPublishedExperiences(city?: CityKey): Promise<Experience[]>;
+  listAllExperiences(): Promise<Experience[]>;
+  listExperiencesForOwner(ownerId: string): Promise<Experience[]>;
+  getExperienceById(id: string): Promise<Experience | null>;
+  createExperience(input: NewExperienceInput): Promise<Experience>;
+  moderateExperience(id: string, status: ModerationStatus): Promise<void>;
   getAvailability(propertyId: string): Promise<Availability[]>;
   getPriceRules(propertyId: string): Promise<PriceRule[]>;
   saveAvailability(propertyId: string, rows: Availability[]): Promise<void>;

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { eachDayOfInterval, format, parseISO } from "date-fns";
-import { DEFAULT_COMMISSION_RATE } from "@/lib/constants";
+import { DEFAULT_COMMISSION_RATE, EXPERIENCE_CANCEL_POLICY } from "@/lib/constants";
 import { toArabicDigits } from "@/lib/format";
 import { clearSession, createSession, getSession, requireRole, type Session } from "@/lib/auth";
 import { sendBookingNotifications, sendReviewNotice, sendSignupNotice, sendVerificationNotice } from "@/lib/notifications";
@@ -13,8 +13,8 @@ import { getRepo } from "@/lib/repo";
 import { createTelegramActivationToken } from "@/lib/telegram";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import type {
-  BookingStatus, CityKey, ModerationStatus, PaymentMethod, PropertyType,
-  PropertyUpdateInput, ReviewStatus, Role, VerificationStatus,
+  BookingStatus, CityKey, ExperienceBookingDetail, ExperienceDifficulty, ModerationStatus,
+  PaymentMethod, PropertyType, PropertyUpdateInput, ReviewStatus, Role, VerificationStatus,
 } from "@/lib/types";
 
 export interface FormState { error?: string; ok?: string }
@@ -355,6 +355,73 @@ export async function moderatePropertyAction(_prev: FormState, form: FormData): 
   };
 }
 
+// ===== Mountain safari experiences =====
+
+export async function createExperienceAction(_prev: FormState, form: FormData): Promise<FormState> {
+  const session = await requireRole("OWNER");
+  const name = String(form.get("name") ?? "").trim();
+  const city = String(form.get("city") ?? "") as CityKey;
+  const mountain = String(form.get("mountain") ?? "").trim();
+  const meetingPoint = String(form.get("meetingPoint") ?? "").trim();
+  const durationHours = Number(form.get("durationHours"));
+  const capacity = Number(form.get("capacity"));
+  const pricePerPerson = Number(form.get("pricePerPerson"));
+  const difficulty = String(form.get("difficulty") ?? "MODERATE") as ExperienceDifficulty;
+  const bestSeason = String(form.get("bestSeason") ?? "").trim();
+  const licenseDocUrl = String(form.get("licenseDocUrl") ?? "").trim();
+  const includes = [...new Set(
+    form.getAll("includes").flatMap((value) => String(value).split(/[\n,]+/)).map((s) => s.trim()).filter(Boolean),
+  )].slice(0, 8);
+
+  if (name.length < 3 || !mountain || !meetingPoint || !bestSeason) {
+    return { error: "اسم التجربة والجبل ونقطة اللقاء والموسم مطلوبة." };
+  }
+  if (city !== "LUXOR" && city !== "ASWAN") return { error: "اختر مدينة صحيحة." };
+  if (!Number.isFinite(durationHours) || durationHours < 1 || durationHours > 24) {
+    return { error: "مدة الرحلة لازم تكون بين ١ و٢٤ ساعة." };
+  }
+  if (!Number.isFinite(capacity) || capacity < 1 || capacity > 100) return { error: "السعة غير صحيحة." };
+  if (!Number.isFinite(pricePerPerson) || pricePerPerson < 50) return { error: "أدخل سعر صحيحاً للفرد." };
+  if (!["EASY", "MODERATE", "HARD"].includes(difficulty)) return { error: "مستوى الصعوبة غير صحيح." };
+  if (!licenseDocUrl.startsWith("https://")) return { error: "لازم رابط مستند المراجعة يبدأ بـ https://." };
+  if (includes.length === 0) return { error: "اكتب على الأقل مشمول واحد للرحلة." };
+
+  const repo = await getRepo();
+  await repo.createExperience({
+    ownerId: session.email, name, city, mountain, meetingPoint, durationHours, capacity,
+    pricePerPerson, includes, difficulty, bestSeason, licenseDocUrl,
+    cancelPolicy: String(form.get("cancelPolicy") ?? "").trim() || EXPERIENCE_CANCEL_POLICY,
+  });
+  revalidatePath("/owner");
+  revalidatePath("/admin");
+  redirect("/owner?experience=1");
+}
+
+export async function moderateExperienceAction(_prev: FormState, form: FormData): Promise<FormState> {
+  const session = await requireRole("ADMIN");
+  const id = String(form.get("id") ?? "");
+  const status = String(form.get("status") ?? "") as ModerationStatus;
+  if (!id || !["PUBLISHED", "REJECTED", "DRAFT", "PENDING"].includes(status)) {
+    return { error: "تعذّر تحديث التجربة. حاول مرة أخرى." };
+  }
+  const repo = await getRepo();
+  const experience = await repo.getExperienceById(id);
+  await repo.moderateExperience(id, status);
+  await repo.logActivity({
+    actorEmail: session.email,
+    actorName: session.name,
+    action: status === "PUBLISHED" ? "EXPERIENCE_PUBLISHED" : "EXPERIENCE_REJECTED",
+    target: id,
+    detail: experience?.name ?? id,
+  });
+  revalidatePath("/admin");
+  revalidatePath("/admin/experiences");
+  revalidatePath("/owner");
+  revalidatePath("/search");
+  revalidatePath("/");
+  return { ok: status === "PUBLISHED" ? "تم نشر تجربة سفاري الجبال ✅" : "تم تحديث التجربة ✅" };
+}
+
 // ===== Availability & price rules =====
 
 export async function saveAvailabilityAction(form: FormData): Promise<void> {
@@ -421,6 +488,26 @@ export async function confirmBookingAction(_prev: FormState, form: FormData): Pr
   const result = quoteStay(property, rules, availability, checkIn, checkOut);
   if (!result.ok) return { error: "التواريخ غير متاحة. اختار مواعيد تانية." };
 
+  const experienceId = String(form.get("experienceId") ?? "").trim();
+  let experienceDetail: ExperienceBookingDetail | null = null;
+  if (experienceId) {
+    const experience = await repo.getExperienceById(experienceId);
+    if (!experience || experience.status !== "PUBLISHED" || experience.city !== property.city) {
+      return { error: "تجربة السفاري غير متاحة لهذه الوحدة." };
+    }
+    if (guests > experience.capacity) {
+      return { error: `عدد الضيوف أكبر من سعة تجربة السفاري (${toArabicDigits(experience.capacity)}).` };
+    }
+    const experienceTotal = experience.pricePerPerson * guests;
+    experienceDetail = {
+      experienceId: experience.id, experienceName: experience.name, city: experience.city,
+      mountain: experience.mountain, meetingPoint: experience.meetingPoint,
+      durationHours: experience.durationHours, pricePerPerson: experience.pricePerPerson,
+      guests, total: experienceTotal,
+      commission: Math.round(experienceTotal * (experience.commissionRate / 100)),
+    };
+  }
+
   const session = await getSession();
   const guestEmail = session?.email ?? email;
   const termsAcceptedAt = new Date().toISOString();
@@ -436,8 +523,9 @@ export async function confirmBookingAction(_prev: FormState, form: FormData): Pr
     propertyId: property.id, guestId: guestEmail, guestName: fullName,
     checkIn, checkOut, guests,
     subtotal: result.quote.subtotal, serviceFee: result.quote.serviceFee,
-    commission: result.quote.commission, total: result.quote.total, provider: "MANUAL",
-    nationality, paymentMethod, termsAcceptedAt,
+    commission: result.quote.commission + (experienceDetail?.commission ?? 0),
+    total: result.quote.total + (experienceDetail?.total ?? 0), provider: "MANUAL",
+    nationality, paymentMethod, termsAcceptedAt, experience: experienceDetail,
   });
   await repo.updateBooking(booking.reference, { status: "CONFIRMED", paymentStatus: "PENDING" });
 

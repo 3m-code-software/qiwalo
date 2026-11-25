@@ -3,7 +3,7 @@ import { duplicatePropertyAction } from "@/app/actions";
 import OwnerReviewReplyForm from "@/components/OwnerReviewReplyForm";
 import OwnerStats from "@/components/OwnerStats";
 import { requireRole } from "@/lib/auth";
-import { CITIES, DEFAULT_COMMISSION_RATE, PROPERTY_TYPES } from "@/lib/constants";
+import { CITIES, DEFAULT_COMMISSION_RATE, EXPERIENCE_DIFFICULTIES, PROPERTY_TYPES } from "@/lib/constants";
 import { dateAr, money, toArabicDigits } from "@/lib/format";
 import { buildOwnerStats } from "@/lib/owner-stats";
 import { getRepo } from "@/lib/repo";
@@ -29,10 +29,12 @@ export default async function OwnerPage({ searchParams }: { searchParams: Promis
   const session = await requireRole("OWNER");
   const sp = await searchParams;
   const created = Array.isArray(sp.created) ? sp.created[0] : sp.created;
+  const experienceCreated = Array.isArray(sp.experience) ? sp.experience[0] : sp.experience;
   const repo = await getRepo();
-  const [properties, bookings, verification, user] = await Promise.all([
+  const [properties, bookings, experiences, verification, user] = await Promise.all([
     repo.listPropertiesForOwner(session.email),
     repo.listBookingsForOwner(session.email),
+    repo.listExperiencesForOwner(session.email),
     repo.getVerification(session.email),
     repo.getUserByEmail(session.email),
   ]);
@@ -58,6 +60,7 @@ export default async function OwnerPage({ searchParams }: { searchParams: Promis
           <Link href="/owner/profile" className="btn-ghost text-sm">الملف والتحقق</Link>
           <Link href="/owner/calendar" className="btn-ghost text-sm">تقويم التواريخ والأسعار</Link>
           <Link href="/owner/units/new" className="btn-primary text-sm">+ إضافة وحدة</Link>
+          <Link href="/owner/experiences/new" className="btn-ghost text-sm">+ إضافة سفاري</Link>
         </div>
       </div>
 
@@ -102,6 +105,12 @@ export default async function OwnerPage({ searchParams }: { searchParams: Promis
       {created === "1" && (
         <p className="mb-5 rounded-xl bg-nile-soft p-4 text-sm font-bold text-nile-dark">
           ✅ تم إرسال الوحدة للمراجعة. هتظهر في البحث بعد موافقة الإدارة.
+        </p>
+      )}
+
+      {experienceCreated === "1" && (
+        <p className="mb-5 rounded-xl bg-nile-soft p-4 text-sm font-bold text-nile-dark" role="status">
+          ✅ تم إرسال تجربة سفاري الجبال للمراجعة. هتظهر للضيوف بعد موافقة الإدارة.
         </p>
       )}
 
@@ -150,6 +159,34 @@ export default async function OwnerPage({ searchParams }: { searchParams: Promis
                 </div>
               );
             })}
+          </div>
+        )}
+      </section>
+
+      <section className="mt-10" data-testid="owner-experiences">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-xl font-extrabold">تجارب سفاري الجبال</h2>
+          <Link href="/owner/experiences/new" className="btn-ghost text-sm">+ إضافة تجربة</Link>
+        </div>
+        {experiences.length === 0 ? (
+          <div className="soft-card text-center">
+            <p className="muted">لسه مضفتش أي تجربة سفاري.</p>
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2">
+            {experiences.map((experience) => (
+              <div key={experience.id} data-testid="owner-experience-row" className="soft-card">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <span className={`chip !bg-transparent ${statusLabel[experience.status]?.cls ?? ""}`}>
+                    {statusLabel[experience.status]?.ar ?? experience.status}
+                  </span>
+                  <span className="muted text-xs">{EXPERIENCE_DIFFICULTIES[experience.difficulty].ar}</span>
+                </div>
+                <h3 className="font-extrabold">{experience.name}</h3>
+                <p className="muted mt-1 text-xs">{CITIES[experience.city].ar} · {experience.mountain} · {toArabicDigits(experience.durationHours)} ساعات</p>
+                <p className="mt-3 font-bold text-nile">{money(experience.pricePerPerson)} / فرد</p>
+              </div>
+            ))}
           </div>
         )}
       </section>

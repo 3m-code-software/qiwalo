@@ -82,9 +82,42 @@ export default async function BookingPage({ params, searchParams }: Props) {
         <div className="mt-5 space-y-2 border-t border-line pt-4 text-sm">
           <div className="flex justify-between"><span className="muted">{toArabicDigits(booking.nights)} ليالي · {toArabicDigits(booking.guests)} ضيوف</span><span>{money(booking.subtotal)}</span></div>
           <div className="flex justify-between"><span className="muted">رسوم الخدمة</span><span>{money(booking.serviceFee)}</span></div>
+          {booking.experience && (
+            <div className="flex justify-between" data-testid="booking-experience-line">
+              <span className="muted">سفاري الجبال · {toArabicDigits(booking.experience.guests)} أفراد</span>
+              <span>{money(booking.experience.total)}</span>
+            </div>
+          )}
           <div className="flex justify-between text-lg font-black text-nile"><span>الإجمالي</span><span>{money(booking.total)}</span></div>
         </div>
       </div>
+
+      {booking.experience && (
+        <div className="soft-card mt-5" data-testid="booking-experience">
+          <h2 className="mb-4 text-lg font-extrabold text-navy">سفاري الجبال</h2>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <p className="muted text-xs">التجربة</p>
+              <p className="font-bold">{booking.experience.experienceName}</p>
+              <p className="muted text-xs">{booking.experience.mountain} · {CITIES[booking.experience.city].ar}</p>
+            </div>
+            <div>
+              <p className="muted text-xs">نقطة اللقاء</p>
+              <p className="font-bold">{booking.experience.meetingPoint}</p>
+            </div>
+            <div>
+              <p className="muted text-xs">المدة والسعر</p>
+              <p className="font-bold">
+                {toArabicDigits(booking.experience.durationHours)} ساعات · {money(booking.experience.pricePerPerson)} / فرد
+              </p>
+            </div>
+            <div>
+              <p className="muted text-xs">الحالة</p>
+              <p className="font-bold">بعد مراجعة الإدارة للمستندات</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="soft-card mt-5">
         <h2 className="mb-4 text-lg font-extrabold text-navy">الدفع</h2>

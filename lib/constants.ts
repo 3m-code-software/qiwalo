@@ -1,4 +1,4 @@
-import type { CityKey, PropertyType } from "./types";
+import type { CityKey, ExperienceCategory, ExperienceDifficulty, PropertyType } from "./types";
 
 export const SITE_NAME = "Qiwalo";
 export const SITE_NAME_AR = "قيوالو";
@@ -27,6 +27,19 @@ export const PROPERTY_TYPES: Record<PropertyType, { ar: string; en: string }> = 
   GUEST_HOUSE: { ar: "بيت ضيافة", en: "Guest house" },
   NILE_CRUISE: { ar: "مركب نيلي", en: "Nile cruise" },
 };
+
+export const EXPERIENCE_CATEGORIES: Record<ExperienceCategory, { ar: string; en: string }> = {
+  MOUNTAIN_SAFARI: { ar: "سفاري جبال", en: "Mountain safari" },
+};
+
+export const EXPERIENCE_DIFFICULTIES: Record<ExperienceDifficulty, { ar: string }> = {
+  EASY: { ar: "سهل" },
+  MODERATE: { ar: "متوسط" },
+  HARD: { ar: "صعب" },
+};
+
+export const EXPERIENCE_CANCEL_POLICY =
+  "إلغاء مجاني قبل موعد الرحلة بـ 24 ساعة أو أكثر. بعدها تُحتسب رسوم المورد، وفي حال اعتذار المورد يُعاد المبلغ كاملاً ويُبلَّغ الضيف فوراً.";
 
 export const AMENITIES = [
   "واي فاي",

@@ -7,11 +7,13 @@ export default function PriceBreakdown({
   commissionRate,
   openNights = false,
   className = "",
+  addOn,
 }: {
   quote: Quote;
   commissionRate?: number;
   openNights?: boolean;
   className?: string;
+  addOn?: { label: string; amount: number; total: number; commission: number };
 }) {
   return (
     <div className={`space-y-2 text-sm ${className}`}>
@@ -40,13 +42,19 @@ export default function PriceBreakdown({
         <span className="muted">رسوم الخدمة</span>
         <span className="font-bold">{money(quote.serviceFee)}</span>
       </div>
+      {addOn && (
+        <div className="flex justify-between gap-3" data-testid="price-addon">
+          <span className="muted">{addOn.label}</span>
+          <span className="font-bold">{money(addOn.amount)}</span>
+        </div>
+      )}
       <div className="flex justify-between gap-3 text-lg font-black text-nile">
         <span>الإجمالي</span>
-        <span>{money(quote.total)}</span>
+        <span>{money(addOn?.total ?? quote.total)}</span>
       </div>
       {commissionRate !== undefined && (
         <p className="muted border-t border-line pt-2 text-xs leading-6">
-          عمولة المنصة ({toArabicDigits(commissionRate)}٪ = {money(quote.commission)}) تُقتطع من المالك بعد التأكيد، وهي غير مضافة لما يدفعه الضيف.
+          عمولة المنصة ({toArabicDigits(commissionRate)}٪ = {money(addOn?.commission ?? quote.commission)}) تُقتطع من المالك بعد التأكيد، وهي غير مضافة لما يدفعه الضيف.
         </p>
       )}
     </div>

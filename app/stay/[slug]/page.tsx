@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import AvailabilityCalendar from "@/components/AvailabilityCalendar";
+import ExperienceAddOn from "@/components/ExperienceAddOn";
 import FavoriteButton from "@/components/FavoriteButton";
 import PropertyGallery from "@/components/PropertyGallery";
 import MapView from "@/components/MapView";
@@ -68,10 +69,11 @@ export default async function StayPage({ params, searchParams }: Props) {
   const property = await repo.getPropertyBySlug(slug);
   if (!property || property.status !== "PUBLISHED") notFound();
 
-  const [rules, availability, reviews] = await Promise.all([
+  const [rules, availability, reviews, experiences] = await Promise.all([
     repo.getPriceRules(property.id),
     repo.getAvailability(property.id),
     repo.listReviewsForProperty(property.id),
+    repo.listPublishedExperiences(property.city),
   ]);
   const checkIn = /^\d{4}-\d{2}-\d{2}$/.test(one(sp.checkIn)) ? one(sp.checkIn) : "";
   const checkOut = /^\d{4}-\d{2}-\d{2}$/.test(one(sp.checkOut)) ? one(sp.checkOut) : "";
@@ -204,6 +206,14 @@ export default async function StayPage({ params, searchParams }: Props) {
           )}
 
           <ReviewsTab reviews={reviews} />
+
+          <ExperienceAddOn
+            experiences={experiences}
+            propertySlug={property.slug}
+            checkIn={checkIn}
+            checkOut={checkOut}
+            guests={guests}
+          />
         </div>
 
         {/* ===== Booking card ===== */}

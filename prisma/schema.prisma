@@ -72,6 +72,16 @@ enum VerificationStatus {
   REJECTED
 }
 
+enum ExperienceCategory {
+  MOUNTAIN_SAFARI
+}
+
+enum ExperienceDifficulty {
+  EASY
+  MODERATE
+  HARD
+}
+
 model User {
   id              String    @id @default(cuid())
   name            String
@@ -84,6 +94,7 @@ model User {
   createdAt       DateTime  @default(now())
 
   properties   Property[]
+  experiences  Experience[]
   bookings     Booking[]
   payouts      Payout[]
   reviews      Review[]
@@ -154,6 +165,31 @@ model PriceRule {
   @@index([propertyId, startDate, endDate])
 }
 
+model Experience {
+  id              String              @id @default(cuid())
+  ownerId         String
+  owner           User                @relation(fields: [ownerId], references: [id])
+  name            String
+  category        ExperienceCategory  @default(MOUNTAIN_SAFARI)
+  city            City
+  mountain        String
+  meetingPoint    String
+  durationHours   Int
+  capacity        Int
+  pricePerPerson  Int
+  includes        Json                @default("[]")
+  difficulty      ExperienceDifficulty @default(MODERATE)
+  bestSeason      String
+  cancelPolicy    String
+  licenseDocUrl   String
+  status          ModerationStatus    @default(PENDING)
+  commissionRate  Int                 @default(12)
+  createdAt       DateTime            @default(now())
+
+  @@index([city, status])
+  @@index([ownerId, status])
+}
+
 model Booking {
   id              String          @id @default(cuid())
   reference       String          @unique
@@ -177,6 +213,7 @@ model Booking {
   status          BookingStatus   @default(PENDING)
   paymentStatus   PaymentStatus   @default(PENDING)
   provider        PaymentProvider @default(MANUAL)
+  experience      Json?
   createdAt       DateTime        @default(now())
 
   @@index([guestId, createdAt])

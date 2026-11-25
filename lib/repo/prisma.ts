@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { makePropertySlug, slugCandidates } from "@/lib/slug";
 import type { Repo } from "./index";
 import type {
-  ActivityLog, Availability, Booking, NewActivityInput, NewBookingInput, NewPropertyInput,
+  ActivityLog, Availability, Booking, Experience, NewActivityInput, NewBookingInput, NewExperienceInput, NewPropertyInput,
   NewReviewInput, NewVerificationInput, OwnerVerification, PlatformStats, PriceRule, Property,
   Review, SearchFilter, UserRecord, VerificationStatus,
 } from "@/lib/types";
@@ -40,6 +40,18 @@ function mapProperty(p: any): Property {
   };
 }
 
+function mapExperience(e: any): Experience {
+  return {
+    id: e.id, ownerId: e.owner?.email ?? e.ownerId, ownerName: e.owner?.name ?? "مالك",
+    name: e.name, category: e.category, city: e.city, mountain: e.mountain,
+    meetingPoint: e.meetingPoint, durationHours: e.durationHours, capacity: e.capacity,
+    pricePerPerson: e.pricePerPerson, includes: Array.isArray(e.includes) ? e.includes : [],
+    difficulty: e.difficulty, bestSeason: e.bestSeason, cancelPolicy: e.cancelPolicy,
+    licenseDocUrl: e.licenseDocUrl, status: e.status, commissionRate: e.commissionRate ?? 12,
+    createdAt: e.createdAt.toISOString(),
+  };
+}
+
 function mapBooking(b: any): Booking {
   return {
     id: b.id, reference: b.reference, propertyId: b.propertyId,
@@ -52,6 +64,7 @@ function mapBooking(b: any): Booking {
     termsAcceptedAt: b.termsAcceptedAt ? b.termsAcceptedAt.toISOString() : null,
     adminNotifiedAt: b.adminNotifiedAt ? b.adminNotifiedAt.toISOString() : null,
     status: b.status, paymentStatus: b.paymentStatus, provider: b.provider,
+    experience: (b.experience as Booking["experience"]) ?? null,
     createdAt: b.createdAt.toISOString(),
   };
 }
@@ -181,6 +194,45 @@ export const prismaRepo: Repo = {
   async moderateProperty(id, status) {
     await prisma.property.update({ where: { id }, data: { status: status as any } });
   },
+  async listPublishedExperiences(city) {
+    const rows = await prisma.experience.findMany({
+      where: { status: "PUBLISHED" as any, ...(city ? { city: city as any } : {}) },
+      include: { owner: true }, orderBy: { createdAt: "desc" },
+    });
+    return rows.map(mapExperience);
+  },
+  async listAllExperiences() {
+    const rows = await prisma.experience.findMany({ include: { owner: true }, orderBy: { createdAt: "desc" } });
+    return rows.map(mapExperience);
+  },
+  async listExperiencesForOwner(ownerId) {
+    const id = await resolveUserId(ownerId);
+    const rows = await prisma.experience.findMany({
+      where: { ownerId: id }, include: { owner: true }, orderBy: { createdAt: "desc" },
+    });
+    return rows.map(mapExperience);
+  },
+  async getExperienceById(id) {
+    const row = await prisma.experience.findUnique({ where: { id }, include: { owner: true } });
+    return row ? mapExperience(row) : null;
+  },
+  async createExperience(input: NewExperienceInput) {
+    const ownerId = await resolveUserId(input.ownerId);
+    const row = await prisma.experience.create({
+      data: {
+        ownerId, name: input.name, category: "MOUNTAIN_SAFARI" as any, city: input.city as any,
+        mountain: input.mountain, meetingPoint: input.meetingPoint, durationHours: input.durationHours,
+        capacity: input.capacity, pricePerPerson: input.pricePerPerson, includes: input.includes,
+        difficulty: input.difficulty as any, bestSeason: input.bestSeason, cancelPolicy: input.cancelPolicy,
+        licenseDocUrl: input.licenseDocUrl,
+      },
+      include: { owner: true },
+    });
+    return mapExperience(row);
+  },
+  async moderateExperience(id, status) {
+    await prisma.experience.update({ where: { id }, data: { status: status as any } });
+  },
   async getAvailability(propertyId) {
     const rows = await prisma.availability.findMany({ where: { propertyId }, orderBy: { date: "asc" } });
     return rows.map((r): Availability => ({ date: iso(r.date), isBlocked: r.isBlocked, priceOverride: r.priceOverride }));
@@ -221,6 +273,7 @@ export const prismaRepo: Repo = {
         commission: input.commission, total: input.total, provider: input.provider as any,
         nationality: input.nationality ?? null, paymentMethod: input.paymentMethod ?? "CASH",
         paymentNote: input.paymentNote ?? null, termsAcceptedAt: input.termsAcceptedAt ? new Date(input.termsAcceptedAt) : null,
+        experience: (input.experience ?? undefined) as any,
       },
       include,
     });

@@ -17,11 +17,17 @@ export type PaymentMethod = "CASH" | "BANK";
 export type ReviewStatus = "PENDING" | "PUBLISHED" | "HIDDEN";
 export type VerificationStatus = "PENDING" | "SELFIE_REQUIRED" | "SELFIE_PENDING" | "APPROVED" | "REJECTED";
 
+/** السفاري في قيوالو يعني رحلات الصحراء والجبال، مش سفاري حيوانات. */
+export type ExperienceCategory = "MOUNTAIN_SAFARI";
+export type ExperienceDifficulty = "EASY" | "MODERATE" | "HARD";
+
 export type ActivityAction =
   | "PROPERTY_PUBLISHED"
   | "PROPERTY_REJECTED"
   | "PROPERTY_DRAFT"
   | "PROPERTY_PENDING"
+  | "EXPERIENCE_PUBLISHED"
+  | "EXPERIENCE_REJECTED"
   | "COMMISSION_CHANGED"
   | "VERIFICATION_APPROVED"
   | "VERIFICATION_REJECTED"
@@ -115,6 +121,7 @@ export interface Booking {
   status: BookingStatus;
   paymentStatus: PaymentStatus;
   provider: PaymentProvider;
+  experience: ExperienceBookingDetail | null;
   createdAt: string;
 }
 
@@ -158,6 +165,57 @@ export interface NewPropertyInput {
 
 /** الحقول القابلة للتعديل من النموذج؛ السلوج والحالة والتقييم والعمولة مش من ضمنها. */
 export type PropertyUpdateInput = Omit<NewPropertyInput, "ownerId" | "commissionRate">;
+
+export interface Experience {
+  id: string;
+  ownerId: string;
+  ownerName: string;
+  name: string;
+  category: ExperienceCategory;
+  city: CityKey;
+  mountain: string;
+  meetingPoint: string;
+  durationHours: number;
+  capacity: number;
+  pricePerPerson: number;
+  includes: string[];
+  difficulty: ExperienceDifficulty;
+  bestSeason: string;
+  cancelPolicy: string;
+  licenseDocUrl: string;
+  status: ModerationStatus;
+  commissionRate: number;
+  createdAt: string;
+}
+
+export interface NewExperienceInput {
+  ownerId: string;
+  name: string;
+  city: CityKey;
+  mountain: string;
+  meetingPoint: string;
+  durationHours: number;
+  capacity: number;
+  pricePerPerson: number;
+  includes: string[];
+  difficulty: ExperienceDifficulty;
+  bestSeason: string;
+  cancelPolicy: string;
+  licenseDocUrl: string;
+}
+
+export interface ExperienceBookingDetail {
+  experienceId: string;
+  experienceName: string;
+  city: CityKey;
+  mountain: string;
+  meetingPoint: string;
+  durationHours: number;
+  pricePerPerson: number;
+  guests: number;
+  total: number;
+  commission: number;
+}
 
 export interface Review {
   id: string;
@@ -237,6 +295,7 @@ export interface NewBookingInput {
   paymentMethod?: PaymentMethod;
   paymentNote?: string | null;
   termsAcceptedAt?: string | null;
+  experience?: ExperienceBookingDetail | null;
 }
 
 export interface PlatformStats {
