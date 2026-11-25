@@ -25,7 +25,8 @@ test("تحليل روابط الاستعادة يغطي PKCE و token_hash و im
 test("رابط الاستعادة لما يفشل يعرض نموذج طلب رابط جديد شغال", async ({ page }) => {
   await page.goto("/reset-password?code=expired");
 
-  const alert = page.locator("p.text-red-600");
+  // في CI ما فيش Supabase، فالـ Server Action يضيف تنبيه ثاني بنفس النص داخل الفورم.
+  const alert = page.locator("p.text-red-600").first();
   await expect(alert).toContainText("استعادة كلمة المرور متاحة في النسخة المنشورة فقط.");
 
   const email = page.getByLabel("البريد الإلكتروني");
@@ -37,6 +38,6 @@ test("رابط الاستعادة لما يفشل يعرض نموذج طلب ر�
   await resend.click();
 
   // في بيئة Mock ما فيش Supabase، بس الفورم بيعمل submit فعلاً ويرجع رسالة واضحة.
-  await expect(page.locator("p.text-red-600")).toContainText("استعادة كلمة المرور متاحة في النسخة المنشورة فقط.");
+  await expect(alert).toContainText("استعادة كلمة المرور متاحة في النسخة المنشورة فقط.");
   expect(await page.locator("html").getAttribute("dir")).toBe("rtl");
 });
