@@ -102,7 +102,7 @@ model User {
   id              String    @id @default(cuid())
   name            String
   email           String    @unique
-  phone           String?
+  phone           String?   @unique
   nationality     String?
   role            Role      @default(GUEST)
   commissionRate  Int       @default(12)

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { BASE_URL, FAKE_UPLOAD_URL, TEST_IMAGE, dateAfter, signInDemo } from "./helpers";
+import { BASE_URL, FAKE_UPLOAD_URL, TEST_IMAGE, dateAfter, newPhone, signInDemo } from "./helpers";
 
 const STAY_SLUG = "nile-view-dar-al-madina";
 // تواريخ منفصلة عن باقي المواصفات عشان حجوزات الاختبار ما تقفلش تواريخ الباقة القديمة.
@@ -24,7 +24,7 @@ async function signUpDriver(page: Page, email: string, name: string, next: strin
   await expect(page.getByRole("main").getByRole("link", { name: "شروط السائقين" })).toHaveAttribute("href", "/terms/driver");
   await page.locator("#signup-name").fill(name);
   await page.locator("#signup-email").fill(email);
-  await page.locator("#signup-phone").fill("01012345678");
+  await page.locator("#signup-phone").fill(newPhone());
   await page.locator("#signup-password").fill("demo123");
   await page.locator("#signup-terms").check();
   await page.locator("form").getByRole("button", { name: "إنشاء حساب" }).click();
@@ -165,7 +165,7 @@ test("حجز مؤكد بمركبة السائق يعرض اسم السائق و�
 
   await page.locator("#fullName").fill("أحمد محمد");
   await page.locator("#email").fill("guest@qiwalo.test");
-  await page.locator("#phone").fill("01066094050");
+  await page.locator("#phone").fill(newPhone());
   await page.locator("#nationality").fill("مصري");
   await page.locator('input[name="terms"]').check();
   await page.getByRole("button", { name: "تأكيد الحجز" }).click();

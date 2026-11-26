@@ -761,6 +761,10 @@ export const prismaRepo: Repo = {
     const row = await prisma.user.findUnique({ where: { email } });
     return row ? mapUser(row) : null;
   },
+  async getUserByPhone(phone) {
+    const row = await prisma.user.findFirst({ where: { phone } });
+    return row ? mapUser(row) : null;
+  },
   async upsertUser(input) {
     await prisma.user.upsert({
       where: { email: input.email },

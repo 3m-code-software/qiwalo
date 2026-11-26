@@ -21,6 +21,11 @@ export function dateAfter(days: number): string {
   return `${date.getFullYear()}-${month}-${day}`;
 }
 
+/** رقم مصري صالح ومختلف في كل تشغيل، عشان قيد «الرقم لحساب واحد» ما يعطلش الاختبارات. */
+export function newPhone(): string {
+  return `01${String(Date.now()).slice(-7)}${Math.floor(Math.random() * 100).toString().padStart(2, "0")}`;
+}
+
 /** أزرار الحسابات التجريبية بتظهر فقط في وضع Mock. */
 export async function signInDemo(page: Page, label: RegExp): Promise<void> {
   await page.getByRole("button", { name: label }).click();

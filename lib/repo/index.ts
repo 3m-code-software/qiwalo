@@ -101,6 +101,7 @@ export interface Repo {
   listPropertiesForOwner(ownerId: string): Promise<Property[]>;
   getUserById(id: string): Promise<UserRecord | null>;
   getUserByEmail(email: string): Promise<UserRecord | null>;
+  getUserByPhone(phone: string): Promise<UserRecord | null>;
   upsertUser(input: {
     email: string;
     name: string;

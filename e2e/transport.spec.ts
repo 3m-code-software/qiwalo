@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { BASE_URL, dateAfter, signInDemo } from "./helpers";
+import { BASE_URL, dateAfter, newPhone, signInDemo } from "./helpers";
 
 const STAY_SLUG = "nile-view-dar-al-madina";
 const checkIn = dateAfter(80);
@@ -50,7 +50,7 @@ test("حجز مؤكد بالنقل يظهر تفاصيله وسعر الرحلة
   await expect(page.getByTestId("checkout-transport")).toBeVisible();
   await page.locator("#fullName").fill("أحمد محمد");
   await page.locator("#email").fill("guest@qiwalo.test");
-  await page.locator("#phone").fill("01066094050");
+  await page.locator("#phone").fill(newPhone());
   await page.locator("#nationality").fill("مصري");
   await page.locator('input[name="terms"]').check();
   await page.getByRole("button", { name: "تأكيد الحجز" }).click();

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { dateAfter, signInDemo } from "./helpers";
+import { dateAfter, newPhone, signInDemo } from "./helpers";
 
 test("حجز كامل: دخول ضيف → بحث → وحدة → تأكيد → رقم مرجعي", async ({ page }) => {
   const checkIn = dateAfter(40);
@@ -39,7 +39,7 @@ test("حجز كامل: دخول ضيف → بحث → وحدة → تأكيد �
 
   await page.locator("#fullName").fill("أحمد محمد");
   await page.locator("#email").fill("guest@qiwalo.test");
-  await page.locator("#phone").fill("01066094050");
+  await page.locator("#phone").fill(newPhone());
   await page.locator("#nationality").fill("مصري");
   await page.locator('input[name="terms"]').check();
   await page.getByRole("button", { name: "تأكيد الحجز" }).click();

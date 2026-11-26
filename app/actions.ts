@@ -124,6 +124,23 @@ function normalizePhone(value: FormDataEntryValue | null): string {
   return digits;
 }
 
+const PHONE_TAKEN = "رقم التليفون مسجّل بحساب تاني. استخدم رقم غير أو سجّل الدخول بالبريد المرتبط بيه.";
+
+/** الرقم الواحد يخص حساب واحد فقط؛ نفس البريد يقدر يحدّث رقمه. */
+async function phoneInUseError(phone: string, email: string): Promise<string | null> {
+  const owner = await (await getRepo()).getUserByPhone(phone);
+  return owner && owner.email !== email ? PHONE_TAKEN : null;
+}
+
+/** حماية من التزامن: الـ unique index في قاعدة البيانات هو الحاجز الأخير. */
+function phoneConflict(error: unknown): boolean {
+  if (error instanceof Error && error.message === "PHONE_TAKEN") return true;
+  if (typeof error !== "object" || error === null || !("code" in error)) return false;
+  if ((error as { code?: unknown }).code !== "P2002") return false;
+  const meta = (error as { meta?: unknown }).meta;
+  return /phone/i.test(JSON.stringify(meta ?? ""));
+}
+
 export async function signUpAction(_prev: FormState, form: FormData): Promise<FormState> {
   const email = String(form.get("email") ?? "").trim().toLowerCase();
   const password = String(form.get("password") ?? "");
@@ -140,9 +157,16 @@ export async function signUpAction(_prev: FormState, form: FormData): Promise<Fo
   const role: Role = requested === "OWNER" ? "OWNER" : requested === "DRIVER" ? "DRIVER" : "GUEST";
   const termsAcceptedAt = new Date().toISOString();
   const repo = await getRepo();
+  const duplicate = await phoneInUseError(phone, email);
+  if (duplicate) return { error: duplicate };
 
   if (!isSupabaseConfigured()) {
-    await repo.upsertUser({ email, name, role, phone, termsAcceptedAt });
+    try {
+      await repo.upsertUser({ email, name, role, phone, termsAcceptedAt });
+    } catch (error) {
+      if (phoneConflict(error)) return { error: PHONE_TAKEN };
+      throw error;
+    }
     await createSession({ email, name, role });
     return finishSignup({ email, name, role, phone, next: form.get("next") });
   }
@@ -159,7 +183,12 @@ export async function signUpAction(_prev: FormState, form: FormData): Promise<Fo
   });
   if (error) return authError(error.message);
 
-  await repo.upsertUser({ email, name, role, phone, termsAcceptedAt });
+  try {
+    await repo.upsertUser({ email, name, role, phone, termsAcceptedAt });
+  } catch (saveError) {
+    if (phoneConflict(saveError)) return { error: PHONE_TAKEN };
+    throw saveError;
+  }
   return finishSignup({ email, name, role, phone, next: form.get("next") });
 }
 
@@ -840,12 +869,12 @@ export async function confirmBookingAction(_prev: FormState, form: FormData): Pr
   const guests = Number(form.get("guests") ?? 1);
   const fullName = String(form.get("fullName") ?? "").trim();
   const email = String(form.get("email") ?? "").trim().toLowerCase();
-  const phone = String(form.get("phone") ?? "").trim();
+  const phone = normalizePhone(form.get("phone"));
   const nationality = String(form.get("nationality") ?? "").trim();
   const paymentMethod: PaymentMethod = String(form.get("paymentMethod") ?? "CASH") === "BANK" ? "BANK" : "CASH";
   const accepted = String(form.get("terms") ?? "") === "on";
   if (!fullName || !/^\S+@\S+\.\S+$/.test(email)) return { error: "الاسم والبريد الإلكتروني مطلوبان." };
-  if (!/^01\d{9}$/.test(phone.replace(/[\s-]/g, ""))) return { error: "أدخل رقم هاتف صحيحاً." };
+  if (!/^01\d{9}$/.test(phone)) return { error: "أدخل رقم هاتف صحيحاً." };
   if (!nationality) return { error: "أدخل الجنسية." };
   if (!accepted) return { error: "لازم توافق على شروط الضيوف قبل الحجز." };
 
@@ -933,9 +962,16 @@ export async function confirmBookingAction(_prev: FormState, form: FormData): Pr
   const guestEmail = session?.email ?? email;
   const termsAcceptedAt = new Date().toISOString();
   if (!session) {
-    await repo.upsertUser({
-      email, name: fullName, role: "GUEST", phone, nationality, termsAcceptedAt,
-    });
+    const duplicate = await phoneInUseError(phone, email);
+    if (duplicate) return { error: duplicate };
+    try {
+      await repo.upsertUser({
+        email, name: fullName, role: "GUEST", phone, nationality, termsAcceptedAt,
+      });
+    } catch (error) {
+      if (phoneConflict(error)) return { error: PHONE_TAKEN };
+      throw error;
+    }
   } else {
     await repo.setTermsAccepted(guestEmail, termsAcceptedAt);
   }

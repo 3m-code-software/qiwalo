@@ -747,7 +747,14 @@ export const mockRepo: Repo = {
     const u = users.find((x) => x.email === email);
     return u ? toUserRecord(u) : null;
   },
+  async getUserByPhone(phone) {
+    const u = users.find((x) => x.phone === phone);
+    return u ? toUserRecord(u) : null;
+  },
   async upsertUser(input) {
+    if (input.phone && users.some((x) => x.phone === input.phone && x.email !== input.email)) {
+      throw new Error("PHONE_TAKEN");
+    }
     const u = users.find((x) => x.email === input.email);
     if (u) {
       u.name = input.name;

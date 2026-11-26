@@ -1,17 +1,18 @@
 /**
  * تشغيل ملفات SQL الإنتاجية على DATABASE_URL، statement ب statement، مع إيقاف فوري عند أول خطأ.
- * الاستخدام: node --env-file=.env.local scripts/run-sql.mjs [--dry]
- * --dry يطبع عدد الـ statements فقط من غير تنفيذ.
+ * الاستخدام: node --env-file=.env.local scripts/run-sql.mjs [--dry] [file.sql ...]
+ * --dry يطبع عدد الـ statements فقط من غير تنفيذ. لو اتحددت ملفات، بتتنفّذ دول بس.
  */
 import { readFile } from "node:fs/promises";
 import { PrismaClient } from "@prisma/client";
 
-const files = [
+const defaultFiles = [
   "prisma/sql/add-mountain-safari.sql",
   "prisma/sql/add-transport.sql",
   "prisma/sql/add-motorcycle-tour.sql",
   "prisma/sql/add-package.sql",
   "prisma/sql/add-driver.sql",
+  "prisma/sql/add-unique-phone.sql",
 ];
 
 function statementsOf(sql) {
@@ -39,6 +40,8 @@ function statementsOf(sql) {
 }
 
 const dry = process.argv.includes("--dry");
+const requested = process.argv.slice(2).filter((arg) => arg !== "--dry" && arg.endsWith(".sql"));
+const files = requested.length ? requested : defaultFiles;
 const prisma = new PrismaClient();
 try {
   for (const file of files) {
