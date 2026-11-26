@@ -12,12 +12,19 @@ import MapView from "@/components/MapView";
 import MobileBookingBar from "@/components/MobileBookingBar";
 import PriceBreakdown from "@/components/PriceBreakdown";
 import ReviewsTab from "@/components/ReviewsTab";
+import ServiceFilters from "@/components/ServiceFilters";
 import { CITIES, COMMISSION_RATE, PROPERTY_TYPES, SUPPORT_PHONE, SUPPORT_TELEGRAM, SUPPORT_WHATSAPP } from "@/lib/constants";
 import { dateAr, money, toArabicDigits } from "@/lib/format";
 import { propertyImageAlt, socialImageUrl } from "@/lib/image-assets";
 import { cancelPolicyText } from "@/lib/notifications";
 import { priceForDate, quoteStay } from "@/lib/pricing";
 import { getRepo } from "@/lib/repo";
+import {
+  filterExperiences,
+  filterPackages,
+  filterTransports,
+  parseServiceFilter,
+} from "@/lib/service-filters";
 
 export const instant = false;
 
@@ -86,6 +93,11 @@ export default async function StayPage({ params, searchParams }: Props) {
   const experienceId = one(sp.experience);
   const transportId = one(sp.transport);
   const packageId = one(sp.package);
+  const serviceFilter = parseServiceFilter(sp);
+  const visibleSafaris = filterExperiences(safaris, serviceFilter, guests);
+  const visibleMotorcycleTours = filterExperiences(motorcycleTours, serviceFilter, guests);
+  const visibleTransports = filterTransports(transports, serviceFilter, guests);
+  const visiblePackages = filterPackages(packages, serviceFilter, guests);
   const quote = checkIn && checkOut ? quoteStay(property, rules, availability, checkIn, checkOut) : null;
   const calendarDays = availability.map((day) => ({
     date: day.date,
@@ -215,8 +227,25 @@ export default async function StayPage({ params, searchParams }: Props) {
 
           <ReviewsTab reviews={reviews} />
 
+          <ServiceFilters
+            slug={property.slug}
+            searchParams={sp}
+            filter={serviceFilter}
+            guests={guests}
+            available={{
+              experiences: safaris.length + motorcycleTours.length,
+              transports: transports.length,
+              packages: packages.length,
+            }}
+            visible={{
+              experiences: visibleSafaris.length + visibleMotorcycleTours.length,
+              transports: visibleTransports.length,
+              packages: visiblePackages.length,
+            }}
+          />
+
           <ExperienceAddOn
-            experiences={safaris}
+            experiences={visibleSafaris}
             propertySlug={property.slug}
             checkIn={checkIn}
             checkOut={checkOut}
@@ -227,7 +256,7 @@ export default async function StayPage({ params, searchParams }: Props) {
           />
 
           <ExperienceAddOn
-            experiences={motorcycleTours}
+            experiences={visibleMotorcycleTours}
             propertySlug={property.slug}
             checkIn={checkIn}
             checkOut={checkOut}
@@ -238,7 +267,7 @@ export default async function StayPage({ params, searchParams }: Props) {
           />
 
           <TransportAddOn
-            transports={transports}
+            transports={visibleTransports}
             propertySlug={property.slug}
             checkIn={checkIn}
             checkOut={checkOut}
@@ -248,7 +277,7 @@ export default async function StayPage({ params, searchParams }: Props) {
           />
 
           <PackageAddOn
-            packages={packages}
+            packages={visiblePackages}
             propertySlug={property.slug}
             checkIn={checkIn}
             checkOut={checkOut}
