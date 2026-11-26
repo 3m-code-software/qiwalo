@@ -64,6 +64,8 @@ try {
   }
   const crypto = await q(`SELECT extname AS name FROM pg_extension WHERE extname = 'pgcrypto'`);
   console.log(`pgcrypto (gen_random_uuid): ${bool(crypto.length) ? "مفعّل" : "غير مفعّل"}`);
+  const index = await q(`SELECT indexname AS name FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'User' AND indexname = 'User_phone_key'`);
+  console.log(`User_phone_key (رقم واحد لحساب واحد): ${bool(index.length) ? "موجود" : "مفقود"}`);
 
   console.log("\n== عدد الصفوف ==");
   for (const table of ["User", "Property", "Experience", "Transport", "Package", "DriverProfile", "Vehicle", "Booking"]) {

@@ -1248,8 +1248,9 @@
 
 ### النتيجة والتنفيذ الإنتاجي
 - كل الفحوص خضراء: `npx next typegen` / `npm run typecheck` / `npm run lint` / `npm run build` (٤٧ مساراً)، `test:e2e` **٦٥/٦٥**، `test:recovery` **٣/٣**، `test:driver` **٧/٧**.
-- `scripts/run-sql.mjs` قبل كده اتطوّر يقبل ملفات محددة؛ محاولة تطبيق `add-unique-phone.sql` على الإنتاج رجعت `23505: Key (phone)=(01066094050) is duplicated`. مفيش أي تعديل حصل، والقيد لسه ما اتنفّذش.
-- الأرقام المكررة ظهرت بعد الفحص الأول: `dev-mustafa-hussin@hotmail.com` (ضيف، ٥ حجوزات)، `live-qa@qiwalo.test` (ضيف، حجز واحد من تجربة الـ checkout الحية)، `dilmando@gmail.com` (سائق، ٠ حجوزات). بنستنى قرار الإدارة: أي حساب يحتفظ بالرقم؛ الباقي يتشال منه الرقم من غير حذف الحساب أو الحجز.
+- `scripts/run-sql.mjs` قبل كده اتطوّر يقبل ملفات محددة؛ أول محاولة لتطبيق `add-unique-phone.sql` على الإنتاج رجعت `23505: Key (phone)=(01066094050) is duplicated` — مفيش أي تعديل حصل في المحاولة دي.
+- الأرقام المكررة ظهرت بعد الفحص الأول: `dev-mustafa-hussin@hotmail.com` (ضيف، ٥ حجوزات)، `live-qa@qiwalo.test` (ضيف، حجز واحد من تجربة الـ checkout الحية)، `dilmando@gmail.com` (سائق، ٠ حجوزات). **قرار الإدارة الصريح:** الرقم يفضل لـ `dev-mustafa-hussin@hotmail.com`.
+- `scripts/resolve-phone-duplicates.mjs` نفّذ القرار: مسح الرقم من الحسابين التانيين بس (بدون حذف حساب أو حجز)، ثم أنشأ `User_phone_key`. فحص بعد التنفيذ: ٠ تكرارات (عادية وبعد التطبيع)، ٠ قيم فارغة، و`preflight.mjs` بيأكد إن الفهرس موجود. المستخدمين ٢٧ والوحدات ٥٢ والحجوزات ١٠ — مفيش صف اتحذف.
 
 ### ملاحظة تليجرام (الفترة نفسها)
 رسالة اختبار حقيقية وصلت (`message_id: 80`) على الـ chat_id الفعلي `6159788913` اللي بعت `/start` للبوت `@qiwalo_notify_bot`؛ واتسجّل webhook على `https://qiwalo-ygzh.vercel.app` وردّ تليجرام `Webhook was set`. لازم يتأكد الإدارة من متغيرات Vercel (`TELEGRAM_WEBHOOK_SECRET` بنفس القيمة المحلية + `NEXT_PUBLIC_SITE_URL` بالرابط الحي) ويعمل Redeploy.
