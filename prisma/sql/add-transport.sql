@@ -6,7 +6,7 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 CREATE TABLE IF NOT EXISTS "Transport" (
-  "id"              TEXT            NOT NULL DEFAULT cuid(),
+  "id"              TEXT            NOT NULL DEFAULT gen_random_uuid()::text,
   "ownerId"         TEXT            NOT NULL,
   "name"            TEXT            NOT NULL,
   "type"            "TransportType" NOT NULL DEFAULT 'CAR',

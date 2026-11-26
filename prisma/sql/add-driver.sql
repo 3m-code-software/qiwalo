@@ -11,7 +11,7 @@ BEGIN
 END $$;
 
 CREATE TABLE IF NOT EXISTS "DriverProfile" (
-  "id"                   TEXT        NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  "id"                   TEXT        NOT NULL DEFAULT gen_random_uuid()::text PRIMARY KEY,
   "userId"               TEXT        NOT NULL UNIQUE,
   "city"                 "City"      NOT NULL,
   "subscriptionStatus"   "DriverSubscriptionStatus" NOT NULL DEFAULT 'PENDING',
@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS "DriverProfile" (
 );
 
 CREATE TABLE IF NOT EXISTS "Vehicle" (
-  "id"             TEXT        NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  "id"             TEXT        NOT NULL DEFAULT gen_random_uuid()::text PRIMARY KEY,
   "driverId"       TEXT        NOT NULL,
   "name"           TEXT        NOT NULL,
   "type"           "TransportType" NOT NULL DEFAULT 'CAR',
@@ -45,6 +45,8 @@ CREATE TABLE IF NOT EXISTS "Vehicle" (
   "status"         "ModerationStatus" NOT NULL DEFAULT 'PENDING',
   "commissionRate" INTEGER     NOT NULL DEFAULT 12,
   "createdAt"      TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "blockedDates"   JSONB       NOT NULL DEFAULT '[]'::jsonb,
+  "isPaused"       BOOLEAN     NOT NULL DEFAULT false,
   CONSTRAINT "Vehicle_driverId_fkey" FOREIGN KEY ("driverId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 

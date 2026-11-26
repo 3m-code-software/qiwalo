@@ -1186,3 +1186,32 @@
 - اختبار جديد `e2e/service-filters.spec.ts` (٣ اختبارات): فلتر سعر التجارب يخفي الجولة الأغلى والمسح يرجّعها، فلتر النقل والباقة يعرض رسالة عدم وجود نتائج ويحفظ التواريخ والضيوف، وفحص Pixel 7 `٤١٢×٩١٥` إن الفلاتر والسعة شغّالين من غير تمرير أفقي.
 - `npm run test:e2e` بقى **٦٣/٦٣**، `npm run test:recovery` **٣/٣**، و`npm run test:driver` **٧/٧**. `npx next typegen` / `npm run typecheck` / `npm run lint` / `npm run build` كلهم أخضر، والبناء أنتج ٤٧ مساراً/صفحة مع بقاء `cacheComponents` و`partialPrefetching` مفعّلين.
 - الرابط على Mock: `http://localhost:3130/stay/nile-view-dar-al-madina?checkIn=...&checkOut=...&guests=2`. النشر الإنتاجي لسه مؤجل لإشارة صريحة.
+
+
+## البند ٤٢ — تحضير الإنتاج: تصحيح SQL، فحص قراءة فقط، وتفعيل الأيام المحجوزة للمركبات
+
+**الحالة: تم ✅ (تحضير محلي؛ تنفيذ SQL على الإنتاج تم بطلب صريح منفصل)**
+
+### اللي اتطلب
+بعد الفحص الأولي اتبينت فجوات في ملفات SQL وفي قاعدة الإنتاج. اتاخد إذن صريح: تصحيح `DEFAULT` محلياً، تشغيل استعلامات الفحص قراءة فقط من خلال المشروع، وتقرير قرار تفعيل `blockedDates`/`isPaused` ومركبات السائق في الباقات.
+
+### التنفيذ
+1. كل `DEFAULT cuid()` في `add-mountain-safari.sql` و`add-transport.sql` و`add-package.sql` اتبدّل بـ `DEFAULT gen_random_uuid()::text` (دالة `cuid()` مش موجودة في PostgreSQL). كمان `gen_random_uuid()` في `add-driver.sql` اتبدّل لـ `gen_random_uuid()::text` عشان نوع العمود `TEXT`.
+2. سكربت `scripts/preflight.mjs` جديد: قراءة فقط عبر Prisma، بيطبع وجود الجداول والأعمدة والـ enums وعدد الصفوف من غير أي قيمة سرية أو رابط اتصال، ومفيش أي `INSERT`/`UPDATE`/`DELETE`.
+3. قرار المنتج: **يُفعّل `blockedDates` و`isPaused` على مركبات السائق في الإنتاج** (أعمدة Json/Boolean جديدة في `Vehicle` + حقلين في `prisma/schema.prisma` + قراءة/كتابة في `lib/repo/prisma.ts` + عدّاد المركبات الموقوفة في إحصاءات الإدارة). السلوك بقى مطابق لـ Mock: النشر يرفع الإيقاف، والإيقاف يحول الحالة لـ `DRAFT`، والمركبة الموقوفة مخفية عن الضيوف والأيام المحجوزة تمنع الحجز.
+4. **مركبات السائق داخل الباقات اتأجلت**: `Package.transportId` لسه مرتبط بجدول `Transport` فقط؛ دعم مركبة سائق هنا محتاج عمود FK جديد + تعديل منطق الدفع والاختيارات واختباراته، فهي بند مستقل مش جزء من تفعيل الإنتاج الأول.
+5. ترتيب تنفيذ SQL على الإنتاج (بعد موافقة صريحة): `add-mountain-safari.sql` ← `add-transport.sql` ← `add-motorcycle-tour.sql` ← `add-package.sql` ← `add-driver.sql`. كلها CREATE/ALTER إضافة من غير حذف أو تعديل للبيانات الموجودة.
+
+### نتيجة فحص الإنتاج (قراءة فقط)
+| العنصر | النتيجة |
+|---|---|
+| `User` / `Property` / `Booking` | موجودة — ٢٥ مستخدم، ٥٢ وحدة، ٨ حجوزات |
+| `Experience` / `Transport` / `Package` / `DriverProfile` / `Vehicle` | مفقودة |
+| `ExperienceCategory` / `ExperienceDifficulty` / `TransportType` / `DriverSubscriptionStatus` | مفقودة |
+| قيمة `DRIVER` في `Role` | مفقودة |
+| `Booking.experience` / `transport` / `packageDetail` | مفقودة |
+| `pgcrypto` | مفعّل، فـ `gen_random_uuid()` متاح |
+
+### التجربة والتوثيق
+- `npx next typegen` / `npm run typecheck` / `npm run lint` / `npm run build` أخضر بعد تعديل Prisma، والاختبارات على Mock لسه `٦٣/٦٣` و`٣/٣` و`٧/٧` لأن سلوك Mock ما اتغيرش.
+- متغيرات Vercel والـ webhook والرسائل الحقيقية والـ checkout الحي خارج نطاق الكوميت ده، وتتم بطلب صريح منفصل.

@@ -10,7 +10,7 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 CREATE TABLE IF NOT EXISTS "Experience" (
-  "id"             TEXT        NOT NULL DEFAULT cuid(),
+  "id"             TEXT        NOT NULL DEFAULT gen_random_uuid()::text,
   "ownerId"        TEXT        NOT NULL,
   "name"           TEXT        NOT NULL,
   "category"       "ExperienceCategory" NOT NULL DEFAULT 'MOUNTAIN_SAFARI',

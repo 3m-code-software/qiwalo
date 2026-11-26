@@ -277,6 +277,8 @@ model Vehicle {
   status         ModerationStatus @default(PENDING)
   commissionRate Int              @default(12)
   createdAt      DateTime         @default(now())
+  blockedDates   Json             @default("[]")
+  isPaused       Boolean          @default(false)
 
   @@index([driverId, status])
   @@index([city, status])

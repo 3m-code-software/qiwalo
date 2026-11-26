@@ -3,7 +3,7 @@
 -- الباقة تجمع وحدة + نقل + تجربة بسعر واحد لكل ليلة.
 
 CREATE TABLE IF NOT EXISTS "Package" (
-  "id"              TEXT               NOT NULL DEFAULT cuid(),
+  "id"              TEXT               NOT NULL DEFAULT gen_random_uuid()::text,
   "ownerId"         TEXT               NOT NULL,
   "name"            TEXT               NOT NULL,
   "city"            "City"             NOT NULL,

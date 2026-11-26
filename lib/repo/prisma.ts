@@ -108,8 +108,8 @@ function mapVehicle(row: any): Vehicle {
     includes: Array.isArray(row.includes) ? row.includes : [], cancelPolicy: row.cancelPolicy,
     licenseDocUrl: row.licenseDocUrl, status: row.status, commissionRate: row.commissionRate ?? 12,
     createdAt: row.createdAt.toISOString(),
-    // الأعمدة دي مش موجودة في الإنتاج لحد ما يتنفّذ add-driver.sql؛ القيم دي على Mock بس.
-    blockedDates: [], isPaused: false,
+    blockedDates: Array.isArray(row.blockedDates) ? row.blockedDates.map(String) : [],
+    isPaused: Boolean(row.isPaused),
   };
 }
 
@@ -324,6 +324,7 @@ export const prismaRepo: Repo = {
       const vehicles = await prisma.vehicle.findMany({
         where: {
           status: "PUBLISHED" as any,
+          isPaused: false,
           ...(city ? { city: city as any } : {}),
           driver: {
             driverProfile: {
@@ -561,6 +562,7 @@ export const prismaRepo: Repo = {
           pricePerTrip: input.pricePerTrip, routeFrom: input.routeFrom, routeTo: input.routeTo,
           meetingPoint: input.meetingPoint, durationHours: input.durationHours,
           includes: input.includes, cancelPolicy: input.cancelPolicy, licenseDocUrl: input.licenseDocUrl,
+          blockedDates: [], isPaused: false,
         },
         include: { driver: true },
       });
@@ -589,6 +591,7 @@ export const prismaRepo: Repo = {
           pricePerTrip: patch.pricePerTrip, routeFrom: patch.routeFrom, routeTo: patch.routeTo,
           meetingPoint: patch.meetingPoint, durationHours: patch.durationHours,
           includes: patch.includes, cancelPolicy: patch.cancelPolicy, licenseDocUrl: patch.licenseDocUrl,
+          blockedDates: [...patch.blockedDates].sort(),
         },
         include: { driver: true },
       });
@@ -602,7 +605,7 @@ export const prismaRepo: Repo = {
     try {
       const row = await prisma.vehicle.update({
         where: { id },
-        data: { status: (paused ? "DRAFT" : "PUBLISHED") as any },
+        data: { status: (paused ? "DRAFT" : "PUBLISHED") as any, isPaused: paused },
         include: { driver: true },
       });
       return mapVehicle(row);
@@ -620,7 +623,10 @@ export const prismaRepo: Repo = {
   },
   async moderateVehicle(id, status) {
     try {
-      await prisma.vehicle.update({ where: { id }, data: { status: status as any } });
+      await prisma.vehicle.update({
+        where: { id },
+        data: { status: status as any, ...(status === "PUBLISHED" ? { isPaused: false } : {}) },
+      });
     } catch (error) {
       driverUnavailable(error);
     }
@@ -908,8 +914,7 @@ export const prismaRepo: Repo = {
         prisma.vehicle.count(),
         prisma.vehicle.count({ where: { status: "PENDING" as any } }),
       ]);
-      // لا يوجد عمود isPaused في الإنتاج؛ يُعرض صفر لحد ما يتنفّذ add-driver.sql.
-      pausedVehicles = 0;
+      pausedVehicles = await prisma.vehicle.count({ where: { isPaused: true } });
     } catch (error) {
       driverUnavailable(error);
     }
