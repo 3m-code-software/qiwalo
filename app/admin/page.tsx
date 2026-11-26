@@ -40,6 +40,11 @@ const activityLabel: Record<string, string> = {
   TRANSPORT_REJECTED: "رفض خدمة نقل",
   PACKAGE_PUBLISHED: "نشر باقة",
   PACKAGE_REJECTED: "رفض باقة",
+  DRIVER_VERIFIED: "اعتماد تحقق سائق",
+  DRIVER_REJECTED: "رفض تحقق سائق",
+  DRIVER_SUBSCRIPTION_ACTIVE: "تفعيل اشتراك سائق",
+  VEHICLE_PUBLISHED: "نشر مركبة سائق",
+  VEHICLE_REJECTED: "رفض مركبة سائق",
   COMMISSION_CHANGED: "تغيير عمولة",
   VERIFICATION_APPROVED: "موافقة على توثيق مالك",
   VERIFICATION_REJECTED: "رفض توثيق مالك",
@@ -219,6 +224,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           <Link href="/admin/experiences" className="btn-ghost !py-2 text-sm">مراجعة التجارب والجولات ↗</Link>
           <Link href="/admin/transport" className="btn-ghost !py-2 text-sm">مراجعة النقل ↗</Link>
           <Link href="/admin/packages" className="btn-ghost !py-2 text-sm">مراجعة الباقات ↗</Link>
+          <Link href="/admin/drivers" className="btn-ghost !py-2 text-sm">مراجعة السائقين والمركبات ↗</Link>
           <Link href="/owner" className="btn-ghost !py-2 text-sm">لوحة المالك ↗</Link>
         </div>
       </div>

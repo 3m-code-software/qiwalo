@@ -10,7 +10,15 @@ datasource db {
 enum Role {
   GUEST
   OWNER
+  DRIVER
   ADMIN
+}
+
+enum DriverSubscriptionStatus {
+  NONE
+  PENDING
+  ACTIVE
+  EXPIRED
 }
 
 enum City {
@@ -105,6 +113,8 @@ model User {
   experiences  Experience[]
   transports   Transport[]
   packages     Package[]
+  driverProfile DriverProfile?
+  vehicles     Vehicle[]
   bookings     Booking[]
   payouts      Payout[]
   reviews      Review[]
@@ -227,6 +237,49 @@ model Transport {
 
   @@index([city, status])
   @@index([ownerId, status])
+}
+
+model DriverProfile {
+  id                 String                   @id @default(cuid())
+  userId             String                   @unique
+  user               User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  city               City
+  subscriptionStatus DriverSubscriptionStatus @default(PENDING)
+  verificationStatus VerificationStatus       @default(PENDING)
+  idFront            String
+  idBack             String
+  licenseDocUrl      String
+  note               String?
+  submittedAt        DateTime                 @default(now())
+  reviewedAt         DateTime?
+
+  @@index([verificationStatus, subscriptionStatus])
+}
+
+model Vehicle {
+  id             String           @id @default(cuid())
+  driverId       String
+  driver         User             @relation(fields: [driverId], references: [id])
+  name           String
+  type           TransportType    @default(CAR)
+  city           City
+  plateNumber    String
+  model          String
+  capacity       Int
+  pricePerTrip   Int
+  routeFrom      String
+  routeTo        String
+  meetingPoint   String
+  durationHours  Int
+  includes       Json             @default("[]")
+  cancelPolicy   String
+  licenseDocUrl  String
+  status         ModerationStatus @default(PENDING)
+  commissionRate Int              @default(12)
+  createdAt      DateTime         @default(now())
+
+  @@index([driverId, status])
+  @@index([city, status])
 }
 
 model Package {

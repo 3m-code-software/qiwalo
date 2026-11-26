@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { eachDayOfInterval, format, parseISO } from "date-fns";
-import { DEFAULT_COMMISSION_RATE, EXPERIENCE_CANCEL_POLICY, PACKAGE_CANCEL_POLICY, TRANSPORT_CANCEL_POLICY } from "@/lib/constants";
+import { CITIES, DEFAULT_COMMISSION_RATE, DRIVER_SUBSCRIPTION_NOTICE, EXPERIENCE_CANCEL_POLICY, PACKAGE_CANCEL_POLICY, TRANSPORT_CANCEL_POLICY, TRANSPORT_TYPES } from "@/lib/constants";
 import { toArabicDigits } from "@/lib/format";
 import { clearSession, createSession, getSession, requireRole, type Session } from "@/lib/auth";
 import { sendBookingNotifications, sendReviewNotice, sendSignupNotice, sendVerificationNotice } from "@/lib/notifications";
@@ -13,9 +13,9 @@ import { getRepo } from "@/lib/repo";
 import { createTelegramActivationToken } from "@/lib/telegram";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import type {
-  BookingStatus, CityKey, ExperienceBookingDetail, ExperienceCategory, ExperienceDifficulty, ModerationStatus,
-  PackageBookingDetail, PaymentMethod, PropertyType, PropertyUpdateInput, ReviewStatus, Role, TransportBookingDetail,
-  TransportType, VerificationStatus,
+  BookingStatus, CityKey, DriverSubscriptionStatus, ExperienceBookingDetail, ExperienceCategory, ExperienceDifficulty,
+  ModerationStatus, PackageBookingDetail, PaymentMethod, PropertyType, PropertyUpdateInput, ReviewStatus, Role,
+  TransportBookingDetail, TransportType, VerificationStatus,
 } from "@/lib/types";
 
 export interface FormState { error?: string; ok?: string }
@@ -31,7 +31,10 @@ function safeNext(value: FormDataEntryValue | null): string {
 }
 
 function landingForRole(role: Role): string {
-  return role === "ADMIN" ? "/admin" : role === "OWNER" ? "/owner" : "/";
+  if (role === "ADMIN") return "/admin";
+  if (role === "OWNER") return "/owner";
+  if (role === "DRIVER") return "/driver";
+  return "/";
 }
 
 function redirectForRole(next: string, role: Role): never {
@@ -125,7 +128,7 @@ export async function signUpAction(_prev: FormState, form: FormData): Promise<Fo
   if (password.length < 6) return { error: "كلمة المرور يجب ألا تقل عن 6 أحرف." };
   if (!accepted) return { error: "لازم توافق على شروط الاستخدام." };
 
-  const role: Role = requested === "OWNER" ? "OWNER" : "GUEST";
+  const role: Role = requested === "OWNER" ? "OWNER" : requested === "DRIVER" ? "DRIVER" : "GUEST";
   const termsAcceptedAt = new Date().toISOString();
   const repo = await getRepo();
 
@@ -568,6 +571,154 @@ export async function moderatePackageAction(_prev: FormState, form: FormData): P
   return { ok: status === "PUBLISHED" ? "تم نشر الباقة ✅" : "تم تحديث الباقة ✅" };
 }
 
+// ===== السائقون والمركبات =====
+
+export async function submitDriverVerificationAction(_prev: FormState, form: FormData): Promise<FormState> {
+  const session = await getSession();
+  if (!session || session.role !== "DRIVER") return { error: "سجّل الدخول كسائق أولاً." };
+
+  const city = String(form.get("city") ?? "") as CityKey;
+  const idFront = String(form.get("idFront") ?? "").trim();
+  const idBack = String(form.get("idBack") ?? "").trim();
+  const licenseDocUrl = String(form.get("licenseDocUrl") ?? "").trim();
+  if (!(city in CITIES)) return { error: "اختر مدينة صحيحة." };
+  if (!idFront.startsWith("https://") || !idBack.startsWith("https://") || !licenseDocUrl.startsWith("https://")) {
+    return { error: "ارفع صورتي الهوية ورابط رخصة القيادة بروابط https صحيحة." };
+  }
+  if (String(form.get("terms") ?? "") !== "on") return { error: "لازم توافق على شروط السائقين." };
+
+  const repo = await getRepo();
+  await repo.createDriverProfile({ userId: session.email, city, idFront, idBack, licenseDocUrl });
+  revalidatePath("/driver");
+  revalidatePath("/admin/drivers");
+  return { ok: "تم إرسال بيانات التحقق للمراجعة. هتقدر تضيف مركبتك بعد الاعتماد وتفعيل الاشتراك." };
+}
+
+export async function moderateDriverAction(_prev: FormState, form: FormData): Promise<FormState> {
+  const session = await requireRole("ADMIN");
+  const userId = String(form.get("userId") ?? "").trim();
+  const status = String(form.get("status") ?? "") as VerificationStatus;
+  if (!userId || !["APPROVED", "REJECTED", "PENDING"].includes(status)) {
+    return { error: "تعذّر تحديث تحقق السائق." };
+  }
+  const repo = await getRepo();
+  const profile = await repo.getDriverProfile(userId);
+  await repo.moderateDriver(userId, status, String(form.get("note") ?? "").trim() || null);
+  await repo.logActivity({
+    actorEmail: session.email, actorName: session.name,
+    action: status === "APPROVED" ? "DRIVER_VERIFIED" : "DRIVER_REJECTED",
+    target: userId, detail: profile?.name ?? userId,
+  });
+  revalidatePath("/admin");
+  revalidatePath("/admin/drivers");
+  revalidatePath("/driver");
+  return { ok: status === "APPROVED" ? "تم اعتماد تحقق السائق ✅" : "تم تحديث حالة السائق ✅" };
+}
+
+export async function setDriverSubscriptionAction(_prev: FormState, form: FormData): Promise<FormState> {
+  const session = await requireRole("ADMIN");
+  const userId = String(form.get("userId") ?? "").trim();
+  const status = String(form.get("status") ?? "") as DriverSubscriptionStatus;
+  if (!userId || !["PENDING", "ACTIVE", "EXPIRED"].includes(status)) {
+    return { error: "حالة الاشتراك غير صحيحة." };
+  }
+  const repo = await getRepo();
+  const profile = await repo.getDriverProfile(userId);
+  if (!profile) return { error: "السائق غير موجود." };
+  await repo.setDriverSubscription(userId, status);
+  if (status === "ACTIVE") {
+    await repo.logActivity({
+      actorEmail: session.email, actorName: session.name,
+      action: "DRIVER_SUBSCRIPTION_ACTIVE", target: userId, detail: profile.name,
+    });
+  }
+  revalidatePath("/admin");
+  revalidatePath("/admin/drivers");
+  revalidatePath("/driver");
+  revalidatePath("/search");
+  revalidatePath("/");
+  return { ok: `حالة الاشتراك: ${status === "ACTIVE" ? "نشط" : status === "EXPIRED" ? "منتهي" : "قيد التفعيل"}. ${DRIVER_SUBSCRIPTION_NOTICE}` };
+}
+
+export async function createVehicleAction(_prev: FormState, form: FormData): Promise<FormState> {
+  const session = await getSession();
+  if (!session || session.role !== "DRIVER") return { error: "سجّل الدخول كسائق أولاً." };
+
+  const repo = await getRepo();
+  const profile = await repo.getDriverProfile(session.email);
+  if (!profile || profile.verificationStatus !== "APPROVED") {
+    return { error: "لازم الإدارة تعتمد تحققك أولاً قبل إضافة المركبة." };
+  }
+  if (profile.subscriptionStatus !== "ACTIVE") {
+    return { error: "اشتراكك لسه غير مفعّل. برجاء انتظار تفعيل الإدارة." };
+  }
+
+  const name = String(form.get("name") ?? "").trim();
+  const type = String(form.get("type") ?? "") as TransportType;
+  const city = String(form.get("city") ?? "") as CityKey;
+  const plateNumber = String(form.get("plateNumber") ?? "").trim();
+  const model = String(form.get("model") ?? "").trim();
+  const capacity = Number(form.get("capacity"));
+  const pricePerTrip = Number(form.get("pricePerTrip"));
+  const durationHours = Number(form.get("durationHours"));
+  const licenseDocUrl = String(form.get("licenseDocUrl") ?? "").trim();
+  const includes = [...new Set(
+    form.getAll("includes").flatMap((value) => String(value).split(/[\n,]+/)).map((s) => s.trim()).filter(Boolean),
+  )].slice(0, 8);
+
+  if (name.length < 3) return { error: "اكتب اسم للمركبة (٣ حروف على الأقل)." };
+  if (!(type in TRANSPORT_TYPES)) return { error: "نوع المركبة غير صحيح." };
+  if (!(city in CITIES)) return { error: "المدينة غير صحيحة." };
+  if (plateNumber.length < 3 || model.length < 2) return { error: "أدخل رقم المركبة والموديل." };
+  if (!Number.isFinite(capacity) || capacity < 1 || capacity > 100) return { error: "عدد الأفراد اللي المركبة تشيلهم غير صحيح." };
+  if (!Number.isFinite(pricePerTrip) || pricePerTrip < 50) return { error: "أدخل سعر رحلة صحيحاً." };
+  if (!Number.isFinite(durationHours) || durationHours < 1 || durationHours > 24) return { error: "مدة الرحلة غير صحيحة." };
+  if (includes.length === 0) return { error: "اكتب على الأقل مشمول واحد." };
+  if (!licenseDocUrl.startsWith("https://")) return { error: "رابط مستند المركبة لازم يبدأ بـ https://." };
+
+  await repo.createVehicle({
+    driverId: session.email, name, type, city, plateNumber, model, capacity, pricePerTrip,
+    routeFrom: String(form.get("routeFrom") ?? "").trim(),
+    routeTo: String(form.get("routeTo") ?? "").trim(),
+    meetingPoint: String(form.get("meetingPoint") ?? "").trim(),
+    durationHours, includes, licenseDocUrl,
+    cancelPolicy: String(form.get("cancelPolicy") ?? "").trim() || TRANSPORT_CANCEL_POLICY,
+  });
+  revalidatePath("/driver");
+  revalidatePath("/admin/drivers");
+  redirect("/driver?vehicle=1");
+}
+
+export async function moderateVehicleAction(_prev: FormState, form: FormData): Promise<FormState> {
+  const session = await requireRole("ADMIN");
+  const id = String(form.get("id") ?? "").trim();
+  const status = String(form.get("status") ?? "") as ModerationStatus;
+  if (!id || !["PUBLISHED", "REJECTED", "DRAFT", "PENDING"].includes(status)) {
+    return { error: "تعذّر تحديث المركبة." };
+  }
+  const repo = await getRepo();
+  const vehicle = await repo.getVehicleById(id);
+  if (!vehicle) return { error: "المركبة غير موجودة." };
+  if (status === "PUBLISHED") {
+    const profile = await repo.getDriverProfile(vehicle.driverId);
+    if (!profile || profile.verificationStatus !== "APPROVED" || profile.subscriptionStatus !== "ACTIVE") {
+      return { error: "ما ينشرش المركبة قبل اعتماد تحقق السائق وتفعيل اشتراكه." };
+    }
+  }
+  await repo.moderateVehicle(id, status);
+  await repo.logActivity({
+    actorEmail: session.email, actorName: session.name,
+    action: status === "PUBLISHED" ? "VEHICLE_PUBLISHED" : "VEHICLE_REJECTED",
+    target: id, detail: vehicle.name,
+  });
+  revalidatePath("/admin");
+  revalidatePath("/admin/drivers");
+  revalidatePath("/driver");
+  revalidatePath("/search");
+  revalidatePath("/");
+  return { ok: status === "PUBLISHED" ? "تم نشر المركبة ✅" : "تم تحديث المركبة ✅" };
+}
+
 // ===== Availability & price rules =====
 
 export async function saveAvailabilityAction(form: FormData): Promise<void> {
@@ -694,6 +845,8 @@ export async function confirmBookingAction(_prev: FormState, form: FormData): Pr
       capacity: transport.capacity, pricePerTrip: transport.pricePerTrip, guests,
       total: transport.pricePerTrip,
       commission: Math.round(transport.pricePerTrip * (transport.commissionRate / 100)),
+      driverName: transport.driverName ?? null,
+      plateNumber: transport.plateNumber ?? null,
     };
   }
 

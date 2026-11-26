@@ -7,9 +7,12 @@ import type {
   Availability,
   Booking,
   CityKey,
+  DriverProfile,
+  DriverSubscriptionStatus,
   Experience,
   ExperienceCategory,
   NewActivityInput,
+  NewDriverProfileInput,
   NewBookingInput,
   NewExperienceInput,
   NewPackageInput,
@@ -17,6 +20,7 @@ import type {
   Package,
   NewReviewInput,
   NewTransportInput,
+  NewVehicleInput,
   NewVerificationInput,
   OwnerVerification,
   PlatformStats,
@@ -26,6 +30,7 @@ import type {
   SearchFilter,
   Transport,
   UserRecord,
+  Vehicle,
 } from "@/lib/types";
 
 const img = (id: string) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=1200&q=80`;
@@ -38,6 +43,8 @@ interface MockState {
   experiences: Experience[];
   transports: Transport[];
   packages: Package[];
+  drivers: DriverProfile[];
+  vehicles: Vehicle[];
   availability: Map<string, Availability[]>;
   priceRules: Map<string, PriceRule[]>;
   bookings: Booking[];
@@ -273,10 +280,38 @@ function seedPackages(): Package[] {
   ];
 }
 
+function seedDriverProfiles(): DriverProfile[] {
+  const now = new Date().toISOString();
+  return [{
+    userId: "driver@qiwalo.test", name: "سائق قيوالو", phone: "01066094050", city: "LUXOR",
+    subscriptionStatus: "ACTIVE", verificationStatus: "APPROVED",
+    idFront: "https://res.cloudinary.com/demo/image/upload/v1/qiwalo/drivers/demo-front.jpg",
+    idBack: "https://res.cloudinary.com/demo/image/upload/v1/qiwalo/drivers/demo-back.jpg",
+    licenseDocUrl: "https://res.cloudinary.com/demo/raw/upload/v1/qiwalo/drivers/demo-license.pdf",
+    note: null, submittedAt: now, reviewedAt: now,
+  }];
+}
+
+function seedVehicles(): Vehicle[] {
+  const now = new Date().toISOString();
+  return [{
+    id: "v1", driverId: "driver@qiwalo.test", driverName: "سائق قيوالو",
+    name: "سيارة السائق — جولات الأقصر", type: "CAR", city: "LUXOR",
+    plateNumber: "LXR-1234", model: "تويوتا كامري ٢٠٢٢", capacity: 6, pricePerTrip: 650,
+    routeFrom: "الأقصر الشرقية", routeTo: "وادي الملوك",
+    meetingPoint: "استقبال الفندق — الكورنيش", durationHours: 5,
+    includes: ["سائق مرافق", "مياه معدنية", "العودة لنقطة اللقاء"],
+    cancelPolicy: TRANSPORT_CANCEL_POLICY,
+    licenseDocUrl: "https://res.cloudinary.com/demo/raw/upload/v1/qiwalo/drivers/demo-vehicle.pdf",
+    status: "PUBLISHED", commissionRate: 12, createdAt: now,
+  }];
+}
+
 function createMockState(): MockState {
   const users: StoredUser[] = [
     { id: "guest@qiwalo.test", email: "guest@qiwalo.test", name: "أحمد المسافر", role: "GUEST", phone: null, nationality: "مصري", commissionRate: 12, termsAcceptedAt: null },
     { id: "owner@qiwalo.test", email: "owner@qiwalo.test", name: "محمد مالك", role: "OWNER", phone: null, nationality: "مصري", commissionRate: 12, termsAcceptedAt: null },
+    { id: "driver@qiwalo.test", email: "driver@qiwalo.test", name: "سائق قيوالو", role: "DRIVER", phone: "01066094050", nationality: "مصري", commissionRate: 12, termsAcceptedAt: null },
     { id: "admin@qiwalo.test", email: "admin@qiwalo.test", name: "إدارة قيوالو", role: "ADMIN", phone: null, nationality: null, commissionRate: 12, termsAcceptedAt: null },
   ];
 
@@ -321,14 +356,18 @@ function createMockState(): MockState {
     { id: "r3", propertyId: "p3", guestId: "guest@qiwalo.test", guestName: "خالد حجز", bookingId: "b3", rating: 4, comment: "مسبح وخصوصية ممتازة، والموقع مناسب للضفة الغربية.", ownerReply: null, ownerReplyAt: null, isDemo: true, status: "PUBLISHED", createdAt: now },
   ];
 
-  return { users, props, experiences: seedExperiences(), transports: seedTransports(), packages: seedPackages(), availability, priceRules, bookings, reviews, verifications: new Map(), activities: [] };
+  return {
+    users, props, experiences: seedExperiences(), transports: seedTransports(), packages: seedPackages(),
+    drivers: seedDriverProfiles(), vehicles: seedVehicles(),
+    availability, priceRules, bookings, reviews, verifications: new Map(), activities: [],
+  };
 }
 
 // Next.js قد يحمّل ملفات الـ route في module graphs مختلفة داخل نفس العملية.
 // تخزين البيانات على globalThis يضمن إن كل الصفحات تشوف نفس وحدات المالك الجديدة.
 const globalStore = globalThis as unknown as { __qiwaloMockState?: MockState };
 const state = (globalStore.__qiwaloMockState ??= createMockState());
-const { users, props, experiences, transports, packages, availability, priceRules, bookings, reviews, verifications, activities } = state;
+const { users, props, experiences, transports, packages, drivers, vehicles, availability, priceRules, bookings, reviews, verifications, activities } = state;
 
 const clone = <T,>(v: T): T => structuredClone(v);
 const toUserRecord = (u: StoredUser): UserRecord => ({
@@ -336,6 +375,22 @@ const toUserRecord = (u: StoredUser): UserRecord => ({
   nationality: u.nationality ?? null, commissionRate: u.commissionRate ?? 12,
   termsAcceptedAt: u.termsAcceptedAt ?? null,
 });
+
+/** المركبة المنشورة بتظهر للضيوف كخيار نقل عادي، مع حفظ بيانات السائق واللوحة. */
+const vehicleToTransport = (v: Vehicle): Transport => ({
+  id: v.id, ownerId: v.driverId, ownerName: v.driverName, name: v.name, type: v.type, city: v.city,
+  routeFrom: v.routeFrom, routeTo: v.routeTo, meetingPoint: v.meetingPoint,
+  durationHours: v.durationHours, capacity: v.capacity, pricePerTrip: v.pricePerTrip,
+  includes: [...v.includes], cancelPolicy: v.cancelPolicy, licenseDocUrl: v.licenseDocUrl,
+  status: v.status, commissionRate: v.commissionRate, createdAt: v.createdAt,
+  driverId: v.driverId, vehicleId: v.id, driverName: v.driverName, plateNumber: v.plateNumber,
+});
+
+const publishedDriverIds = () => new Set(
+  drivers
+    .filter((d) => d.verificationStatus === "APPROVED" && d.subscriptionStatus === "ACTIVE")
+    .map((d) => d.userId),
+);
 
 function refreshRating(propertyId: string) {
   const p = props.find((x) => x.id === propertyId);
@@ -444,7 +499,13 @@ export const mockRepo: Repo = {
     if (e) e.status = status;
   },
   async listPublishedTransports(city) {
-    return clone(transports.filter((t) => t.status === "PUBLISHED" && (!city || t.city === city)));
+    const approvedDrivers = publishedDriverIds();
+    return clone([
+      ...transports.filter((t) => t.status === "PUBLISHED" && (!city || t.city === city)),
+      ...vehicles
+        .filter((v) => v.status === "PUBLISHED" && approvedDrivers.has(v.driverId) && (!city || v.city === city))
+        .map(vehicleToTransport),
+    ]);
   },
   async listAllTransports() { return clone(transports); },
   async listTransportsForOwner(ownerId) {
@@ -452,7 +513,12 @@ export const mockRepo: Repo = {
   },
   async getTransportById(id) {
     const t = transports.find((x) => x.id === id);
-    return t ? clone(t) : null;
+    if (t) return clone(t);
+    const v = vehicles.find((x) => x.id === id);
+    if (!v) return null;
+    const driver = drivers.find((d) => d.userId === v.driverId);
+    if (v.status !== "PUBLISHED" || driver?.verificationStatus !== "APPROVED" || driver?.subscriptionStatus !== "ACTIVE") return null;
+    return clone(vehicleToTransport(v));
   },
   async createTransport(input: NewTransportInput) {
     const t: Transport = {
@@ -495,7 +561,9 @@ export const mockRepo: Repo = {
       name: input.name, city: input.city,
       propertyId: input.propertyId, propertyName: props.find((p) => p.id === input.propertyId)?.name ?? "",
       experienceId: input.experienceId, experienceName: experiences.find((e) => e.id === input.experienceId)?.name ?? "",
-      transportId: input.transportId, transportName: transports.find((t) => t.id === input.transportId)?.name ?? "",
+      transportId: input.transportId,
+      transportName: transports.find((t) => t.id === input.transportId)?.name
+        ?? vehicles.find((v) => v.id === input.transportId)?.name ?? "",
       capacity: input.capacity, pricePerNight: input.pricePerNight, includes: [...input.includes],
       cancelPolicy: input.cancelPolicy, licenseDocUrl: input.licenseDocUrl,
       status: "PENDING", commissionRate: owner?.commissionRate ?? 12,
@@ -507,6 +575,73 @@ export const mockRepo: Repo = {
   async moderatePackage(id, status) {
     const pkg = packages.find((x) => x.id === id);
     if (pkg) pkg.status = status;
+  },
+  async getDriverProfile(userId) {
+    const profile = drivers.find((d) => d.userId === userId);
+    return profile ? clone(profile) : null;
+  },
+  async listDriverProfiles() { return clone(drivers); },
+  async createDriverProfile(input: NewDriverProfileInput) {
+    const user = users.find((u) => u.email === input.userId);
+    const now = new Date().toISOString();
+    const existing = drivers.find((d) => d.userId === input.userId);
+    if (existing) {
+      existing.city = input.city;
+      existing.idFront = input.idFront;
+      existing.idBack = input.idBack;
+      existing.licenseDocUrl = input.licenseDocUrl;
+      existing.verificationStatus = "PENDING";
+      existing.note = null;
+      existing.submittedAt = now;
+      existing.reviewedAt = null;
+      return clone(existing);
+    }
+    const profile: DriverProfile = {
+      userId: input.userId, name: user?.name ?? "سائق جديد", phone: user?.phone ?? null,
+      city: input.city, subscriptionStatus: "PENDING", verificationStatus: "PENDING",
+      idFront: input.idFront, idBack: input.idBack, licenseDocUrl: input.licenseDocUrl,
+      note: null, submittedAt: now, reviewedAt: null,
+    };
+    drivers.push(profile);
+    return clone(profile);
+  },
+  async moderateDriver(userId, status, note) {
+    const profile = drivers.find((d) => d.userId === userId);
+    if (profile) {
+      profile.verificationStatus = status;
+      profile.note = note ?? null;
+      profile.reviewedAt = new Date().toISOString();
+    }
+  },
+  async setDriverSubscription(userId, status: DriverSubscriptionStatus) {
+    const profile = drivers.find((d) => d.userId === userId);
+    if (profile) profile.subscriptionStatus = status;
+  },
+  async listVehiclesForDriver(driverId) {
+    return clone(vehicles.filter((v) => v.driverId === driverId));
+  },
+  async listAllVehicles() { return clone(vehicles); },
+  async getVehicleById(id) {
+    const vehicle = vehicles.find((v) => v.id === id);
+    return vehicle ? clone(vehicle) : null;
+  },
+  async createVehicle(input: NewVehicleInput) {
+    const user = users.find((u) => u.email === input.driverId);
+    const vehicle: Vehicle = {
+      id: `v${vehicles.length + 1}`, driverId: input.driverId,
+      driverName: user?.name ?? "سائق جديد", name: input.name, type: input.type, city: input.city,
+      plateNumber: input.plateNumber, model: input.model, capacity: input.capacity,
+      pricePerTrip: input.pricePerTrip, routeFrom: input.routeFrom, routeTo: input.routeTo,
+      meetingPoint: input.meetingPoint, durationHours: input.durationHours,
+      includes: [...input.includes], cancelPolicy: input.cancelPolicy, licenseDocUrl: input.licenseDocUrl,
+      status: "PENDING", commissionRate: user?.commissionRate ?? 12, createdAt: new Date().toISOString(),
+    };
+    vehicles.push(vehicle);
+    return clone(vehicle);
+  },
+  async moderateVehicle(id, status) {
+    const vehicle = vehicles.find((v) => v.id === id);
+    if (vehicle) vehicle.status = status;
   },
   async getAvailability(propertyId) { return clone(availability.get(propertyId) ?? []); },
   async getPriceRules(propertyId) { return clone(priceRules.get(propertyId) ?? []); },

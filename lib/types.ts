@@ -12,7 +12,7 @@ export type ModerationStatus = "DRAFT" | "PENDING" | "PUBLISHED" | "REJECTED";
 export type BookingStatus = "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED";
 export type PaymentStatus = "PENDING" | "PAID" | "FAILED" | "REFUNDED";
 export type PaymentProvider = "PAYMOB" | "MANUAL";
-export type Role = "GUEST" | "OWNER" | "ADMIN";
+export type Role = "GUEST" | "OWNER" | "DRIVER" | "ADMIN";
 export type PaymentMethod = "CASH" | "BANK";
 export type ReviewStatus = "PENDING" | "PUBLISHED" | "HIDDEN";
 export type VerificationStatus = "PENDING" | "SELFIE_REQUIRED" | "SELFIE_PENDING" | "APPROVED" | "REJECTED";
@@ -35,6 +35,11 @@ export type ActivityAction =
   | "TRANSPORT_REJECTED"
   | "PACKAGE_PUBLISHED"
   | "PACKAGE_REJECTED"
+  | "DRIVER_VERIFIED"
+  | "DRIVER_REJECTED"
+  | "DRIVER_SUBSCRIPTION_ACTIVE"
+  | "VEHICLE_PUBLISHED"
+  | "VEHICLE_REJECTED"
   | "COMMISSION_CHANGED"
   | "VERIFICATION_APPROVED"
   | "VERIFICATION_REJECTED"
@@ -247,6 +252,11 @@ export interface Transport {
   status: ModerationStatus;
   commissionRate: number;
   createdAt: string;
+  /** السائقين بيوفّروا النقل كمركبة مستقلة، والخدمات القديمة اللي بيضيفها المالك لسه موجودة جنبهم. */
+  driverId?: string | null;
+  vehicleId?: string | null;
+  driverName?: string | null;
+  plateNumber?: string | null;
 }
 
 export interface NewTransportInput {
@@ -280,6 +290,8 @@ export interface TransportBookingDetail {
   guests: number;
   total: number;
   commission: number;
+  driverName?: string | null;
+  plateNumber?: string | null;
 }
 
 /** الباقة تجمع وحدة + نقل + تجربة بسعر واحد لكل ليلة، وتُضاف للحجز مع باقي الإضافات. */
@@ -397,6 +409,75 @@ export interface NewVerificationInput {
   idBack: string;
   commissionRate?: number;
   termsAcceptedAt?: string | null;
+}
+
+/** اشتراك السائق حالة إدارية على Mock؛ مفيش تحصيل حقيقي ولا checkout مدفوع. */
+export type DriverSubscriptionStatus = "NONE" | "PENDING" | "ACTIVE" | "EXPIRED";
+
+/** تحقق السائق زي تحقق المالك تماماً: مستندات + مراجعة إدارية قبل نشر أي مركبة. */
+export interface DriverProfile {
+  userId: string;
+  name: string;
+  phone: string | null;
+  city: CityKey;
+  subscriptionStatus: DriverSubscriptionStatus;
+  verificationStatus: VerificationStatus;
+  idFront: string;
+  idBack: string;
+  licenseDocUrl: string;
+  note: string | null;
+  submittedAt: string;
+  reviewedAt: string | null;
+}
+
+export interface NewDriverProfileInput {
+  userId: string;
+  city: CityKey;
+  idFront: string;
+  idBack: string;
+  licenseDocUrl: string;
+}
+
+/** المركبة كيان مستقل عن خدمة النقل القديمة، والسائق بيقدر يضيف أكتر من مركبة. */
+export interface Vehicle {
+  id: string;
+  driverId: string;
+  driverName: string;
+  name: string;
+  type: TransportType;
+  city: CityKey;
+  plateNumber: string;
+  model: string;
+  capacity: number;
+  pricePerTrip: number;
+  routeFrom: string;
+  routeTo: string;
+  meetingPoint: string;
+  durationHours: number;
+  includes: string[];
+  cancelPolicy: string;
+  licenseDocUrl: string;
+  status: ModerationStatus;
+  commissionRate: number;
+  createdAt: string;
+}
+
+export interface NewVehicleInput {
+  driverId: string;
+  name: string;
+  type: TransportType;
+  city: CityKey;
+  plateNumber: string;
+  model: string;
+  capacity: number;
+  pricePerTrip: number;
+  routeFrom: string;
+  routeTo: string;
+  meetingPoint: string;
+  durationHours: number;
+  includes: string[];
+  cancelPolicy: string;
+  licenseDocUrl: string;
 }
 
 export interface NewBookingInput {

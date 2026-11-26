@@ -1,4 +1,4 @@
-import type { CityKey, ExperienceCategory, ExperienceDifficulty, PropertyType, TransportType } from "./types";
+import type { CityKey, DriverSubscriptionStatus, ExperienceCategory, ExperienceDifficulty, PropertyType, TransportType } from "./types";
 
 export const SITE_NAME = "Qiwalo";
 export const SITE_NAME_AR = "قيوالو";
@@ -60,6 +60,16 @@ export const TRANSPORT_CANCEL_POLICY =
 
 export const PACKAGE_CANCEL_POLICY =
   "إلغاء الباقة مجاني قبل الوصول بـ 48 ساعة أو أكثر. بعدها تُحتسب رسوم الوحدة والنقل والتجربة حسب سياسة كل مورّد، ويُبلَّغ الضيف فوراً.";
+
+export const DRIVER_SUBSCRIPTION_LABELS: Record<DriverSubscriptionStatus, { ar: string }> = {
+  NONE: { ar: "غير مشترك" },
+  PENDING: { ar: "قيد التفعيل" },
+  ACTIVE: { ar: "نشط" },
+  EXPIRED: { ar: "منتهي" },
+};
+
+export const DRIVER_SUBSCRIPTION_NOTICE =
+  "حالة الاشتراك إدارية على Mock فقط، ومفيش تحصيل أو checkout مدفوع للسائقين في هذه النسخة.";
 
 export const AMENITIES = [
   "واي فاي",

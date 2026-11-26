@@ -2,9 +2,10 @@ import { prisma } from "@/lib/db";
 import { makePropertySlug, slugCandidates } from "@/lib/slug";
 import type { Repo } from "./index";
 import type {
-  ActivityLog, Availability, Booking, CityKey, Experience, ExperienceCategory, NewActivityInput, NewBookingInput, NewExperienceInput, NewPackageInput, NewPropertyInput,
-  NewReviewInput, NewTransportInput, NewVerificationInput, OwnerVerification, Package, PlatformStats, PriceRule, Property,
-  Review, SearchFilter, Transport, UserRecord, VerificationStatus,
+  ActivityLog, Availability, Booking, CityKey, DriverProfile, DriverSubscriptionStatus, Experience, ExperienceCategory,
+  NewActivityInput, NewBookingInput, NewDriverProfileInput, NewExperienceInput, NewPackageInput, NewPropertyInput,
+  NewReviewInput, NewTransportInput, NewVehicleInput, NewVerificationInput, OwnerVerification, Package, PlatformStats,
+  PriceRule, Property, Review, SearchFilter, Transport, UserRecord, VerificationStatus, Vehicle,
 } from "@/lib/types";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -80,6 +81,45 @@ function mapPackage(p: any): Package {
 /** الباقات مفعّلة على Mock فقط لحد ما يتنفّذ add-package.sql في الإنتاج. */
 function packageUnavailable(error: unknown): void {
   console.warn("[packages] جدول الباقات غير مفعّل بعد في قاعدة البيانات؛ الباقات مستترة مؤقتاً.", error);
+}
+
+/** السائقون والمركبات مفعّلون على Mock فقط لحد ما يتنفّذ add-driver.sql. */
+function driverUnavailable(error: unknown): void {
+  console.warn("[drivers] جداول السائقين والمركبات غير مفعّلة بعد في قاعدة البيانات؛ مستترة مؤقتاً.", error);
+}
+
+function mapDriverProfile(row: any): DriverProfile {
+  return {
+    userId: row.user?.email ?? row.userId, name: row.user?.name ?? "سائق", phone: row.user?.phone ?? null,
+    city: row.city, subscriptionStatus: row.subscriptionStatus,
+    verificationStatus: row.verificationStatus,
+    idFront: row.idFront, idBack: row.idBack, licenseDocUrl: row.licenseDocUrl,
+    note: row.note ?? null, submittedAt: row.submittedAt.toISOString(),
+    reviewedAt: row.reviewedAt ? row.reviewedAt.toISOString() : null,
+  };
+}
+
+function mapVehicle(row: any): Vehicle {
+  return {
+    id: row.id, driverId: row.driver?.email ?? row.driverId, driverName: row.driver?.name ?? "سائق",
+    name: row.name, type: row.type, city: row.city, plateNumber: row.plateNumber, model: row.model,
+    capacity: row.capacity, pricePerTrip: row.pricePerTrip, routeFrom: row.routeFrom, routeTo: row.routeTo,
+    meetingPoint: row.meetingPoint, durationHours: row.durationHours,
+    includes: Array.isArray(row.includes) ? row.includes : [], cancelPolicy: row.cancelPolicy,
+    licenseDocUrl: row.licenseDocUrl, status: row.status, commissionRate: row.commissionRate ?? 12,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+function vehicleToTransport(v: Vehicle): Transport {
+  return {
+    id: v.id, ownerId: v.driverId, ownerName: v.driverName, name: v.name, type: v.type, city: v.city,
+    routeFrom: v.routeFrom, routeTo: v.routeTo, meetingPoint: v.meetingPoint,
+    durationHours: v.durationHours, capacity: v.capacity, pricePerTrip: v.pricePerTrip,
+    includes: [...v.includes], cancelPolicy: v.cancelPolicy, licenseDocUrl: v.licenseDocUrl,
+    status: v.status, commissionRate: v.commissionRate, createdAt: v.createdAt,
+    driverId: v.driverId, vehicleId: v.id, driverName: v.driverName, plateNumber: v.plateNumber,
+  };
 }
 
 function mapBooking(b: any): Booking {
@@ -276,7 +316,26 @@ export const prismaRepo: Repo = {
       where: { status: "PUBLISHED" as any, ...(city ? { city: city as any } : {}) },
       include: { owner: true }, orderBy: { createdAt: "desc" },
     });
-    return rows.map(mapTransport);
+    let fromDrivers: Transport[] = [];
+    try {
+      const vehicles = await prisma.vehicle.findMany({
+        where: {
+          status: "PUBLISHED" as any,
+          ...(city ? { city: city as any } : {}),
+          driver: {
+            driverProfile: {
+              verificationStatus: "APPROVED" as any,
+              subscriptionStatus: "ACTIVE" as any,
+            },
+          },
+        },
+        include: { driver: true }, orderBy: { createdAt: "desc" },
+      });
+      fromDrivers = vehicles.map(mapVehicle).map(vehicleToTransport);
+    } catch (error) {
+      driverUnavailable(error);
+    }
+    return [...rows.map(mapTransport), ...fromDrivers];
   },
   async listAllTransports() {
     const rows = await prisma.transport.findMany({ include: { owner: true }, orderBy: { createdAt: "desc" } });
@@ -291,7 +350,19 @@ export const prismaRepo: Repo = {
   },
   async getTransportById(id) {
     const row = await prisma.transport.findUnique({ where: { id }, include: { owner: true } });
-    return row ? mapTransport(row) : null;
+    if (row) return mapTransport(row);
+    try {
+      const vehicle = await prisma.vehicle.findUnique({
+        where: { id }, include: { driver: { include: { driverProfile: true } } },
+      });
+      if (!vehicle || !vehicle.driver.driverProfile) return null;
+      const profile = mapDriverProfile(vehicle.driver.driverProfile);
+      if (vehicle.status !== ("PUBLISHED" as any) || profile.verificationStatus !== "APPROVED" || profile.subscriptionStatus !== "ACTIVE") return null;
+      return vehicleToTransport(mapVehicle({ ...vehicle, driver: vehicle.driver }));
+    } catch (error) {
+      driverUnavailable(error);
+      return null;
+    }
   },
   async createTransport(input: NewTransportInput) {
     const ownerId = await resolveUserId(input.ownerId);
@@ -379,6 +450,138 @@ export const prismaRepo: Repo = {
   },
   async moderatePackage(id, status) {
     await prisma.package.update({ where: { id }, data: { status: status as any } });
+  },
+  async getDriverProfile(userId) {
+    const id = await resolveUserId(userId);
+    try {
+      const row = await prisma.driverProfile.findUnique({ where: { userId: id }, include: { user: true } });
+      return row ? mapDriverProfile(row) : null;
+    } catch (error) {
+      driverUnavailable(error);
+      return null;
+    }
+  },
+  async listDriverProfiles() {
+    try {
+      const rows = await prisma.driverProfile.findMany({ include: { user: true }, orderBy: { submittedAt: "desc" } });
+      return rows.map(mapDriverProfile);
+    } catch (error) {
+      driverUnavailable(error);
+      return [];
+    }
+  },
+  async createDriverProfile(input: NewDriverProfileInput) {
+    const userId = await resolveUserId(input.userId);
+    const fallback = async (): Promise<DriverProfile> => {
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      return {
+        userId: input.userId, name: user?.name ?? "سائق جديد", phone: user?.phone ?? null,
+        city: input.city, subscriptionStatus: "PENDING", verificationStatus: "PENDING",
+        idFront: input.idFront, idBack: input.idBack, licenseDocUrl: input.licenseDocUrl,
+        note: null, submittedAt: new Date().toISOString(), reviewedAt: null,
+      };
+    };
+    try {
+      const row = await prisma.driverProfile.upsert({
+        where: { userId },
+        update: {
+          city: input.city as any, idFront: input.idFront, idBack: input.idBack,
+          licenseDocUrl: input.licenseDocUrl, verificationStatus: "PENDING" as any,
+          note: null, submittedAt: new Date(), reviewedAt: null,
+        },
+        create: {
+          userId, city: input.city as any, idFront: input.idFront, idBack: input.idBack,
+          licenseDocUrl: input.licenseDocUrl,
+        },
+        include: { user: true },
+      });
+      return mapDriverProfile(row);
+    } catch (error) {
+      driverUnavailable(error);
+      return fallback();
+    }
+  },
+  async moderateDriver(userId, status, note) {
+    const id = await resolveUserId(userId);
+    try {
+      await prisma.driverProfile.update({
+        where: { userId: id },
+        data: { verificationStatus: status as any, note: note ?? null, reviewedAt: new Date() },
+      });
+    } catch (error) {
+      driverUnavailable(error);
+    }
+  },
+  async setDriverSubscription(userId, status: DriverSubscriptionStatus) {
+    const id = await resolveUserId(userId);
+    try {
+      await prisma.driverProfile.update({ where: { userId: id }, data: { subscriptionStatus: status as any } });
+    } catch (error) {
+      driverUnavailable(error);
+    }
+  },
+  async listVehiclesForDriver(driverId) {
+    const id = await resolveUserId(driverId);
+    try {
+      const rows = await prisma.vehicle.findMany({ where: { driverId: id }, include: { driver: true }, orderBy: { createdAt: "desc" } });
+      return rows.map(mapVehicle);
+    } catch (error) {
+      driverUnavailable(error);
+      return [];
+    }
+  },
+  async listAllVehicles() {
+    try {
+      const rows = await prisma.vehicle.findMany({ include: { driver: true }, orderBy: { createdAt: "desc" } });
+      return rows.map(mapVehicle);
+    } catch (error) {
+      driverUnavailable(error);
+      return [];
+    }
+  },
+  async getVehicleById(id) {
+    try {
+      const row = await prisma.vehicle.findUnique({ where: { id }, include: { driver: true } });
+      return row ? mapVehicle(row) : null;
+    } catch (error) {
+      driverUnavailable(error);
+      return null;
+    }
+  },
+  async createVehicle(input: NewVehicleInput) {
+    const driverId = await resolveUserId(input.driverId);
+    try {
+      const row = await prisma.vehicle.create({
+        data: {
+          driverId, name: input.name, type: input.type as any, city: input.city as any,
+          plateNumber: input.plateNumber, model: input.model, capacity: input.capacity,
+          pricePerTrip: input.pricePerTrip, routeFrom: input.routeFrom, routeTo: input.routeTo,
+          meetingPoint: input.meetingPoint, durationHours: input.durationHours,
+          includes: input.includes, cancelPolicy: input.cancelPolicy, licenseDocUrl: input.licenseDocUrl,
+        },
+        include: { driver: true },
+      });
+      return mapVehicle(row);
+    } catch (error) {
+      driverUnavailable(error);
+      const user = await prisma.user.findUnique({ where: { id: driverId } });
+      return {
+        id: `local-${Date.now()}`, driverId: input.driverId, driverName: user?.name ?? "سائق جديد",
+        name: input.name, type: input.type, city: input.city, plateNumber: input.plateNumber,
+        model: input.model, capacity: input.capacity, pricePerTrip: input.pricePerTrip,
+        routeFrom: input.routeFrom, routeTo: input.routeTo, meetingPoint: input.meetingPoint,
+        durationHours: input.durationHours, includes: input.includes, cancelPolicy: input.cancelPolicy,
+        licenseDocUrl: input.licenseDocUrl, status: "PENDING", commissionRate: 12,
+        createdAt: new Date().toISOString(),
+      };
+    }
+  },
+  async moderateVehicle(id, status) {
+    try {
+      await prisma.vehicle.update({ where: { id }, data: { status: status as any } });
+    } catch (error) {
+      driverUnavailable(error);
+    }
   },
   async getAvailability(propertyId) {
     const rows = await prisma.availability.findMany({ where: { propertyId }, orderBy: { date: "asc" } });

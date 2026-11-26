@@ -41,6 +41,12 @@ export default function TransportAddOn({ transports, propertySlug, checkIn, chec
             </div>
             <h3 className="text-lg font-extrabold text-navy">{transport.name}</h3>
             <p className="muted mt-1 text-xs" dir="rtl">{transport.routeFrom} ← {transport.routeTo}</p>
+            {(transport.driverName || transport.plateNumber) && (
+              <p className="muted mt-1 text-xs" data-testid="transport-driver">
+                سائق: <span className="font-bold text-navy">{transport.driverName ?? "سائق قيوالو"}</span>
+                {transport.plateNumber && <span dir="ltr" className="ms-1">({transport.plateNumber})</span>}
+              </p>
+            )}
             <ul className="muted mt-3 space-y-1 text-xs leading-6">
               <li>• نقطة اللقاء: {transport.meetingPoint}</li>
               <li>• المدة: {toArabicDigits(transport.durationHours)} ساعات · السعة: {toArabicDigits(transport.capacity)}</li>

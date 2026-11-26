@@ -8,7 +8,7 @@ export default async function SiteHeader() {
   const session = await getSession();
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-navy-deep/95 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3.5">
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3.5">
         <Link href="/" className="group flex items-center gap-3">
           <span className="grid h-10 w-10 place-items-center rounded-xl border border-gold/60 bg-gradient-to-br from-gold-bright/20 to-transparent text-lg font-black text-gold-bright transition group-hover:border-gold">
             ق
@@ -25,6 +25,7 @@ export default async function SiteHeader() {
           <Link href="/search" className="transition hover:text-gold-bright">كل الوحدات</Link>
           <FavoritesNavLink />
           <Link href="/owner" className="transition hover:text-gold-bright">للمالكين</Link>
+          <Link href="/login?role=DRIVER" className="transition hover:text-gold-bright">للسائقين</Link>
           <Link href="/terms" className="transition hover:text-gold-bright">الشروط</Link>
         </nav>
 
@@ -42,6 +43,9 @@ export default async function SiteHeader() {
               )}
               {(session.role === "OWNER" || session.role === "ADMIN") && (
                 <Link href="/owner" className="btn-gold !px-3 !py-2 !text-xs">لوحة المالك</Link>
+              )}
+              {(session.role === "DRIVER" || session.role === "ADMIN") && (
+                <Link href="/driver" className="btn-gold !px-3 !py-2 !text-xs">لوحة السائق</Link>
               )}
               <form action={logoutAction}>
                 <button type="submit" className="btn-ghost !border-white/20 !bg-transparent !px-3 !py-2 !text-white !text-xs">
@@ -61,11 +65,14 @@ export default async function SiteHeader() {
       </div>
 
       <div className="border-t border-white/10 md:hidden">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 py-2">
           <SupportLinks compact />
           <FavoritesNavLink compact />
           <Link href="/download" className="shrink-0 text-xs font-bold text-gold-bright transition hover:text-white">
             تحميل
+          </Link>
+          <Link href="/login?role=DRIVER" className="shrink-0 text-xs font-bold text-white/70 transition hover:text-gold-bright">
+            سائق
           </Link>
           <Link href="/terms" className="shrink-0 text-xs font-bold text-white/70 transition hover:text-gold-bright">
             الشروط

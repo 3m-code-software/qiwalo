@@ -4,9 +4,13 @@ import type {
   Booking,
   BookingStatus,
   CityKey,
+  DriverProfile,
+  DriverSubscriptionStatus,
   Experience,
   ExperienceCategory,
   ModerationStatus,
+  NewDriverProfileInput,
+  NewVehicleInput,
   NewBookingInput,
   NewExperienceInput,
   NewPackageInput,
@@ -26,6 +30,7 @@ import type {
   Review,
   ReviewStatus,
   Transport,
+  Vehicle,
   SearchFilter,
   UserRecord,
   VerificationStatus,
@@ -57,6 +62,16 @@ export interface Repo {
   getPackageById(id: string): Promise<Package | null>;
   createPackage(input: NewPackageInput): Promise<Package>;
   moderatePackage(id: string, status: ModerationStatus): Promise<void>;
+  getDriverProfile(userId: string): Promise<DriverProfile | null>;
+  listDriverProfiles(): Promise<DriverProfile[]>;
+  createDriverProfile(input: NewDriverProfileInput): Promise<DriverProfile>;
+  moderateDriver(userId: string, status: VerificationStatus, note?: string | null): Promise<void>;
+  setDriverSubscription(userId: string, status: DriverSubscriptionStatus): Promise<void>;
+  listVehiclesForDriver(driverId: string): Promise<Vehicle[]>;
+  listAllVehicles(): Promise<Vehicle[]>;
+  getVehicleById(id: string): Promise<Vehicle | null>;
+  createVehicle(input: NewVehicleInput): Promise<Vehicle>;
+  moderateVehicle(id: string, status: ModerationStatus): Promise<void>;
   getAvailability(propertyId: string): Promise<Availability[]>;
   getPriceRules(propertyId: string): Promise<PriceRule[]>;
   saveAvailability(propertyId: string, rows: Availability[]): Promise<void>;
@@ -84,7 +99,7 @@ export interface Repo {
   upsertUser(input: {
     email: string;
     name: string;
-    role: "GUEST" | "OWNER" | "ADMIN";
+    role: "GUEST" | "OWNER" | "DRIVER" | "ADMIN";
     phone?: string | null;
     nationality?: string | null;
     commissionRate?: number;

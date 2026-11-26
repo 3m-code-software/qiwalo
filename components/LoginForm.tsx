@@ -10,6 +10,7 @@ type Mode = "signin" | "signup";
 const demos = [
   { email: "guest@qiwalo.test", label: "ضيف تجريبي" },
   { email: "owner@qiwalo.test", label: "مالك تجريبي" },
+  { email: "driver@qiwalo.test", label: "سائق تجريبي" },
   { email: "admin@qiwalo.test", label: "مدير تجريبي" },
 ];
 
@@ -25,9 +26,10 @@ export default function LoginForm({
   const [mode, setMode] = useState<Mode>("signin");
   const [signInState, signIn, signInPending] = useActionState<FormState, FormData>(signInAction, {});
   const [signUpState, signUp, signUpPending] = useActionState<FormState, FormData>(signUpAction, {});
-  const defaultRole = role === "OWNER" ? "OWNER" : "GUEST";
+  const defaultRole = role === "OWNER" || role === "DRIVER" ? role : "GUEST";
   const [selectedRole, setSelectedRole] = useState(defaultRole);
-  const termsHref = selectedRole === "OWNER" ? "/terms/owner" : "/terms/guest";
+  const termsHref = selectedRole === "OWNER" ? "/terms/owner" : selectedRole === "DRIVER" ? "/terms/driver" : "/terms/guest";
+  const termsLabel = selectedRole === "OWNER" ? "شروط المالكين" : selectedRole === "DRIVER" ? "شروط السائقين" : "شروط الضيوف";
 
   return (
     <div>
@@ -112,6 +114,7 @@ export default function LoginForm({
             >
               <option value="GUEST">ضيف — أحجز إقامات</option>
               <option value="OWNER">صاحب وحدة — أضف وحداتك</option>
+              <option value="DRIVER">سائق — أضف مركبتك</option>
             </select>
           </div>
           <div className="flex items-start gap-2">
@@ -126,7 +129,7 @@ export default function LoginForm({
             <label htmlFor="signup-terms" className="text-xs leading-6 text-muted">
               أقر بأنني اطلعت على{" "}
               <Link href={termsHref} target="_blank" rel="noopener noreferrer" className="font-bold text-navy underline decoration-gold underline-offset-2">
-                {selectedRole === "OWNER" ? "شروط المالكين" : "شروط الضيوف"}
+                {termsLabel}
               </Link>{" "}
               وأوافق عليها.
             </label>

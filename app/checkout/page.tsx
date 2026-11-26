@@ -131,6 +131,12 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
                   <Link href={`/checkout?${withoutTransport.toString()}`} className="text-xs font-bold text-nile hover:text-gold">إزالة ✕</Link>
                 </div>
                 <p className="text-sm font-bold">{transport.name}</p>
+                {(transport.driverName || transport.plateNumber) && (
+                  <p className="muted mt-1 text-xs" data-testid="checkout-driver">
+                    السائق: <span className="font-bold text-navy">{transport.driverName ?? "سائق قيوالو"}</span>
+                    {transport.plateNumber && <span dir="ltr" className="ms-1">({transport.plateNumber})</span>}
+                  </p>
+                )}
                 <p className="muted mt-1 text-xs">{transport.routeFrom} ← {transport.routeTo} · {transport.durationHours} ساعات · نقطة اللقاء: {transport.meetingPoint}</p>
                 <p className="muted mt-2 text-xs">سعر الرحلة للمركبة، وليس للفرد. المشمولات: {transport.includes.join(" · ")}</p>
               </div>

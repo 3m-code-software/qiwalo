@@ -18,6 +18,7 @@ export default async function NewPackagePage() {
   ]);
   const toOption = (items: Array<{ id: string; name: string; city: CityKey }>) =>
     items.map(({ id, name, city }) => ({ id, name, city }));
+  // مركبات السائقين المنشورة متاحة للباقة جنب نقل المالك، بعد مراجعة الإدارة وتفعيل الاشتراك.
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-10">
@@ -30,7 +31,7 @@ export default async function NewPackagePage() {
         <PackageForm
           properties={toOption(properties)}
           experiences={toOption(experiences.filter((item) => item.ownerId === session.email))}
-          transports={toOption(transports.filter((item) => item.ownerId === session.email))}
+          transports={toOption(transports.filter((item) => item.ownerId === session.email || Boolean(item.driverId)))}
         />
       </div>
     </main>

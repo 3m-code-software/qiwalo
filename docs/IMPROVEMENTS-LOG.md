@@ -1119,3 +1119,26 @@
 - اختبار جديد `e2e/package.spec.ts` (٤ اختبارات): كارت الباقة على Pixel 7 بدون تمرير أفقي، إضافة الباقة مع السفاري والنقل للدفع مع حفظ الثلاث اختيارات وسطر السعر للليالي ونص الدفع الثابت، حجز مؤكد يظهر تفاصيل الباقة وسعر `١٩٠٠ × ٣ = ٥٧٠٠ ج.م`، ثم إنشاء المالك للباقة ونشر الإدارة وظهورها للضيوف.
 - `npm run test:e2e` بقى **٥٣/٥٣**، `npm run test:recovery` **٣/٣**، و`npx next typegen` / `npm run typecheck` / `npm run lint` / `npm run build` كلهم أخضر (٤١ صفحة).
 - العرض على Mock: `http://localhost:3130/stay/nile-view-dar-al-madina` وقسم «باقة كاملة» أسفل قسم النقل. النشر الإنتاجي و`add-package.sql` مؤجلين لإشارة صريحة.
+
+
+## البند ٣٩ — السائقون المسجّلون والمركبات المتعددة
+
+**الحالة: تم ✅ (Mock فقط)**
+
+### اللي اتطلب
+السائق يبقى حساب منفصل عن المالك بدور `DRIVER`: يسجّل بياناته، الإدارة تراجع تحققه وتفعّل اشتراكه التجريبي (بدون تحصيل)، وبعدين يقدر يضيف أكتر من مركبة. المركبات المنشورة تظهر للضيف كنقل داخل صفحة الوحدة وتقدر الباقة تستخدمها، مع مراجعة إدارية قبل أي ظهور. الفلاتر اتأخروا لبند تالي بعد ما اتحدد السائقين.
+
+### التنفيذ
+1. `Role.DRIVER` و`DriverProfile` و`Vehicle` وحالة الاشتراك (`NONE` / `PENDING` / `ACTIVE` / `EXPIRED`) اتضافوا لـ `lib/types.ts` و`lib/constants.ts`، مع أحداث `DRIVER_VERIFIED` / `DRIVER_REJECTED` / `DRIVER_SUBSCRIPTION_ACTIVE` / `VEHICLE_PUBLISHED` / `VEHICLE_REJECTED` في سجل الإدارة. نص الاشتراك بيوضّح إنه إداري على Mock ومفيش تحصيل.
+2. عقد `Repo` اتوسّع بطرق الملف والمركبات (`getDriverProfile` / `submitDriverVerification` / `moderateDriver` / `setDriverSubscription` / `listVehiclesForDriver` / `createVehicle` / `moderateVehicle` / `getVehicleById`) واتطبّق في `mock.ts` و`prisma.ts`. بذرة Mock فيها `driver@qiwalo.test` بتحقق `APPROVED` واشتراك `ACTIVE`، والمركبة `v1` منشورة باسم «سيارة السائق — جولات الأقصر» ولوحة `LXR-1234` وسعر ٦٥٠ ج.م للرحلة.
+3. Server Actions: `submitDriverVerificationAction` (صورتا الهوية + رخصة القيادة + الموافقة)، `moderateDriverAction` و`setDriverSubscriptionAction` للإدارة فقط، `createVehicleAction` و`moderateVehicleAction` للسائق/الإدارة. نشر المركبة ممنوع قبل اعتماد التحقق **وتفعيل الاشتراك**، والصلاحية بتتحقق جوّه الـ action مش بس في الرندر. مفيش كلمة «مرخّص» قبل المراجعة.
+4. صفحات جديدة: `/driver` (حالة التحقق والاشتراك وقائمة المركبات)، `/driver/verify` (رفع المستندات)، `/driver/vehicles/new`، `/admin/drivers` (اعتماد/رفض السائق، تفعيل الاشتراك، مراجعة المركبات ونشرها)، و`/terms/driver` موسومة «نسخة معتمدة». `LoginForm` فيه دور `DRIVER` وزر «سائق تجريبي»، والهيدر فيه رابط «للسائقين»؛ الهيدر بقى يلتف على الموبايل بدل ما يعمل تمرير أفقي.
+5. صفحة الوحدة لسه Server Component، وبقت تعرض مركبات السائقين المنشورة جنب نقل المالك. `/checkout` وصفحة الحجز بيعرضوا اسم السائق ولوحة المركبة، و`createPackage` في Mock بيحل اسم مركبة السائق، وصفحة إضافة الباقة بقت تقبل مركبة السائق بعد نشرها. السعر للمركبة/الرحلة مرة واحدة، وعدد الضيوف للتحقق من السعة بس.
+6. العمولة لسه ١٢٪ بعد التأكيد مع تجاوز الإدارة الموجود، ونص الدفع لسه `تحويل بنكي أو كاش عند الوصول`، والإشعارات ما اتغيرتش (الاسم والرقم للإدارة، الاسم بس للعميل). نقل المالك القديم فضل جنب مركبات السائقين.
+7. `prisma/schema.prisma` اتحدّث بنماذج `DriverProfile` و`Vehicle` وعلاقاتهما، و`prisma/sql/add-driver.sql` جاهز للتنفيذ الإداري مرة واحدة عند طلب النشر. قراءات Prisma محاطة بتحقق من غياب الجداول فما توقفش صفحات الوحدات قبل الـ migration. `cacheComponents` و`partialPrefetching` زي ما هما، ومفيش checkout حي ولا تحويل بنكي فعلي.
+
+### التجربة والتوثيق
+- اختبار جديد `e2e/driver.spec.ts` (٥ اختبارات) على Pixel 7 وDesktop 1440×900: كارت مركبة السائق بدون تمرير أفقي، تسجيل سائق يمنع إضافة مركبة قبل التحقق، دورة كاملة (تحقق ← اعتماد ← تفعيل اشتراك ← مركبة ← نشر ← ظهور للضيف)، حجز مؤكد يعرض اسم السائق ولوحته وسعر الرحلة، وباقة تستخدم مركبة السائق بعد نشرها.
+- `npm run test:e2e` بقى **٥٨/٥٨**، `npm run test:recovery` **٣/٣**، و`npx next typegen` / `npm run typecheck` / `npm run lint` / `npm run build` كلهم أخضر (٤٦ مساراً/صفحة).
+- لقطات Mock: `docs/screenshots/b39-driver-dashboard-mock.png` (لوحة السائق، ١٤٤٠×١٤١٨) و`docs/screenshots/b39-driver-vehicle-mock.png` (مركبة السائق في صفحة الوحدة على Pixel 7، ٤١٢×٩١٥).
+- العرض على Mock: `http://localhost:3130/driver` و`http://localhost:3130/stay/nile-view-dar-al-madina`. النشر الإنتاجي و`add-driver.sql` مؤجلين لإشارة صريحة، والفلاتر هتكون الخطوة الجاية بعد تحديد قواعدها.

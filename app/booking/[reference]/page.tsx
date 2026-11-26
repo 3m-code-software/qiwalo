@@ -174,6 +174,13 @@ export default async function BookingPage({ params, searchParams }: Props) {
               <p className="font-bold">{booking.transport.transportName}</p>
               <p className="muted text-xs">{TRANSPORT_TYPES[booking.transport.type].ar} · {CITIES[booking.transport.city].ar}</p>
             </div>
+            {(booking.transport.driverName || booking.transport.plateNumber) && (
+              <div data-testid="booking-driver">
+                <p className="muted text-xs">السائق والمركبة</p>
+                <p className="font-bold">{booking.transport.driverName ?? "سائق قيوالو"}</p>
+                {booking.transport.plateNumber && <p className="muted text-xs" dir="ltr">{booking.transport.plateNumber}</p>}
+              </div>
+            )}
             <div>
               <p className="muted text-xs">المسار</p>
               <p className="font-bold">{booking.transport.routeFrom} ← {booking.transport.routeTo}</p>
