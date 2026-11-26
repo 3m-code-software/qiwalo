@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { eachDayOfInterval, format, parseISO } from "date-fns";
+import { overlapsBlockedDates, parseBlockedDates } from "@/lib/availability";
 import { CITIES, DEFAULT_COMMISSION_RATE, DRIVER_SUBSCRIPTION_NOTICE, EXPERIENCE_CANCEL_POLICY, PACKAGE_CANCEL_POLICY, TRANSPORT_CANCEL_POLICY, TRANSPORT_TYPES } from "@/lib/constants";
 import { toArabicDigits } from "@/lib/format";
 import { clearSession, createSession, getSession, requireRole, type Session } from "@/lib/auth";
@@ -15,7 +16,7 @@ import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase
 import type {
   BookingStatus, CityKey, DriverSubscriptionStatus, ExperienceBookingDetail, ExperienceCategory, ExperienceDifficulty,
   ModerationStatus, PackageBookingDetail, PaymentMethod, PropertyType, PropertyUpdateInput, ReviewStatus, Role,
-  TransportBookingDetail, TransportType, VerificationStatus,
+  TransportBookingDetail, TransportType, VerificationStatus, VehicleUpdateInput,
 } from "@/lib/types";
 
 export interface FormState { error?: string; ok?: string }
@@ -74,6 +75,14 @@ async function assertOwnerOf(session: Session, propertyId: string) {
   if (!property) return null;
   if (session.role !== "ADMIN" && property.ownerId !== session.email) return null;
   return property;
+}
+
+async function assertDriverOf(session: Session, vehicleId: string) {
+  const repo = await getRepo();
+  const vehicle = await repo.getVehicleById(vehicleId);
+  if (!vehicle) return null;
+  if (session.role !== "ADMIN" && vehicle.driverId !== session.email) return null;
+  return vehicle;
 }
 
 function isoDate(value: string): boolean {
@@ -640,19 +649,7 @@ export async function setDriverSubscriptionAction(_prev: FormState, form: FormDa
   return { ok: `حالة الاشتراك: ${status === "ACTIVE" ? "نشط" : status === "EXPIRED" ? "منتهي" : "قيد التفعيل"}. ${DRIVER_SUBSCRIPTION_NOTICE}` };
 }
 
-export async function createVehicleAction(_prev: FormState, form: FormData): Promise<FormState> {
-  const session = await getSession();
-  if (!session || session.role !== "DRIVER") return { error: "سجّل الدخول كسائق أولاً." };
-
-  const repo = await getRepo();
-  const profile = await repo.getDriverProfile(session.email);
-  if (!profile || profile.verificationStatus !== "APPROVED") {
-    return { error: "لازم الإدارة تعتمد تحققك أولاً قبل إضافة المركبة." };
-  }
-  if (profile.subscriptionStatus !== "ACTIVE") {
-    return { error: "اشتراكك لسه غير مفعّل. برجاء انتظار تفعيل الإدارة." };
-  }
-
+function parseVehicleForm(form: FormData): { input: VehicleUpdateInput } | { error: string } {
   const name = String(form.get("name") ?? "").trim();
   const type = String(form.get("type") ?? "") as TransportType;
   const city = String(form.get("city") ?? "") as CityKey;
@@ -665,6 +662,7 @@ export async function createVehicleAction(_prev: FormState, form: FormData): Pro
   const includes = [...new Set(
     form.getAll("includes").flatMap((value) => String(value).split(/[\n,]+/)).map((s) => s.trim()).filter(Boolean),
   )].slice(0, 8);
+  const blockedDates = parseBlockedDates(form.get("blockedDates"));
 
   if (name.length < 3) return { error: "اكتب اسم للمركبة (٣ حروف على الأقل)." };
   if (!(type in TRANSPORT_TYPES)) return { error: "نوع المركبة غير صحيح." };
@@ -672,21 +670,93 @@ export async function createVehicleAction(_prev: FormState, form: FormData): Pro
   if (plateNumber.length < 3 || model.length < 2) return { error: "أدخل رقم المركبة والموديل." };
   if (!Number.isFinite(capacity) || capacity < 1 || capacity > 100) return { error: "عدد الأفراد اللي المركبة تشيلهم غير صحيح." };
   if (!Number.isFinite(pricePerTrip) || pricePerTrip < 50) return { error: "أدخل سعر رحلة صحيحاً." };
-  if (!Number.isFinite(durationHours) || durationHours < 1 || durationHours > 24) return { error: "مدة الرحلة غير صحيحة." };
+  if (!Number.isFinite(durationHours) || durationHours < 1 || durationHours > 24) return { error: "مدة الرحلة لازم تكون بين ١ و٢٤ ساعة." };
   if (includes.length === 0) return { error: "اكتب على الأقل مشمول واحد." };
   if (!licenseDocUrl.startsWith("https://")) return { error: "رابط مستند المركبة لازم يبدأ بـ https://." };
+  if (blockedDates.length > 60) return { error: "الأيام المحجوزة كتيرة أوي (الحد ٦٠ يوماً)." };
 
-  await repo.createVehicle({
-    driverId: session.email, name, type, city, plateNumber, model, capacity, pricePerTrip,
-    routeFrom: String(form.get("routeFrom") ?? "").trim(),
-    routeTo: String(form.get("routeTo") ?? "").trim(),
-    meetingPoint: String(form.get("meetingPoint") ?? "").trim(),
-    durationHours, includes, licenseDocUrl,
-    cancelPolicy: String(form.get("cancelPolicy") ?? "").trim() || TRANSPORT_CANCEL_POLICY,
-  });
+  return {
+    input: {
+      name, type, city, plateNumber, model, capacity, pricePerTrip,
+      routeFrom: String(form.get("routeFrom") ?? "").trim(),
+      routeTo: String(form.get("routeTo") ?? "").trim(),
+      meetingPoint: String(form.get("meetingPoint") ?? "").trim(),
+      durationHours, includes, licenseDocUrl,
+      cancelPolicy: String(form.get("cancelPolicy") ?? "").trim() || TRANSPORT_CANCEL_POLICY,
+      blockedDates,
+    },
+  };
+}
+
+export async function createVehicleAction(_prev: FormState, form: FormData): Promise<FormState> {
+  const session = await getSession();
+  if (!session || session.role !== "DRIVER") return { error: "سجّل الدخول كسائق أولاً." };
+
+  const repo = await getRepo();
+  const profile = await repo.getDriverProfile(session.email);
+  if (!profile || profile.verificationStatus !== "APPROVED") {
+    return { error: "لازم الإدارة تعتمد تحققك أولاً قبل إضافة المركبة." };
+  }
+  if (profile.subscriptionStatus !== "ACTIVE") {
+    return { error: "اشتراكك لسه غير مفعّل. برجاء انتظار تفعيل الإدارة." };
+  }
+  const parsed = parseVehicleForm(form);
+  if ("error" in parsed) return { error: parsed.error };
+
+  await repo.createVehicle({ driverId: session.email, ...parsed.input });
   revalidatePath("/driver");
   revalidatePath("/admin/drivers");
   redirect("/driver?vehicle=1");
+}
+
+export async function updateVehicleAction(_prev: FormState, form: FormData): Promise<FormState> {
+  const session = await getSession();
+  if (!session || session.role !== "DRIVER") return { error: "سجّل الدخول كسائق أولاً." };
+  const id = String(form.get("id") ?? "").trim();
+  if (!id || !await assertDriverOf(session, id)) return { error: "المركبة غير موجودة أو مش مملوكة لك." };
+
+  const parsed = parseVehicleForm(form);
+  if ("error" in parsed) return { error: parsed.error };
+
+  const repo = await getRepo();
+  const profile = await repo.getDriverProfile(session.email);
+  if (profile?.verificationStatus !== "APPROVED" || profile.subscriptionStatus !== "ACTIVE") {
+    return { error: "لازم يعتمد الإدارة تحققك ويتفعّل اشتراكك قبل تعديل المركبة." };
+  }
+  const updated = await repo.updateVehicle(id, parsed.input);
+  if (!updated) return { error: "تعذّر حفظ التعديلات. حاول مرة ثانية." };
+  revalidatePath("/driver");
+  revalidatePath(`/driver/vehicles/${id}`);
+  revalidatePath("/admin/drivers");
+  revalidatePath("/search");
+  revalidatePath("/");
+  redirect("/driver?updated=1");
+}
+
+export async function setVehiclePausedAction(form: FormData): Promise<void> {
+  const session = await getSession();
+  if (!session || session.role !== "DRIVER") return;
+  const id = String(form.get("id") ?? "").trim();
+  const paused = String(form.get("paused") ?? "") === "1";
+  if (!id || !await assertDriverOf(session, id)) return;
+  await (await getRepo()).setVehiclePaused(id, paused);
+  revalidatePath("/driver");
+  revalidatePath(`/driver/vehicles/${id}`);
+  revalidatePath("/admin/drivers");
+  revalidatePath("/search");
+  revalidatePath("/");
+}
+
+export async function deleteVehicleAction(form: FormData): Promise<void> {
+  const session = await getSession();
+  if (!session || session.role !== "DRIVER") return;
+  const id = String(form.get("id") ?? "").trim();
+  if (!id || !await assertDriverOf(session, id)) return;
+  await (await getRepo()).deleteVehicle(id);
+  revalidatePath("/driver");
+  revalidatePath("/admin/drivers");
+  revalidatePath("/search");
+  revalidatePath("/");
 }
 
 export async function moderateVehicleAction(_prev: FormState, form: FormData): Promise<FormState> {
@@ -796,6 +866,10 @@ export async function confirmBookingAction(_prev: FormState, form: FormData): Pr
     if (guests > pkg.capacity) {
       return { error: `عدد الضيوف أكبر من سعة الباقة (${toArabicDigits(pkg.capacity)}).` };
     }
+    const packageTransport = await repo.getTransportById(pkg.transportId);
+    if (packageTransport && overlapsBlockedDates(checkIn, checkOut, packageTransport.blockedDates)) {
+      return { error: "الباقة غير متاحة: النقل المحدد محجوز في أحد الأيام." };
+    }
     const packageTotal = pkg.pricePerNight * result.quote.nights;
     packageDetail = {
       packageId: pkg.id, packageName: pkg.name, city: pkg.city,
@@ -838,6 +912,9 @@ export async function confirmBookingAction(_prev: FormState, form: FormData): Pr
     if (guests > transport.capacity) {
       return { error: `عدد الضيوف أكبر من سعة النقل (${toArabicDigits(transport.capacity)}).` };
     }
+    if (overlapsBlockedDates(checkIn, checkOut, transport.blockedDates)) {
+      return { error: "المركبة غير متاحة: أحد الأيام محجوز في جدول السائق." };
+    }
     transportDetail = {
       transportId: transport.id, transportName: transport.name, type: transport.type,
       city: transport.city, routeFrom: transport.routeFrom, routeTo: transport.routeTo,
@@ -847,6 +924,8 @@ export async function confirmBookingAction(_prev: FormState, form: FormData): Pr
       commission: Math.round(transport.pricePerTrip * (transport.commissionRate / 100)),
       driverName: transport.driverName ?? null,
       plateNumber: transport.plateNumber ?? null,
+      driverId: transport.driverId ?? null,
+      vehicleId: transport.vehicleId ?? null,
     };
   }
 

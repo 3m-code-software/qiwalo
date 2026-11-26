@@ -236,6 +236,17 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         <div className="soft-card"><p className="muted text-xs">عمولة المنصة</p><p className="mt-1 text-2xl font-black text-nile">{money(stats.commission)}</p><p className="muted text-xs">{toArabicDigits(stats.guests)} ضيوف</p></div>
       </div>
 
+      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4" data-testid="admin-driver-stats">
+        <div className="soft-card"><p className="muted text-xs">السائقون</p><p className="mt-1 text-2xl font-black">{toArabicDigits(stats.drivers)}</p><p className="muted text-xs">{toArabicDigits(stats.approvedDrivers)} معتمد</p></div>
+        <div className="soft-card"><p className="muted text-xs">المركبات</p><p className="mt-1 text-2xl font-black">{toArabicDigits(stats.vehicles)}</p><p className="muted text-xs">{toArabicDigits(stats.pendingVehicles)} بانتظار المراجعة</p></div>
+        <div className="soft-card"><p className="muted text-xs">المركبات الموقوفة</p><p className="mt-1 text-2xl font-black">{toArabicDigits(stats.pausedVehicles)}</p><p className="muted text-xs">مخفية عن الضيوف</p></div>
+        <div className="soft-card">
+          <p className="muted text-xs">طلبات النقل</p>
+          <p className="mt-1 text-2xl font-black">{toArabicDigits(bookings.filter((b) => b.transport).length)}</p>
+          <p className="muted text-xs">داخل الحجوزات</p>
+        </div>
+      </div>
+
       <section className="soft-card sticky top-16 z-30 mt-6 !p-3 md:top-[68px]" aria-label="بحث وتصفية لوحة الإدارة">
         <div className="mb-3 flex flex-wrap items-center gap-2 border-b border-[var(--line)] pb-3">
           <span className="muted text-xs">انتقال سريع:</span>

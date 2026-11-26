@@ -27,7 +27,7 @@ export default defineConfig({
     command: `npx next dev -p ${port}`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
+    timeout: 300_000,
     env: {
       DATABASE_URL: "",
       NEXT_PUBLIC_SUPABASE_URL: "https://mock-supabase.test",

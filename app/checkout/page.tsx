@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import CheckoutForm from "@/components/CheckoutForm";
 import PriceBreakdown from "@/components/PriceBreakdown";
+import { overlapsBlockedDates } from "@/lib/availability";
 import { CITIES, TRANSPORT_TYPES } from "@/lib/constants";
 import { dateAr, money, toArabicDigits } from "@/lib/format";
 import { cloudinaryDeliveryUrl, propertyImageAlt } from "@/lib/image-assets";
@@ -44,7 +45,11 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
   const experienceTotal = experience ? experience.pricePerPerson * guests : 0;
   const experienceCommission = experience ? Math.round(experienceTotal * (experience.commissionRate / 100)) : 0;
   const experienceLabel = experience?.category === "MOTORCYCLE_TOUR" ? "جولات الموتوسيكلات" : "سفاري الجبال";
+  const transportBlocked = Boolean(
+    requestedTransport && overlapsBlockedDates(checkIn, checkOut, requestedTransport.blockedDates),
+  );
   const transport = requestedTransport
+    && !transportBlocked
     && requestedTransport.status === "PUBLISHED"
     && requestedTransport.city === property.city
     && guests <= requestedTransport.capacity
@@ -52,13 +57,18 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
     : null;
   const transportTotal = transport?.pricePerTrip ?? 0;
   const transportCommission = transport ? Math.round(transportTotal * (transport.commissionRate / 100)) : 0;
-  const pkg = requestedPackage
+  let pkg = requestedPackage
     && requestedPackage.status === "PUBLISHED"
     && requestedPackage.city === property.city
     && requestedPackage.propertyId === property.id
     && guests <= requestedPackage.capacity
     ? requestedPackage
     : null;
+  const packageTransport = pkg ? await repo.getTransportById(pkg.transportId) : null;
+  const packageTransportBlocked = Boolean(
+    packageTransport && overlapsBlockedDates(checkIn, checkOut, packageTransport.blockedDates),
+  );
+  if (packageTransportBlocked) pkg = null;
   const nights = result.ok ? result.quote.nights : 0;
   const packageTotal = pkg ? pkg.pricePerNight * nights : 0;
   const packageCommission = pkg ? Math.round(packageTotal * (pkg.commissionRate / 100)) : 0;
@@ -89,6 +99,11 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
       ) : (
         <div className="grid gap-6 md:grid-cols-[1fr_340px]">
           <div className="soft-card">
+            {(transportBlocked || packageTransportBlocked) && (
+              <p className="mb-4 rounded-xl bg-red-50 p-3 text-sm font-bold text-red-700" role="alert">
+                النقل المحدد محجوز في أحد التواريخ؛ اختر مواعيد تانية أو شيل النقل من الحجز.
+              </p>
+            )}
             <CheckoutForm
               property={property}
               checkIn={checkIn}
@@ -120,7 +135,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
                   <Link href={`/checkout?${withoutExperience.toString()}`} className="text-xs font-bold text-nile hover:text-gold">إزالة ✕</Link>
                 </div>
                 <p className="text-sm font-bold">{experience.name}</p>
-                <p className="muted mt-1 text-xs">{experience.mountain} · {experience.durationHours} ساعات · نقطة اللقاء: {experience.meetingPoint}</p>
+                <p className="muted mt-1 text-xs">{experience.mountain} · {toArabicDigits(experience.durationHours)} ساعات · نقطة اللقاء: {experience.meetingPoint}</p>
                 <p className="muted mt-2 text-xs">بعد مراجعة الإدارة للمستندات. المشمولات: {experience.includes.join(" · ")}</p>
               </div>
             )}
@@ -134,10 +149,10 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
                 {(transport.driverName || transport.plateNumber) && (
                   <p className="muted mt-1 text-xs" data-testid="checkout-driver">
                     السائق: <span className="font-bold text-navy">{transport.driverName ?? "سائق قيوالو"}</span>
-                    {transport.plateNumber && <span dir="ltr" className="ms-1">({transport.plateNumber})</span>}
+                    {transport.plateNumber && <> <span dir="ltr">({transport.plateNumber})</span></>}
                   </p>
                 )}
-                <p className="muted mt-1 text-xs">{transport.routeFrom} ← {transport.routeTo} · {transport.durationHours} ساعات · نقطة اللقاء: {transport.meetingPoint}</p>
+                <p className="muted mt-1 text-xs">{transport.routeFrom} ← {transport.routeTo} · {toArabicDigits(transport.durationHours)} ساعات · نقطة اللقاء: {transport.meetingPoint}</p>
                 <p className="muted mt-2 text-xs">سعر الرحلة للمركبة، وليس للفرد. المشمولات: {transport.includes.join(" · ")}</p>
               </div>
             )}

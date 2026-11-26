@@ -9,6 +9,8 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test",
+    "test:driver": "playwright test --config=playwright.driver.config.ts",
+    "test:mock": "npm run test:e2e && npm run test:recovery",
     "test:recovery": "playwright test --config=playwright.recovery.config.ts",
     "qa:tour": "node scripts/qa-tour.mjs",
     "telegram:webhook": "node --env-file=.env.local scripts/set-telegram-webhook.mjs",

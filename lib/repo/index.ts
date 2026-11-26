@@ -31,6 +31,7 @@ import type {
   ReviewStatus,
   Transport,
   Vehicle,
+  VehicleUpdateInput,
   SearchFilter,
   UserRecord,
   VerificationStatus,
@@ -71,6 +72,9 @@ export interface Repo {
   listAllVehicles(): Promise<Vehicle[]>;
   getVehicleById(id: string): Promise<Vehicle | null>;
   createVehicle(input: NewVehicleInput): Promise<Vehicle>;
+  updateVehicle(id: string, patch: VehicleUpdateInput): Promise<Vehicle | null>;
+  setVehiclePaused(id: string, paused: boolean): Promise<Vehicle | null>;
+  deleteVehicle(id: string): Promise<void>;
   moderateVehicle(id: string, status: ModerationStatus): Promise<void>;
   getAvailability(propertyId: string): Promise<Availability[]>;
   getPriceRules(propertyId: string): Promise<PriceRule[]>;
@@ -93,6 +97,7 @@ export interface Repo {
   listAllBookings(): Promise<Booking[]>;
   listBookingsForOwner(ownerId: string): Promise<Booking[]>;
   listBookingsForGuest(guestId: string): Promise<Booking[]>;
+  listBookingsForDriver(driverId: string): Promise<Booking[]>;
   listPropertiesForOwner(ownerId: string): Promise<Property[]>;
   getUserById(id: string): Promise<UserRecord | null>;
   getUserByEmail(email: string): Promise<UserRecord | null>;

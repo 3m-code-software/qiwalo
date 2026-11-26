@@ -257,6 +257,8 @@ export interface Transport {
   vehicleId?: string | null;
   driverName?: string | null;
   plateNumber?: string | null;
+  /** أيام محددة لا تُتاح فيها المركبة؛ تُحفظ على Mock لحين توفير عمود في قاعدة البيانات. */
+  blockedDates?: string[];
 }
 
 export interface NewTransportInput {
@@ -292,6 +294,8 @@ export interface TransportBookingDetail {
   commission: number;
   driverName?: string | null;
   plateNumber?: string | null;
+  driverId?: string | null;
+  vehicleId?: string | null;
 }
 
 /** الباقة تجمع وحدة + نقل + تجربة بسعر واحد لكل ليلة، وتُضاف للحجز مع باقي الإضافات. */
@@ -460,6 +464,10 @@ export interface Vehicle {
   status: ModerationStatus;
   commissionRate: number;
   createdAt: string;
+  /** جدول التوافر الخاص بالسائق على Mock؛ لا يوجد له عمود في الإنتاج بعد. */
+  blockedDates?: string[];
+  /** إيقاف السائق للمركبة بدون إزالتها؛ تُخفى عن الضيوف مع بقاء الحالة في سجل الإدارة. */
+  isPaused?: boolean;
 }
 
 export interface NewVehicleInput {
@@ -478,6 +486,25 @@ export interface NewVehicleInput {
   includes: string[];
   cancelPolicy: string;
   licenseDocUrl: string;
+}
+
+/** تعديلات السائق المسموحة على مركبته؛ المستند والحالة الإدارية لا يُعدّلان من هنا. */
+export interface VehicleUpdateInput {
+  name: string;
+  type: TransportType;
+  city: CityKey;
+  plateNumber: string;
+  model: string;
+  capacity: number;
+  pricePerTrip: number;
+  routeFrom: string;
+  routeTo: string;
+  meetingPoint: string;
+  durationHours: number;
+  includes: string[];
+  cancelPolicy: string;
+  licenseDocUrl: string;
+  blockedDates: string[];
 }
 
 export interface NewBookingInput {
@@ -510,4 +537,9 @@ export interface PlatformStats {
   revenue: number;
   commission: number;
   guests: number;
+  drivers: number;
+  approvedDrivers: number;
+  vehicles: number;
+  pendingVehicles: number;
+  pausedVehicles: number;
 }

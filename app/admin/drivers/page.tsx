@@ -73,10 +73,10 @@ export default async function AdminDriversPage() {
                         </>
                       )}
                       {profile.verificationStatus === "APPROVED" && (
-                        <DriverModerationForm userId={profile.userId} status="PENDING" label="إعادة للمراجعة" />
+                        <DriverModerationForm userId={profile.userId} status="PENDING" label="إعادة للمراجعة" ariaLabel="إعادة السائق للمراجعة" />
                       )}
                       {profile.verificationStatus === "REJECTED" && (
-                        <DriverModerationForm userId={profile.userId} status="PENDING" label="إعادة للمراجعة" />
+                        <DriverModerationForm userId={profile.userId} status="PENDING" label="إعادة للمراجعة" ariaLabel="إعادة السائق للمراجعة" />
                       )}
                     </div>
                   </td>

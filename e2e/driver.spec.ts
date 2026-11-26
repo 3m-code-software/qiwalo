@@ -21,7 +21,7 @@ async function signUpDriver(page: Page, email: string, name: string, next: strin
   await page.goto(`/login?next=${encodeURIComponent(next)}`);
   await page.getByRole("button", { name: "إنشاء حساب", exact: true }).click();
   await page.locator("#signup-role").selectOption("DRIVER");
-  await expect(page.getByRole("link", { name: /شروط السائقين/ })).toHaveAttribute("href", "/terms/driver");
+  await expect(page.getByRole("main").getByRole("link", { name: "شروط السائقين" })).toHaveAttribute("href", "/terms/driver");
   await page.locator("#signup-name").fill(name);
   await page.locator("#signup-email").fill(email);
   await page.locator("#signup-phone").fill("01012345678");
@@ -64,7 +64,7 @@ test("التسجيل كسائق يفتح لوحة السائق ويمنع إضا
 
   await expect(page.getByTestId("driver-dashboard")).toBeVisible();
   await expect(page.getByTestId("driver-status")).toContainText("غير مشترك");
-  await expect(page.getByRole("link", { name: /شروط السائقين/ })).toHaveCount(0);
+  await expect(page.getByRole("contentinfo").getByRole("link", { name: "شروط السائقين" })).toHaveAttribute("href", "/terms/driver");
 
   await page.goto("/driver/vehicles/new");
   await expect(page.getByText("لازم الإدارة تعتمد تحققك الأول")).toBeVisible();
@@ -160,6 +160,8 @@ test("حجز مؤكد بمركبة السائق يعرض اسم السائق و�
   await expect(page.getByTestId("checkout-transport")).toContainText("سيارة السائق — جولات الأقصر");
   await expect(page.getByTestId("checkout-driver")).toContainText("سائق قيوالو");
   await expect(page.getByTestId("checkout-driver")).toContainText("LXR-1234");
+  await expect(page.getByTestId("checkout-driver")).toContainText(/سائق قيوالو \(LXR-1234\)/);
+  await expect(page.getByTestId("checkout-transport")).toContainText("٥ ساعات");
 
   await page.locator("#fullName").fill("أحمد محمد");
   await page.locator("#email").fill("guest@qiwalo.test");

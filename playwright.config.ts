@@ -30,7 +30,8 @@ export default defineConfig({
         command: `npx next dev -p ${port}`,
         url: baseURL,
         reuseExistingServer: !isCI,
-        timeout: 120_000,
+        // البناء الأول على filesystem بطيء ممكن ياخد أكتر من دقيقتين.
+        timeout: 300_000,
         env: {
           DATABASE_URL: "",
           NEXT_PUBLIC_SUPABASE_URL: "",

@@ -44,7 +44,7 @@ export default function TransportAddOn({ transports, propertySlug, checkIn, chec
             {(transport.driverName || transport.plateNumber) && (
               <p className="muted mt-1 text-xs" data-testid="transport-driver">
                 سائق: <span className="font-bold text-navy">{transport.driverName ?? "سائق قيوالو"}</span>
-                {transport.plateNumber && <span dir="ltr" className="ms-1">({transport.plateNumber})</span>}
+                {transport.plateNumber && <> <span dir="ltr">({transport.plateNumber})</span></>}
               </p>
             )}
             <ul className="muted mt-3 space-y-1 text-xs leading-6">

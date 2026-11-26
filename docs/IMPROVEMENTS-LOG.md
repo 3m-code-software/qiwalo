@@ -1142,3 +1142,26 @@
 - `npm run test:e2e` بقى **٥٨/٥٨**، `npm run test:recovery` **٣/٣**، و`npx next typegen` / `npm run typecheck` / `npm run lint` / `npm run build` كلهم أخضر (٤٦ مساراً/صفحة).
 - لقطات Mock: `docs/screenshots/b39-driver-dashboard-mock.png` (لوحة السائق، ١٤٤٠×١٤١٨) و`docs/screenshots/b39-driver-vehicle-mock.png` (مركبة السائق في صفحة الوحدة على Pixel 7، ٤١٢×٩١٥).
 - العرض على Mock: `http://localhost:3130/driver` و`http://localhost:3130/stay/nile-view-dar-al-madina`. النشر الإنتاجي و`add-driver.sql` مؤجلين لإشارة صريحة، والفلاتر هتكون الخطوة الجاية بعد تحديد قواعدها.
+
+
+## البند ٤٠ — إكمال نواقص السائقين والمركبات والإدارة والفوتر
+
+**الحالة: تم ✅ (Mock فقط)**
+
+### اللي اتطلب
+بعد جولة المتصفح على البند ٣٩، اتحددت النواقص: السائق يقدر يعدّل ويعمل إيقاف/حذف لمركباته، وطلبات الرحلات تظهر في لوحته، الإدارة تشوف مؤشرات السائقين والمركبات، والفوتر يوصل للوحة السائق وشروطه، و`/checkout` يمنع حجز مركبة في أيامها المحجوزة. فلاتر الخدمات اتأجلت بقرار صريح.
+
+### التنفيذ
+1. `lib/types.ts` اتضاف فيه `blockedDates` و`isPaused` و`driverId` و`vehicleId` كحقول اختيارية، مع `VehicleUpdateInput` وتوسيع `TransportBookingDetail` و`PlatformStats`. القيم الافتراضية في Prisma آمنة، فما اتعملش migration إنتاجي جديد.
+2. `lib/availability.ts` جديد فيه `overlapsBlockedDates` (مقارنة ISO نصية بدون مناطق زمنية) و`parseBlockedDates` (بيقبل فواصل وأسطر ويتجاهل القيم غير الصحيحة ويمنع التكرار، بحد ٦٠ يوماً).
+3. عقد `Repo` اتوسّع بـ `updateVehicle` و`setVehiclePaused` و`deleteVehicle` و`listBookingsForDriver` واتطبّق في `mock.ts` و`prisma.ts`. إيقاف المركبة في Prisma بيحوّل الحالة لـ `DRAFT`، وفي Mock بيقلب علم `isPaused`؛ المركبة الموقوفة مخفية عن الضيوف وموجودة في سجل الإدارة. `listBookingsForDriver` في Prisma بيطابق بالمركبات المملوكة للسائق مش باسم السائق لوحده.
+4. Server Actions جديدة: `updateVehicleAction` و`setVehiclePausedAction` و`deleteVehicleAction` بفحص ملكية السائق أو صلاحية الإدارة. `confirmBookingAction` بيرفض النقل والباقة لو أي يوم من `blockedDates` داخل فترة الحجز، ويحفظ `driverId`/`vehicleId` جوّه تفاصيل النقل مع نسخة الاسم واللوحة وقت الحجز. البذرة الثابتة لحجز السائق اتشالت، والاختبارات بتنشئ الحجز من `/checkout` عشان state الـ Mock المشترك ما يفسدش التواريخ.
+5. `/checkout` بيعرض رسالة «النقل المحدد محجوز...» ويخفي كارت النقل المحجوز، وبيستخدم `toArabicDigits` لمدة الرحلة. `/driver` بقى يعرض طلبات الرحلات (المرجع، الضيف، المركبة، السعر، الحالة) وأزرار تعديل/إيقاف/حذف لكل مركبة، مع صفحة `/driver/vehicles/[id]` ونموذج `VehicleForm` لحقل الأيام المحجوزة. النصوص والأرقام عربية على Pixel 7 من غير تمرير أفقي.
+6. `/admin` بيعرض مؤشرات السائقين والمركبات (ومنها الموقوفة وطلبات النقل)، و`/admin/drivers` بقى فيه زر «إعادة السائق للمراجعة» بدل النص العام. الفوتر اتضاف فيه رابطا «لوحة السائق» `/driver` و«شروط السائقين» `/terms/driver`، واتقيّد نطاق اختبار الرابط بـ `contentinfo` عشان ما يتقاطعش مع روابط الهيدر.
+7. سكربتات وضع Mock الجديد: `npm run test:driver` بيشغّل `driver.spec.ts` و`driver-ops.spec.ts` على منفذ مستقل ٣١٤١ عبر `playwright.driver.config.ts` مع `reuseExistingServer: false`، فكل تشغيل يبدأ بحالة نظيفة وما يتأثرش بـ hot reload، والكود بيضبط `PLAYWRIGHT_BASE_URL` تلقائياً عشان السياقات الإضافية تروح لنفس المنفذ. `npm run test:mock` بيشغّل E2E الكامل ثم مسار الاستعادة.
+8. العمولة لسه ١٢٪ بعد التأكيد مع تجاوز الإدارة، ونص الدفع لسه `تحويل بنكي أو كاش عند الوصول`، والإشعارات ما اتغيرتش. `cacheComponents` و`partialPrefetching` زي ما هما، وصفحة الوحدة لسه Server Component. مفيش checkout حي ولا تحويل بنكي ولا نشر إنتاج ولا migration.
+
+### التجربة والتوثيق
+- اختبار جديد `e2e/driver-ops.spec.ts` (اختباران): لوحة السائق تعرض طلب النقل اللي أنشأه Checkout مع مؤشرات الإدارة، وإدارة المركبة كاملة (تعديل السعر والسعة والأيام المحجوزة ← نشر ← منع الحجز في يوم محجوز ← إيقاف ← إعادة نشر ← حذف). `e2e/driver.spec.ts` اتعدّل لتحديد نطاق روابط الفوتر وتوقعات الحالة.
+- `npm run test:e2e` بقى **٦٠/٦٠**، `npm run test:recovery` **٣/٣**، و`npm run test:driver` الجديد **٧/٧** (بعد ضبط `PLAYWRIGHT_BASE_URL` في إعداد السكربت عشان السياقات الإضافية تستخدم منفذ ٣١٤١). `npx next typegen` / `npm run typecheck` / `npm run lint` / `npm run build` كلهم أخضر، والبناء أنتج ٤٧ مساراً/صفحة.
+- العرض على Mock: `http://localhost:3130/driver` و`http://localhost:3130/admin` و`http://localhost:3130/stay/nile-view-dar-al-madina`. النشر الإنتاجي و`add-driver.sql` لسه مؤجلين لإشارة صريحة، والفلاتر لسه بعدين زي ما اتقرر.

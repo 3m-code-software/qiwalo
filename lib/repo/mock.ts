@@ -31,6 +31,7 @@ import type {
   Transport,
   UserRecord,
   Vehicle,
+  VehicleUpdateInput,
 } from "@/lib/types";
 
 const img = (id: string) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=1200&q=80`;
@@ -304,6 +305,7 @@ function seedVehicles(): Vehicle[] {
     cancelPolicy: TRANSPORT_CANCEL_POLICY,
     licenseDocUrl: "https://res.cloudinary.com/demo/raw/upload/v1/qiwalo/drivers/demo-vehicle.pdf",
     status: "PUBLISHED", commissionRate: 12, createdAt: now,
+    blockedDates: [], isPaused: false,
   }];
 }
 
@@ -384,6 +386,7 @@ const vehicleToTransport = (v: Vehicle): Transport => ({
   includes: [...v.includes], cancelPolicy: v.cancelPolicy, licenseDocUrl: v.licenseDocUrl,
   status: v.status, commissionRate: v.commissionRate, createdAt: v.createdAt,
   driverId: v.driverId, vehicleId: v.id, driverName: v.driverName, plateNumber: v.plateNumber,
+  blockedDates: [...(v.blockedDates ?? [])],
 });
 
 const publishedDriverIds = () => new Set(
@@ -503,7 +506,7 @@ export const mockRepo: Repo = {
     return clone([
       ...transports.filter((t) => t.status === "PUBLISHED" && (!city || t.city === city)),
       ...vehicles
-        .filter((v) => v.status === "PUBLISHED" && approvedDrivers.has(v.driverId) && (!city || v.city === city))
+        .filter((v) => v.status === "PUBLISHED" && !v.isPaused && approvedDrivers.has(v.driverId) && (!city || v.city === city))
         .map(vehicleToTransport),
     ]);
   },
@@ -517,7 +520,7 @@ export const mockRepo: Repo = {
     const v = vehicles.find((x) => x.id === id);
     if (!v) return null;
     const driver = drivers.find((d) => d.userId === v.driverId);
-    if (v.status !== "PUBLISHED" || driver?.verificationStatus !== "APPROVED" || driver?.subscriptionStatus !== "ACTIVE") return null;
+    if (v.status !== "PUBLISHED" || v.isPaused || driver?.verificationStatus !== "APPROVED" || driver?.subscriptionStatus !== "ACTIVE") return null;
     return clone(vehicleToTransport(v));
   },
   async createTransport(input: NewTransportInput) {
@@ -635,13 +638,35 @@ export const mockRepo: Repo = {
       meetingPoint: input.meetingPoint, durationHours: input.durationHours,
       includes: [...input.includes], cancelPolicy: input.cancelPolicy, licenseDocUrl: input.licenseDocUrl,
       status: "PENDING", commissionRate: user?.commissionRate ?? 12, createdAt: new Date().toISOString(),
+      blockedDates: [], isPaused: false,
     };
     vehicles.push(vehicle);
     return clone(vehicle);
   },
+  async updateVehicle(id, patch: VehicleUpdateInput) {
+    const vehicle = vehicles.find((v) => v.id === id);
+    if (!vehicle) return null;
+    Object.assign(vehicle, patch, { blockedDates: [...patch.blockedDates].sort() });
+    return clone(vehicle);
+  },
+  async setVehiclePaused(id, paused) {
+    const vehicle = vehicles.find((v) => v.id === id);
+    if (!vehicle) return null;
+    vehicle.isPaused = paused;
+    if (paused) vehicle.status = "DRAFT";
+    else if (vehicle.status === "DRAFT") vehicle.status = "PUBLISHED";
+    return clone(vehicle);
+  },
+  async deleteVehicle(id) {
+    const index = vehicles.findIndex((v) => v.id === id);
+    if (index >= 0) vehicles.splice(index, 1);
+  },
   async moderateVehicle(id, status) {
     const vehicle = vehicles.find((v) => v.id === id);
-    if (vehicle) vehicle.status = status;
+    if (vehicle) {
+      vehicle.status = status;
+      if (status === "PUBLISHED") vehicle.isPaused = false;
+    }
   },
   async getAvailability(propertyId) { return clone(availability.get(propertyId) ?? []); },
   async getPriceRules(propertyId) { return clone(priceRules.get(propertyId) ?? []); },
@@ -701,6 +726,18 @@ export const mockRepo: Repo = {
     return clone(bookings.filter((b) => ids.has(b.propertyId)));
   },
   async listBookingsForGuest(guestId) { return clone(bookings.filter((b) => b.guestId === guestId)); },
+  async listBookingsForDriver(driverId) {
+    const vehicleIds = new Set(vehicles.filter((v) => v.driverId === driverId).map((v) => v.id));
+    const plateNumbers = new Set(vehicles.filter((v) => v.driverId === driverId).map((v) => v.plateNumber));
+    return clone(bookings.filter((b) => {
+      const detail = b.transport;
+      if (!detail) return false;
+      return detail.driverId === driverId
+        || vehicleIds.has(detail.transportId)
+        || (detail.vehicleId != null && vehicleIds.has(detail.vehicleId))
+        || (detail.plateNumber != null && plateNumbers.has(detail.plateNumber));
+    }));
+  },
   async listPropertiesForOwner(ownerId) { return clone(props.filter((p) => p.ownerId === ownerId)); },
   async getUserById(id) {
     const u = users.find((x) => x.id === id || x.email === id);
@@ -808,6 +845,11 @@ export const mockRepo: Repo = {
       confirmed: confirmed.length, revenue: confirmed.reduce((s, b) => s + b.total, 0),
       commission: confirmed.reduce((s, b) => s + b.commission, 0),
       guests: new Set(bookings.map((b) => b.guestId)).size,
+      drivers: drivers.length,
+      approvedDrivers: drivers.filter((d) => d.verificationStatus === "APPROVED").length,
+      vehicles: vehicles.length,
+      pendingVehicles: vehicles.filter((v) => v.status === "PENDING").length,
+      pausedVehicles: vehicles.filter((v) => v.isPaused).length,
     };
   },
 };

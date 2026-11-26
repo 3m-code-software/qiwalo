@@ -5,7 +5,7 @@ import type {
   ActivityLog, Availability, Booking, CityKey, DriverProfile, DriverSubscriptionStatus, Experience, ExperienceCategory,
   NewActivityInput, NewBookingInput, NewDriverProfileInput, NewExperienceInput, NewPackageInput, NewPropertyInput,
   NewReviewInput, NewTransportInput, NewVehicleInput, NewVerificationInput, OwnerVerification, Package, PlatformStats,
-  PriceRule, Property, Review, SearchFilter, Transport, UserRecord, VerificationStatus, Vehicle,
+  PriceRule, Property, Review, SearchFilter, Transport, UserRecord, VerificationStatus, Vehicle, VehicleUpdateInput,
 } from "@/lib/types";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -108,6 +108,8 @@ function mapVehicle(row: any): Vehicle {
     includes: Array.isArray(row.includes) ? row.includes : [], cancelPolicy: row.cancelPolicy,
     licenseDocUrl: row.licenseDocUrl, status: row.status, commissionRate: row.commissionRate ?? 12,
     createdAt: row.createdAt.toISOString(),
+    // الأعمدة دي مش موجودة في الإنتاج لحد ما يتنفّذ add-driver.sql؛ القيم دي على Mock بس.
+    blockedDates: [], isPaused: false,
   };
 }
 
@@ -119,6 +121,7 @@ function vehicleToTransport(v: Vehicle): Transport {
     includes: [...v.includes], cancelPolicy: v.cancelPolicy, licenseDocUrl: v.licenseDocUrl,
     status: v.status, commissionRate: v.commissionRate, createdAt: v.createdAt,
     driverId: v.driverId, vehicleId: v.id, driverName: v.driverName, plateNumber: v.plateNumber,
+    blockedDates: [...(v.blockedDates ?? [])],
   };
 }
 
@@ -572,8 +575,47 @@ export const prismaRepo: Repo = {
         routeFrom: input.routeFrom, routeTo: input.routeTo, meetingPoint: input.meetingPoint,
         durationHours: input.durationHours, includes: input.includes, cancelPolicy: input.cancelPolicy,
         licenseDocUrl: input.licenseDocUrl, status: "PENDING", commissionRate: 12,
-        createdAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(), blockedDates: [], isPaused: false,
       };
+    }
+  },
+  async updateVehicle(id, patch: VehicleUpdateInput) {
+    try {
+      const row = await prisma.vehicle.update({
+        where: { id },
+        data: {
+          name: patch.name, type: patch.type as any, city: patch.city as any,
+          plateNumber: patch.plateNumber, model: patch.model, capacity: patch.capacity,
+          pricePerTrip: patch.pricePerTrip, routeFrom: patch.routeFrom, routeTo: patch.routeTo,
+          meetingPoint: patch.meetingPoint, durationHours: patch.durationHours,
+          includes: patch.includes, cancelPolicy: patch.cancelPolicy, licenseDocUrl: patch.licenseDocUrl,
+        },
+        include: { driver: true },
+      });
+      return mapVehicle(row);
+    } catch (error) {
+      driverUnavailable(error);
+      return null;
+    }
+  },
+  async setVehiclePaused(id, paused) {
+    try {
+      const row = await prisma.vehicle.update({
+        where: { id },
+        data: { status: (paused ? "DRAFT" : "PUBLISHED") as any },
+        include: { driver: true },
+      });
+      return mapVehicle(row);
+    } catch (error) {
+      driverUnavailable(error);
+      return null;
+    }
+  },
+  async deleteVehicle(id) {
+    try {
+      await prisma.vehicle.delete({ where: { id } });
+    } catch (error) {
+      driverUnavailable(error);
     }
   },
   async moderateVehicle(id, status) {
@@ -679,6 +721,24 @@ export const prismaRepo: Repo = {
     const id = await resolveUserId(guestId);
     const rows = await prisma.booking.findMany({ where: { guestId: id }, include, orderBy: { createdAt: "desc" } });
     return rows.map(mapBooking);
+  },
+  async listBookingsForDriver(driverId) {
+    const id = await resolveUserId(driverId);
+    // تفاصيل النقل نسخة من وقت الحجز، فالاسم لوحده مش كفاية للتحقق من الملكية.
+    const vehicleRows = await prisma.vehicle.findMany({
+      where: { driverId: id }, select: { id: true, plateNumber: true },
+    });
+    const vehicleIds = new Set(vehicleRows.map((v) => v.id));
+    const plateNumbers = new Set(vehicleRows.map((v) => v.plateNumber));
+    const rows = await prisma.booking.findMany({ include, orderBy: { createdAt: "desc" } });
+    return rows.map(mapBooking).filter((booking) => {
+      const detail = booking.transport;
+      if (!detail) return false;
+      return detail.driverId === driverId
+        || vehicleIds.has(detail.transportId)
+        || (detail.vehicleId != null && vehicleIds.has(detail.vehicleId))
+        || (detail.plateNumber != null && plateNumbers.has(detail.plateNumber));
+    });
   },
   async listPropertiesForOwner(ownerId) {
     const id = await resolveUserId(ownerId);
@@ -836,9 +896,27 @@ export const prismaRepo: Repo = {
         _sum: { total: true, commission: true },
       }),
     ]);
+    let drivers = 0;
+    let approvedDrivers = 0;
+    let vehicles = 0;
+    let pendingVehicles = 0;
+    let pausedVehicles = 0;
+    try {
+      [drivers, approvedDrivers, vehicles, pendingVehicles] = await Promise.all([
+        prisma.driverProfile.count(),
+        prisma.driverProfile.count({ where: { verificationStatus: "APPROVED" as any } }),
+        prisma.vehicle.count(),
+        prisma.vehicle.count({ where: { status: "PENDING" as any } }),
+      ]);
+      // لا يوجد عمود isPaused في الإنتاج؛ يُعرض صفر لحد ما يتنفّذ add-driver.sql.
+      pausedVehicles = 0;
+    } catch (error) {
+      driverUnavailable(error);
+    }
     return {
       properties, published, pending, bookings, confirmed,
       revenue: money._sum.total ?? 0, commission: money._sum.commission ?? 0, guests: guests.length,
+      drivers, approvedDrivers, vehicles, pendingVehicles, pausedVehicles,
     };
   },
 };

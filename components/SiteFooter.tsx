@@ -33,6 +33,8 @@ export default function SiteFooter() {
             <li><Link href="/owner/units/new" className="transition hover:text-gold-bright">أضف وحدتك</Link></li>
             <li><Link href="/owner" className="transition hover:text-gold-bright">لوحة المالك</Link></li>
             <li><Link href="/terms/owner" className="transition hover:text-gold-bright">شروط المالكين</Link></li>
+            <li><Link href="/driver" className="transition hover:text-gold-bright">لوحة السائق</Link></li>
+            <li><Link href="/terms/driver" className="transition hover:text-gold-bright">شروط السائقين</Link></li>
           </ul>
         </div>
         <div>
