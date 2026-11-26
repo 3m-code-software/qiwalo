@@ -14,6 +14,9 @@ export const SUPPORT_PHONE = "01066094050";
 export const SUPPORT_WHATSAPP = "https://wa.me/201066094050";
 export const SUPPORT_TELEGRAM = "https://t.me/+201066094050";
 
+// نص الدفع المعتمد — يُكتب مرة واحدة ويُستخدم في كل واجهة (ويب، MCP، تطبيق أندرويد).
+export const PAYMENT_COPY = "تحويل بنكي أو كاش عند الوصول";
+
 export const CITIES: Record<CityKey, { ar: string; en: string; hint: string }> = {
   LUXOR: { ar: "الأقصر", en: "Luxor", hint: "وادي الملوك، الكرنك، نيل الأقصر" },
   ASWAN: { ar: "أسوان", en: "Aswan", hint: "جزيرة الفنتين، خزان أسوان، النوبة" },

@@ -7,6 +7,7 @@ import {
   CANCEL_POLICIES,
   CITIES,
   COMMISSION_RATE,
+  PAYMENT_COPY,
   PROPERTY_TYPES,
   SUPPORT_PHONE,
   SUPPORT_TELEGRAM,
@@ -15,7 +16,6 @@ import {
 import { getRepo } from "@/lib/repo";
 import type { Booking, Property, Review } from "@/lib/types";
 
-const PAYMENT_COPY = "تحويل بنكي أو كاش عند الوصول";
 const MAX_SEARCH_RESULTS = 20;
 const MAX_REVIEWS = 10;
 
