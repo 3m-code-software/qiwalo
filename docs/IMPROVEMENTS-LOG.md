@@ -1312,3 +1312,4 @@
 - Flutter: `flutter analyze` بلا ملاحظات ✅، `flutter test` **٧/٧** ✅ (٤ اختبارات قديمة + ٣ لحجز Mock: الطلبات المرسلة، ظهور خطأ الرفض، والبحث بالمرجع)، `flutter build web --release --dart-define=USE_MOCK=true` ✅ مع إعادة توليد ١٩ لقطة Pixel 7، و`flutter build apk --debug` ✅.
 - الـ APK في `qiwalo-flutter/releases/qiwalo.apk` اتبنى من جديد واتفحص بـ `aapt dump badging`: `package='com.qiwalo.app'`، `application-label='قيوالو'`، و`INTERNET` موجود. مفيش جهاز/إيموليتر متصل، فالتحقق ثابت مش تجربة على جهاز.
 - كل التجارب على Mock؛ مفيش SQL أو بيانات إنتاجية اتحركت، ومفيش Secrets أو `.env.example` اتعدّل. البحث عن الوحدات لسه مؤجّل بطلب صريح.
+- الـ push (`ff169db`) اتأكد بـ CI أخضر: `45961384796`، ٤م٣٨ث — التايب/Lint/البناء و٧٠ اختبار Mock و٣ اختبارات استعادة كلها نجحت.
