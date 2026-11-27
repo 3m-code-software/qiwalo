@@ -8,7 +8,15 @@ import {
   SUPPORT_WHATSAPP,
 } from "@/lib/constants";
 import { getRepo } from "@/lib/repo";
-import type { Availability, PriceRule, Property, Review } from "@/lib/types";
+import type {
+  Availability,
+  Experience,
+  Package,
+  PriceRule,
+  Property,
+  Review,
+  Transport,
+} from "@/lib/types";
 
 const MAX_REVIEWS = 10;
 const AVAILABILITY_DAYS = 60;
@@ -77,6 +85,47 @@ function serializePriceRule(rule: PriceRule) {
 }
 
 /**
+ * إضافات قابلة للحجز لهذه الوحدة. العميل يرسل المعرّف فقط للـ quote/الحجز،
+ * والسعر النهائي يحسبه الخادم في booking-service — زي ما بيحصل في الويب.
+ */
+function serializeAddOns(
+  safaris: Experience[],
+  motorcycleTours: Experience[],
+  transports: Transport[],
+  packages: Package[],
+) {
+  return [
+    ...packages.map((pkg) => ({
+      id: pkg.id,
+      kind: "PACKAGE",
+      label: pkg.name,
+      subtitle: `إقامة + ${pkg.experienceName} + ${pkg.transportName}`,
+      price: pkg.pricePerNight,
+      priceUnit: "night",
+      capacity: pkg.capacity,
+    })),
+    ...[...safaris, ...motorcycleTours].map((experience) => ({
+      id: experience.id,
+      kind: "EXPERIENCE",
+      label: experience.name,
+      subtitle: `${experience.durationHours} ساعة · ${experience.mountain}`,
+      price: experience.pricePerPerson,
+      priceUnit: "person",
+      capacity: experience.capacity,
+    })),
+    ...transports.map((transport) => ({
+      id: transport.id,
+      kind: "TRANSPORT",
+      label: transport.name,
+      subtitle: `${transport.routeFrom} ← ${transport.routeTo}`,
+      price: transport.pricePerTrip,
+      priceUnit: "trip",
+      capacity: transport.capacity,
+    })),
+  ].slice(0, 12);
+}
+
+/**
  * BFF للقارئ فقط: تفاصيل وحدة منشورة لتطبيق أندرويد.
  * لا يتطلب تسجيل دخول، ولا يكشف بيانات المالك أو الضيوف أو الأسعار الداخلية.
  */
@@ -108,11 +157,16 @@ export async function GET(
       );
     }
 
-    const [availability, priceRules, reviews] = await Promise.all([
-      repo.getAvailability(property.id),
-      repo.getPriceRules(property.id),
-      repo.listReviewsForProperty(property.id),
-    ]);
+    const [availability, priceRules, reviews, safaris, motorcycleTours, transports, packages] =
+      await Promise.all([
+        repo.getAvailability(property.id),
+        repo.getPriceRules(property.id),
+        repo.listReviewsForProperty(property.id),
+        repo.listPublishedExperiences(property.city, "MOUNTAIN_SAFARI"),
+        repo.listPublishedExperiences(property.city, "MOTORCYCLE_TOUR"),
+        repo.listPublishedTransports(property.city),
+        repo.listPublishedPackages(property.city, property.id),
+      ]);
 
     return Response.json(
       {
@@ -121,6 +175,7 @@ export async function GET(
         reviews: reviews.slice(0, MAX_REVIEWS).map(serializeReview),
         availability: serializeAvailability(availability),
         priceRules: priceRules.map(serializePriceRule),
+        addOns: serializeAddOns(safaris, motorcycleTours, transports, packages),
         pagePath: `/stay/${property.slug}`,
         support: {
           phone: SUPPORT_PHONE,

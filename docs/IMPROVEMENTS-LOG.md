@@ -1337,3 +1337,25 @@
 - `npm run test:e2e` **٧٤/٧٤** ✅، `npm run test:recovery` **٣/٣** ✅، `npm run test:driver` **٧/٧** ✅ — كل الاختبارات اشتغلت متسلسلة على Mock من غير تعارض في الـ dev server.
 - `npx next typegen` / `npm run typecheck` / `npm run lint` / `npm run build` ✅ — البناء ولّد ٥٧ مساراً، وظهرت فيه المسارات الجديدة كلها مع بقاء `Cache Components enabled` و`Partial Prefetching enabled`.
 - مفيش SQL أو بيانات إنتاجية اتحركت، ومفيش Secrets أو `.env.example` اتعدّلوا. واجهة الويب ما اتغيرتش: مفيش تعديل على Stay Server Component أو `/download` أو `public/downloads/qiwalo.apk`.
+
+
+## البند ٤٧ — إضافات الوحدة في BFF تفاصيل الوحدة للموبايل
+
+**الحالة: تم ✅ على Mock؛ مفيش أي كتابة أو تغيير بيانات في الإنتاج**
+
+### اللي اتطلب
+بعد مراجعة شاشة «تفاصيل الوحدة» في تطبيق أندرويد، الاتفاق إن الخدمات الإضافية تبقى قابلة للاختيار والحجز بدل ما تكون كروت عرض ثابتة. الموبايل لازم يرسل **المعرّف فقط** زي الويب، والأسعار تفضل محسوبة في `lib/booking-service.ts`.
+
+### التنفيذ في الويب (مصدر الحقيقة)
+1. `GET /api/mobile/units/[slug]` بقى يرجّع `addOns` مرتّبة ومحدودة بـ ١٢ عنصر:
+   - `PACKAGE` للباقات المرتبطة بالوحدة نفسها.
+   - `EXPERIENCE` لسفاري الجبال وجولات الموتوسيكلات المنشورة في مدينة الوحدة.
+   - `TRANSPORT` لوسائل النقل المنشورة في نفس المدينة.
+2. كل عنصر فيه `id` و`kind` و`label` و`subtitle` و`price` و`priceUnit` و`capacity` فقط. مفيش `ownerId` ولا `commissionRate` ولا بيانات سائق في الاستجابة العامة.
+3. مفيش تغيير في منطق التسعير: `parseStayBody` كان أصلاً بيقرأ `packageId` / `experienceId` / `transportId`، فالموبايل يقدر يبعتهم للـ quote ولإنشاء الحجز من غير مسار جديد أو قاعدة مكررة.
+
+### التجربة
+- `npx playwright test e2e/mobile-booking-api.spec.ts --reporter=list` على Mock: **٤/٤** ✅ — إضافة اختبار يتحقق إن تفاصيل الوحدة ترجّع إضافات حقيقية بدون بيانات خاصة، وإن إرسال `packageId` بيزوّد `grandTotal` في الـ quote.
+- `npm run test:e2e` **٧٥/٧٥** ✅، `npm run test:recovery` **٣/٣** ✅، `npm run test:driver` **٧/٧** ✅.
+- `npx next typegen` / `npm run typecheck` / `npm run lint` / `npm run build` ✅ مع بقاء `Cache Components enabled` و`Partial Prefetching enabled`.
+- مفيش SQL أو بيانات إنتاجية اتحركت، ومفيش Secrets أو `.env.example` اتعدّلوا، ومفيش تغيير في واجهة الويب أو `/download`.

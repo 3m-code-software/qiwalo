@@ -44,6 +44,43 @@ test("BFF الموبايل: التسعير من الخادم قبل الحجز",
   expect((await badDates.json()).error).toBe("invalid_dates");
 });
 
+test("BFF الموبايل: تفاصيل الوحدة ترجّع إضافاتها والسعر يتحسب من المعرّف فقط", async ({ request }) => {
+  const detail = await request.get(`/api/mobile/units/${SLUG}`);
+  expect(detail.status()).toBe(200);
+  const detailBody = await detail.json();
+  expect(detailBody.ok).toBe(true);
+  expect(Array.isArray(detailBody.addOns)).toBe(true);
+  expect(detailBody.addOns.length).toBeGreaterThan(0);
+
+  const pkg = detailBody.addOns.find((item: { kind: string }) => item.kind === "PACKAGE");
+  expect(pkg).toBeTruthy();
+  expect(pkg.id).toBeTruthy();
+  expect(pkg.priceUnit).toBe("night");
+  expect(pkg.ownerId).toBeUndefined();
+  expect(pkg.commissionRate).toBeUndefined();
+
+  const plain = await request.post("/api/mobile/bookings/quote", {
+    data: payload({ checkIn: dateAfter(180), checkOut: dateAfter(183) }),
+  });
+  expect(plain.status()).toBe(200);
+  const plainTotal = (await plain.json()).quote.grandTotal as number;
+
+  const withPackage = await request.post("/api/mobile/bookings/quote", {
+    data: payload({
+      checkIn: dateAfter(180),
+      checkOut: dateAfter(183),
+      packageId: pkg.id,
+    }),
+  });
+  expect(withPackage.status()).toBe(200);
+  const quoted = (await withPackage.json()).quote;
+  expect(quoted.addOns).toEqual([
+    expect.objectContaining({ id: pkg.id, label: pkg.label }),
+  ]);
+  expect(quoted.grandTotal).toBeGreaterThan(plainTotal);
+  expect(quoted.paymentCopy).toBe("تحويل بنكي أو كاش عند الوصول");
+});
+
 test("BFF الموبايل: إنشاء حجز مؤكد ثم قراءته برقم المرجع", async ({ request }) => {
   const idempotencyKey = `qw-e2e-${Date.now()}`;
   const data = payload({ checkIn: dateAfter(171), checkOut: dateAfter(174) });
