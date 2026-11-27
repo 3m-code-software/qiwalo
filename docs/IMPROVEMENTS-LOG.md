@@ -1275,3 +1275,40 @@
 - `npm run test:e2e` **٦٧/٦٧** ✅ (زيادة بندين عن ٦٥)، `npm run test:recovery` **٣/٣** ✅، `npm run test:driver` **٧/٧** ✅.
 - `npx next typegen` / `npm run typecheck` / `npm run lint` / `npm run build` ✅ — البناء أنتج ٤٧ مساراً مع بقاء `cacheComponents` و`partialPrefetching` مفعّلين.
 - بعد الـ push والـ CI الأخضر (`45882181351`، ٣م٤٧ث)، فحص قراءة فقط على `https://qiwalo-ygzh.vercel.app/api/mobile/units/nile-view-dar-al-madina` رجع `ok:true` مع الصور والمرافق والتوافر وقواعد الأسعار ونص الدفع وبيانات الدعم. مفيش أي تنفيذ SQL أو تغيير بيانات إنتاجية.
+
+
+## البند ٤٥ — ربط حجز تطبيق أندرويد بنفس خدمة حجز الويب (Mock أولاً)
+
+**الحالة: تم ✅ على Mock؛ المسارات متاحة على الإنتاج بعد النشر، ومفيش تغيير بيانات إنتاجية**
+
+### اللي اتطلب
+«اربط الحجز» مع تأجيل البحث صراحةً: «البحث دة محتاج مجهود وتخطيط قوى علشان يظهر ويطلع نتيجة كويسة». يعني لازم زر «احجز الآن» في تطبيق أندرويد يوصل لحجز حقيقي بنفس قواعد الويب، من غير ما نبدأ قائمة نتائج البحث النهاردة.
+
+### التنفيذ في الويب (مصدر الحقيقة)
+1. خدمة واحدة جديدة `lib/booking-service.ts`:
+   - نقلنا منها منطق التحقق والتسعير وإنشاء الحجز والإشعارات اللي كان مكتوب جوه `confirmBookingAction`، وبقى الـ Server Action يستدعي `createPublishedBooking` مباشرة.
+   - أضفنا فحص `PUBLISHED` و`maxGuests` ورسالة محددة للحد الأدنى للليالي (`min_nights`)، ووحّدنا تنسيق الهاتف ومنع التكرار (`normalizePhoneInput` / `phoneInUseError` / `isPhoneConflict`).
+   - العميل (ويب أو موبايل) بيرسل slug والتواريخ وعدد الضيوف ومعرّفات الإضافات فقط؛ أي سعر أو إجمالي أو عمولة بيتحسب هنا، ولا يُقرأ من الطلب.
+2. ثلاثة BFF جدد للضيف بدون جلسة:
+   - `POST /api/mobile/bookings/quote` — تسعير للقراءة فقط قبل التأكيد.
+   - `POST /api/mobile/bookings` — إنشاء حجز مؤكد، مع هيدر `idempotency-key` اختياري؛ إعادة نفس المفتاح خلال ١٠ دقائق في نفس العملية ترجع نفس المرجع بدل حجز تاني. الخريطة في الذاكرة **مش دائمة** عبر إعادة تشغيل السيرفر، فهي حماية للـ retry مش ضمان موزّع.
+   - `GET /api/mobile/bookings/[reference]` — حالة الحجز برقم المرجع بدون login، زي صفحة `/booking/[reference]`.
+   - الاستجابة العامة `publicMobileBooking(...)` فيها المرجع والوحدة والتواريخ والحالة والإجمالي وطريقة الدفع ونص الدفع وبيانات الدعم، **بدون** اسم الضيف أو إيميله أو تليفونه.
+   - أخطاء عربية مع كود ثابت: `invalid_json`، `invalid_request`، `invalid_dates`، `unavailable`، `min_nights`، `phone_taken` (٤٠٩)، `booking_failed`، `booking_not_found` (٤٠٤).
+3. نص الدفع `تحويل بنكي أو كاش عند الوصول` ورقم/روابط الدعم جاية من `lib/constants.ts` زي ما في باقي المسارات، بدون تكرار أو أسرار في الكود.
+
+### التنفيذ في Flutter
+1. `lib/api/api_client.dart`: `postMap` بيرسل JSON مع هيدر `Idempotency-Key`، وبيعرض رسالة `note` العربية القادمة من الخادم كما هي.
+2. `lib/api/booking_repository.dart`: `BookingDraft` + `BookingQuote` + `MobileBooking` + `quote` / `confirm` / `lookup`؛ مفيش أي قاعدة تسعير أو تحقق نهائي جوه Dart. مفتاح الـ idempotency بيتولّد لكل محاولة تأكيد.
+3. `lib/screens/booking.dart`: Checkout فيه اختيار الوصول/المغادرة من تقويم عربي، عدد الضيوف من سعة الوحدة، بيانات الضيف (الاسم والإيميل والهاتف والجنسية إلزامية)، موافقة على الشروط، وطريقتا دفع `CASH` / `BANK`. بيعمل quote أولاً، وبعد التأكيد يروح لشاشة النجاح برقم المرجع والحالة والإجمالي كما رجعوا من BFF.
+4. `lib/screens/account.dart`: «حجوزاتي» بقت تبحث برقم المرجع عبر `GET` الجديد وتفتح تفاصيل الحجز الحقيقية؛ المعاinenات القديمة لسه موجودة كـ preview.
+5. `lib/screens/discover.dart`: زر «احجز الآن» بيعتمر `BookingDraft` بالـ slug الحقيقي وأول يوم متاح وثلاث ليالي وحد أقصى للضيوف من بيانات الوحدة. `lib/main.dart` بيرمرّر arguments، و`/success` ليه معاينة احتياطية عشان فهرس التصميم ما يظهرش فاضي.
+6. `lib/format.dart`: تنسيق عربي موحّد للأرقام والفواصل والتواريخ والعملة، بنفس شكل أسعار الويب.
+
+### التجربة
+- `npx playwright test e2e/mobile-booking-api.spec.ts --reporter=list` على Mock: **٣/٣** ✅ — التسعير من الخادم، إنشاء حجز ثم قراءته برقم المرجع، إعادة الإرسال بنفس المفتاح، ورفض البيانات الناقصة/رقم التليفون المستعمل.
+- `npm run test:e2e` **٧٠/٧٠** ✅ (زيادة ٣ عن البند ٤٤)، `npm run test:recovery` **٣/٣** ✅، `npm run test:driver` **٧/٧** ✅. أول تشغيل للمسار الجديد فشل لأن الاختبار كان يحجز في تواريخ مستخدمة في اختبارات تانية؛ اتعدّلت التواريخ واتأكد كل الاختبارات بعدين، من غير تغيير سلوك الإنتاج.
+- `npx next typegen` / `npm run typecheck` / `npm run lint` / `npm run build` ✅ — البناء ولّد ٤٩ صفحة، وظهرت فيه المسارات الثلاثة الجديدة مع بقاء `cacheComponents` و`partialPrefetching` مفعّلين.
+- Flutter: `flutter analyze` بلا ملاحظات ✅، `flutter test` **٧/٧** ✅ (٤ اختبارات قديمة + ٣ لحجز Mock: الطلبات المرسلة، ظهور خطأ الرفض، والبحث بالمرجع)، `flutter build web --release --dart-define=USE_MOCK=true` ✅ مع إعادة توليد ١٩ لقطة Pixel 7، و`flutter build apk --debug` ✅.
+- الـ APK في `qiwalo-flutter/releases/qiwalo.apk` اتبنى من جديد واتفحص بـ `aapt dump badging`: `package='com.qiwalo.app'`، `application-label='قيوالو'`، و`INTERNET` موجود. مفيش جهاز/إيموليتر متصل، فالتحقق ثابت مش تجربة على جهاز.
+- كل التجارب على Mock؛ مفيش SQL أو بيانات إنتاجية اتحركت، ومفيش Secrets أو `.env.example` اتعدّل. البحث عن الوحدات لسه مؤجّل بطلب صريح.

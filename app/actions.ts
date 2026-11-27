@@ -4,19 +4,25 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { eachDayOfInterval, format, parseISO } from "date-fns";
-import { overlapsBlockedDates, parseBlockedDates } from "@/lib/availability";
+import { parseBlockedDates } from "@/lib/availability";
+import {
+  createPublishedBooking,
+  isPhoneConflict as phoneConflict,
+  normalizePhoneInput as normalizePhone,
+  PHONE_TAKEN,
+  phoneInUseError,
+} from "@/lib/booking-service";
 import { CITIES, DEFAULT_COMMISSION_RATE, DRIVER_SUBSCRIPTION_NOTICE, EXPERIENCE_CANCEL_POLICY, PACKAGE_CANCEL_POLICY, TRANSPORT_CANCEL_POLICY, TRANSPORT_TYPES } from "@/lib/constants";
 import { toArabicDigits } from "@/lib/format";
 import { clearSession, createSession, getSession, requireRole, type Session } from "@/lib/auth";
-import { sendBookingNotifications, sendReviewNotice, sendSignupNotice, sendVerificationNotice } from "@/lib/notifications";
-import { quoteStay } from "@/lib/pricing";
+import { sendReviewNotice, sendSignupNotice, sendVerificationNotice } from "@/lib/notifications";
 import { getRepo } from "@/lib/repo";
 import { createTelegramActivationToken } from "@/lib/telegram";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import type {
-  BookingStatus, CityKey, DriverSubscriptionStatus, ExperienceBookingDetail, ExperienceCategory, ExperienceDifficulty,
-  ModerationStatus, PackageBookingDetail, PaymentMethod, PropertyType, PropertyUpdateInput, ReviewStatus, Role,
-  TransportBookingDetail, TransportType, VerificationStatus, VehicleUpdateInput,
+  BookingStatus, CityKey, DriverSubscriptionStatus, ExperienceCategory, ExperienceDifficulty,
+  ModerationStatus, PropertyType, PropertyUpdateInput, ReviewStatus, Role,
+  TransportType, VerificationStatus, VehicleUpdateInput,
 } from "@/lib/types";
 
 export interface FormState { error?: string; ok?: string }
@@ -116,29 +122,6 @@ export async function signInAction(_prev: FormState, form: FormData): Promise<Fo
     return { error: "هذا الحساب غير مسجّل في قيوالو. تواصل مع الدعم." };
   }
   redirectForRole(safeNext(form.get("next")), user.role);
-}
-
-function normalizePhone(value: FormDataEntryValue | null): string {
-  const digits = String(value ?? "").replace(/\D/g, "");
-  if (digits.length === 12 && digits.startsWith("20")) return `0${digits.slice(2)}`;
-  return digits;
-}
-
-const PHONE_TAKEN = "رقم التليفون مسجّل بحساب تاني. استخدم رقم غير أو سجّل الدخول بالبريد المرتبط بيه.";
-
-/** الرقم الواحد يخص حساب واحد فقط؛ نفس البريد يقدر يحدّث رقمه. */
-async function phoneInUseError(phone: string, email: string): Promise<string | null> {
-  const owner = await (await getRepo()).getUserByPhone(phone);
-  return owner && owner.email !== email ? PHONE_TAKEN : null;
-}
-
-/** حماية من التزامن: الـ unique index في قاعدة البيانات هو الحاجز الأخير. */
-function phoneConflict(error: unknown): boolean {
-  if (error instanceof Error && error.message === "PHONE_TAKEN") return true;
-  if (typeof error !== "object" || error === null || !("code" in error)) return false;
-  if ((error as { code?: unknown }).code !== "P2002") return false;
-  const meta = (error as { meta?: unknown }).meta;
-  return /phone/i.test(JSON.stringify(meta ?? ""));
 }
 
 export async function signUpAction(_prev: FormState, form: FormData): Promise<FormState> {
@@ -863,139 +846,29 @@ export async function deletePriceRuleAction(form: FormData): Promise<void> {
 // ===== Booking =====
 
 export async function confirmBookingAction(_prev: FormState, form: FormData): Promise<FormState> {
-  const slug = String(form.get("slug") ?? "");
-  const checkIn = String(form.get("checkIn") ?? "");
-  const checkOut = String(form.get("checkOut") ?? "");
-  const guests = Number(form.get("guests") ?? 1);
-  const fullName = String(form.get("fullName") ?? "").trim();
-  const email = String(form.get("email") ?? "").trim().toLowerCase();
-  const phone = normalizePhone(form.get("phone"));
-  const nationality = String(form.get("nationality") ?? "").trim();
-  const paymentMethod: PaymentMethod = String(form.get("paymentMethod") ?? "CASH") === "BANK" ? "BANK" : "CASH";
-  const accepted = String(form.get("terms") ?? "") === "on";
-  if (!fullName || !/^\S+@\S+\.\S+$/.test(email)) return { error: "الاسم والبريد الإلكتروني مطلوبان." };
-  if (!/^01\d{9}$/.test(phone)) return { error: "أدخل رقم هاتف صحيحاً." };
-  if (!nationality) return { error: "أدخل الجنسية." };
-  if (!accepted) return { error: "لازم توافق على شروط الضيوف قبل الحجز." };
-
-  const repo = await getRepo();
-  const property = await repo.getPropertyBySlug(slug);
-  if (!property) return { error: "الوحدة غير موجودة." };
-  const [availability, rules] = await Promise.all([repo.getAvailability(property.id), repo.getPriceRules(property.id)]);
-  const result = quoteStay(property, rules, availability, checkIn, checkOut);
-  if (!result.ok) return { error: "التواريخ غير متاحة. اختار مواعيد تانية." };
-
-  const packageId = String(form.get("packageId") ?? "").trim();
-  let packageDetail: PackageBookingDetail | null = null;
-  if (packageId) {
-    const pkg = await repo.getPackageById(packageId);
-    if (!pkg || pkg.status !== "PUBLISHED" || pkg.city !== property.city || pkg.propertyId !== property.id) {
-      return { error: "الباقة غير متاحة لهذه الوحدة." };
-    }
-    if (guests > pkg.capacity) {
-      return { error: `عدد الضيوف أكبر من سعة الباقة (${toArabicDigits(pkg.capacity)}).` };
-    }
-    const packageTransport = await repo.getTransportById(pkg.transportId);
-    if (packageTransport && overlapsBlockedDates(checkIn, checkOut, packageTransport.blockedDates)) {
-      return { error: "الباقة غير متاحة: النقل المحدد محجوز في أحد الأيام." };
-    }
-    const packageTotal = pkg.pricePerNight * result.quote.nights;
-    packageDetail = {
-      packageId: pkg.id, packageName: pkg.name, city: pkg.city,
-      propertyId: pkg.propertyId, propertyName: pkg.propertyName,
-      experienceId: pkg.experienceId, experienceName: pkg.experienceName,
-      transportId: pkg.transportId, transportName: pkg.transportName,
-      capacity: pkg.capacity, pricePerNight: pkg.pricePerNight, nights: result.quote.nights,
-      guests, total: packageTotal,
-      commission: Math.round(packageTotal * (pkg.commissionRate / 100)),
-    };
-  }
-
-  const experienceId = String(form.get("experienceId") ?? "").trim();
-  let experienceDetail: ExperienceBookingDetail | null = null;
-  if (experienceId) {
-    const experience = await repo.getExperienceById(experienceId);
-    if (!experience || experience.status !== "PUBLISHED" || experience.city !== property.city) {
-      return { error: "تجربة السفاري غير متاحة لهذه الوحدة." };
-    }
-    if (guests > experience.capacity) {
-      return { error: `عدد الضيوف أكبر من سعة تجربة السفاري (${toArabicDigits(experience.capacity)}).` };
-    }
-    const experienceTotal = experience.pricePerPerson * guests;
-    experienceDetail = {
-      experienceId: experience.id, experienceName: experience.name, category: experience.category, city: experience.city,
-      mountain: experience.mountain, meetingPoint: experience.meetingPoint,
-      durationHours: experience.durationHours, pricePerPerson: experience.pricePerPerson,
-      guests, total: experienceTotal,
-      commission: Math.round(experienceTotal * (experience.commissionRate / 100)),
-    };
-  }
-
-  const transportId = String(form.get("transportId") ?? "").trim();
-  let transportDetail: TransportBookingDetail | null = null;
-  if (transportId) {
-    const transport = await repo.getTransportById(transportId);
-    if (!transport || transport.status !== "PUBLISHED" || transport.city !== property.city) {
-      return { error: "خدمة النقل غير متاحة لهذه الوحدة." };
-    }
-    if (guests > transport.capacity) {
-      return { error: `عدد الضيوف أكبر من سعة النقل (${toArabicDigits(transport.capacity)}).` };
-    }
-    if (overlapsBlockedDates(checkIn, checkOut, transport.blockedDates)) {
-      return { error: "المركبة غير متاحة: أحد الأيام محجوز في جدول السائق." };
-    }
-    transportDetail = {
-      transportId: transport.id, transportName: transport.name, type: transport.type,
-      city: transport.city, routeFrom: transport.routeFrom, routeTo: transport.routeTo,
-      meetingPoint: transport.meetingPoint, durationHours: transport.durationHours,
-      capacity: transport.capacity, pricePerTrip: transport.pricePerTrip, guests,
-      total: transport.pricePerTrip,
-      commission: Math.round(transport.pricePerTrip * (transport.commissionRate / 100)),
-      driverName: transport.driverName ?? null,
-      plateNumber: transport.plateNumber ?? null,
-      driverId: transport.driverId ?? null,
-      vehicleId: transport.vehicleId ?? null,
-    };
-  }
-
+  // قواعد الحجز كلها في مكان واحد: lib/booking-service.ts يستخدمه الويب والموبايل.
   const session = await getSession();
-  const guestEmail = session?.email ?? email;
-  const termsAcceptedAt = new Date().toISOString();
-  if (!session) {
-    const duplicate = await phoneInUseError(phone, email);
-    if (duplicate) return { error: duplicate };
-    try {
-      await repo.upsertUser({
-        email, name: fullName, role: "GUEST", phone, nationality, termsAcceptedAt,
-      });
-    } catch (error) {
-      if (phoneConflict(error)) return { error: PHONE_TAKEN };
-      throw error;
-    }
-  } else {
-    await repo.setTermsAccepted(guestEmail, termsAcceptedAt);
-  }
-
-  const booking = await repo.createBooking({
-    propertyId: property.id, guestId: guestEmail, guestName: fullName,
-    checkIn, checkOut, guests,
-    subtotal: result.quote.subtotal, serviceFee: result.quote.serviceFee,
-    commission: result.quote.commission + (packageDetail?.commission ?? 0) + (experienceDetail?.commission ?? 0) + (transportDetail?.commission ?? 0),
-    total: result.quote.total + (packageDetail?.total ?? 0) + (experienceDetail?.total ?? 0) + (transportDetail?.total ?? 0), provider: "MANUAL",
-    nationality, paymentMethod, termsAcceptedAt, experience: experienceDetail, transport: transportDetail,
-    package: packageDetail,
+  const result = await createPublishedBooking({
+    slug: String(form.get("slug") ?? ""),
+    checkIn: String(form.get("checkIn") ?? ""),
+    checkOut: String(form.get("checkOut") ?? ""),
+    guests: Number(form.get("guests") ?? 1),
+    fullName: String(form.get("fullName") ?? ""),
+    email: String(form.get("email") ?? ""),
+    phone: String(form.get("phone") ?? ""),
+    nationality: String(form.get("nationality") ?? ""),
+    paymentMethod: String(form.get("paymentMethod") ?? "CASH") === "BANK" ? "BANK" : "CASH",
+    termsAccepted: String(form.get("terms") ?? "") === "on",
+    packageId: String(form.get("packageId") ?? ""),
+    experienceId: String(form.get("experienceId") ?? ""),
+    transportId: String(form.get("transportId") ?? ""),
+    sessionEmail: session?.email,
   });
-  await repo.updateBooking(booking.reference, { status: "CONFIRMED", paymentStatus: "PENDING" });
-
-  const owner = await repo.getUserByEmail(property.ownerId);
-  await sendBookingNotifications({
-    booking, property, guestEmail, guestPhone: phone, ownerEmail: owner?.email,
-  });
-  await repo.updateBooking(booking.reference, { adminNotifiedAt: new Date().toISOString() });
+  if (!result.ok) return { error: result.error };
 
   revalidatePath("/owner");
   revalidatePath("/admin");
-  redirect(`/booking/${booking.reference}`);
+  redirect(`/booking/${result.booking.reference}`);
 }
 
 export async function createGuestAccountAction(_prev: FormState, form: FormData): Promise<FormState> {
