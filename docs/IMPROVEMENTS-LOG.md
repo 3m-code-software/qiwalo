@@ -1314,3 +1314,26 @@
 - كل التجارب على Mock؛ مفيش SQL أو بيانات إنتاجية اتحركت، ومفيش Secrets أو `.env.example` اتعدّل. البحث عن الوحدات لسه مؤجّل بطلب صريح.
 - الـ push (`ff169db`) اتأكد بـ CI أخضر: `45961384796`، ٤م٣٨ث — التايب/Lint/البناء و٧٠ اختبار Mock و٣ اختبارات استعادة كلها نجحت.
 - فحص قراءة فقط على الإنتاج بعد النشر: `GET /api/mobile/units/nile-view-dar-al-madina` رجع `ok:true`؛ `POST /api/mobile/bookings/quote` للتواريخ `2026-11-28` ← `2026-12-01` رجع `ok:true` و٣ ليالي و٥٬٤٣٩ ج.م ونص الدفع الموحّد؛ `GET /api/mobile/bookings/QW-DOES-NOT-EXIST` رجع `booking_not_found`/٤٠٤؛ و`POST /api/mobile/bookings` ببيانات ناقصة رجع ٤٠٠ برسالة «أدخل رقم هاتف صحيحاً.». **مفيش حجز حقيقي اتعمل** في فحص الإنتاج.
+
+
+## البند ٤٦ — BFF خاص بالمالك والسائق مع دخول JWT (Mock أولاً)
+
+**الحالة: تم ✅ على Mock؛ مفيش أي كتابة أو تغيير بيانات في الإنتاج**
+
+### اللي اتطلب
+بعد ما اتنفّذت شاشات المالك والسائق الثماني كمعاينة محلية، طلبت ربطها ببيانات حقيقية. القرارات اللي اخترتها: دخول عبر BFF JWT (مش Supabase مباشر من التطبيق)، رحلات السائق مشتقّة من الحجوزات الموجودة، وكل التطوير والاختبار على Mock من غير بيانات إنتاجية.
+
+### التنفيذ في الويب (مصدر الحقيقة)
+1. `lib/mobile-auth.ts`: إصدار JWT HS256 لمدة ٧ أيام والتحقق منه في كل طلب مع إعادة قراءة الدور من `repo.getUserByEmail`، فتغيير الصلاحية ينعكس فوراً. أخطاء موحّدة `unauthorized` (٤٠١) و`forbidden` (٤٠٣).
+2. `POST /api/mobile/auth/login`: في الإنتاج بيتحقق من الباسورد عبر Supabase؛ على Mock بيتحقق من كلمة الديمو الموثّقة (`MOBILE_DEMO_PASSWORD` والافتراضي `Qiwalo123`) ويرفض حسابات الضيوف. لو الإنتاج بلا Supabase يرجع `auth_unavailable`/٥٠٣ بدل ما يفتح باب دخول.
+3. `lib/mobile-role-service.ts`: تحويل بيانات المالك والسائق مع أسماء عربية جاية من `lib/constants.ts`، وتحقق صارم من المدخلات قبل أي كتابة. استجابة المالك بتشمل اسم الضيف فقط من غير إيميل أو تليفون أو بيانات خاصة.
+4. مسارات المالك: `GET /api/mobile/owner/summary`، `GET|POST /api/mobile/owner/properties`، `GET|PATCH /api/mobile/owner/properties/[id]`، `GET|PATCH .../availability`، و`GET /api/mobile/owner/bookings`. مسار الحجوزات **للقراءة فقط** لأن الحجوزات بتتأكد تلقائياً، ومفيش حالة `PENDING` يدوية لسه.
+5. مسارات السائق: `GET /api/mobile/driver/summary`، `GET /driver/profile`، `GET|POST /driver/vehicles`، `GET|PATCH /driver/vehicles/[id]`، `PATCH .../pause`، `GET /driver/trips`، و`GET /driver/trips/[id]`. الرحلات جاية من `listBookingsForDriver` اللي عندها `transport`، من غير جدول `Trip` جديد.
+6. كل مسار بيتحقق من هيدر `Authorization: Bearer` والدور المسموح، ومسارات التفاصيل بتمنع الوصول لو الوحدة أو المركبة مش بتاعة المستخدم. الأسعار والعمولات بتضل محسوبة على الخادم.
+7. على Mock اتحط حجز فيه تفاصيل نقل (`QW-SEED-4`) عشان شاشات رحلات السائق يكون ليها بيانات حقيقية داخل الاختبارات.
+
+### التجربة
+- `npx playwright test e2e/mobile-role-api.spec.ts --reporter=list` **٤/٤** ✅ — رفض الباسورد القصير والغلط والضيف، منع الوصول بدون توكن أو بدور آخر، قراءة المالك، إنشاء/تعديل وحدة وتحديث التوافر، وقراءة السائق مع إيقاف المركبة وإعادتها.
+- `npm run test:e2e` **٧٤/٧٤** ✅، `npm run test:recovery` **٣/٣** ✅، `npm run test:driver` **٧/٧** ✅ — كل الاختبارات اشتغلت متسلسلة على Mock من غير تعارض في الـ dev server.
+- `npx next typegen` / `npm run typecheck` / `npm run lint` / `npm run build` ✅ — البناء ولّد ٥٧ مساراً، وظهرت فيه المسارات الجديدة كلها مع بقاء `Cache Components enabled` و`Partial Prefetching enabled`.
+- مفيش SQL أو بيانات إنتاجية اتحركت، ومفيش Secrets أو `.env.example` اتعدّلوا. واجهة الويب ما اتغيرتش: مفيش تعديل على Stay Server Component أو `/download` أو `public/downloads/qiwalo.apk`.

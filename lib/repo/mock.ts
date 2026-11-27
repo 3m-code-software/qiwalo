@@ -349,6 +349,20 @@ function createMockState(): MockState {
       nationality: "إماراتي", paymentMethod: "BANK", paymentNote: null, termsAcceptedAt: new Date().toISOString(), adminNotifiedAt: new Date().toISOString(),
       status: "COMPLETED", paymentStatus: "PAID", provider: "MANUAL", experience: null, transport: null, package: null, createdAt: new Date().toISOString(),
     },
+    {
+      // رحلة سائق مشتقّة من حجز حقيقي؛ بتغذّي شاشات السائق على Mock من غير جدول Trip جديد.
+      id: "b4", reference: "QW-SEED-4", propertyId: props[0].id, propertyName: props[0].name, propertySlug: props[0].slug, city: props[0].city,
+      guestId: "guest@qiwalo.test", guestName: "نورة ضيف", checkIn: dateStr(5), checkOut: dateStr(5), nights: 0, guests: 4,
+      subtotal: 650, serviceFee: 0, commission: 78, total: 650,
+      nationality: "مصري", paymentMethod: "CASH", paymentNote: null, termsAcceptedAt: new Date().toISOString(), adminNotifiedAt: new Date().toISOString(),
+      status: "CONFIRMED", paymentStatus: "PENDING", provider: "MANUAL", experience: null, package: null, createdAt: new Date().toISOString(),
+      transport: {
+        transportId: "v1", transportName: "سيارة السائق — جولات الأقصر", type: "CAR", city: "LUXOR",
+        routeFrom: "الأقصر الشرقية", routeTo: "وادي الملوك", meetingPoint: "استقبال الفندق — الكورنيش",
+        durationHours: 5, capacity: 6, pricePerTrip: 650, guests: 4, total: 650, commission: 78,
+        driverName: "سائق قيوالو", plateNumber: "LXR-1234", driverId: "driver@qiwalo.test", vehicleId: "v1",
+      },
+    },
   ];
 
   const now = new Date().toISOString();
