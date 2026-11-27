@@ -1313,3 +1313,4 @@
 - الـ APK في `qiwalo-flutter/releases/qiwalo.apk` اتبنى من جديد واتفحص بـ `aapt dump badging`: `package='com.qiwalo.app'`، `application-label='قيوالو'`، و`INTERNET` موجود. مفيش جهاز/إيموليتر متصل، فالتحقق ثابت مش تجربة على جهاز.
 - كل التجارب على Mock؛ مفيش SQL أو بيانات إنتاجية اتحركت، ومفيش Secrets أو `.env.example` اتعدّل. البحث عن الوحدات لسه مؤجّل بطلب صريح.
 - الـ push (`ff169db`) اتأكد بـ CI أخضر: `45961384796`، ٤م٣٨ث — التايب/Lint/البناء و٧٠ اختبار Mock و٣ اختبارات استعادة كلها نجحت.
+- فحص قراءة فقط على الإنتاج بعد النشر: `GET /api/mobile/units/nile-view-dar-al-madina` رجع `ok:true`؛ `POST /api/mobile/bookings/quote` للتواريخ `2026-11-28` ← `2026-12-01` رجع `ok:true` و٣ ليالي و٥٬٤٣٩ ج.م ونص الدفع الموحّد؛ `GET /api/mobile/bookings/QW-DOES-NOT-EXIST` رجع `booking_not_found`/٤٠٤؛ و`POST /api/mobile/bookings` ببيانات ناقصة رجع ٤٠٠ برسالة «أدخل رقم هاتف صحيحاً.». **مفيش حجز حقيقي اتعمل** في فحص الإنتاج.
